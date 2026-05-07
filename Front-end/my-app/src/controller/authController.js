@@ -1,0 +1,12 @@
+import axios from 'axios';
+
+const API_URL = 'https://localhost:49851/api/Auth';
+
+export const login = async (credentials) => {
+    try {
+        const response = await axios.post(`${API_URL}/login`, credentials);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || { message: "Lỗi kết nối máy chủ" };
+    }
+};

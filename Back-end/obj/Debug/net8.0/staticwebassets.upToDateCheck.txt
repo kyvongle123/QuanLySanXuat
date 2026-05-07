@@ -1,0 +1,8 @@
+wwwroot\Public\MaterialReceipts\CertificateOfOrigin\PN001 - CO.pdf
+wwwroot\Public\MaterialReceipts\CertificateOfOrigin\PN001 chỉnh sửa - CO.pdf
+wwwroot\Public\MaterialReceipts\CertificateOfOrigin\PN002 - CO.pdf
+wwwroot\Public\MaterialReceipts\CertificateOfQuality\PN001 - CQ.pdf
+wwwroot\Public\MaterialReceipts\CertificateOfQuality\PN002 - CQ.pdf
+wwwroot\Public\MaterialReceipts\InspectationReports\PN001 - IR.pdf
+wwwroot\Public\MaterialReceipts\InspectationReports\PN002 - IR.pdf
+wwwroot\Public\UserAvatar\1 - Lê Kỳ Vọng\1 - Lê Kỳ Vọng.png
