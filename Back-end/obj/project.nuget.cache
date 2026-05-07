@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "s3C/YZTTNLE=",
+  "dgSpecHash": "s/HXSGhogfo=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Admin\\Downloads\\MyProject ReactJS\\Back-end\\MyProject.Backend.csproj",
+  "projectFilePath": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\MyProject.Backend.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Admin\\.nuget\\packages\\aspose.words\\26.5.0\\aspose.words.26.5.0.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",

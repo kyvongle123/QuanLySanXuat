@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, UserRound, LogOut, Settings, Bell, User } from 'lucide-react';
+const hanghoa = "/hanghoa.png";
 
 export const Navbar = ({ onToggleSidebar }) => {
   // Định nghĩa địa chỉ máy chủ Back-end để lấy tệp tĩnh từ wwwroot
-  const API_BASE_URL = 'https://localhost:49851'; 
+  const API_BASE_URL = 'https://localhost:49851';
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -50,13 +51,13 @@ export const Navbar = ({ onToggleSidebar }) => {
         >
           <Menu size={20} />
         </button>
-        
+
         {/* Logo và Tên dự án */}
         <div className="flex items-center gap-2 select-none">
-          <img 
-            src="/hanghoa.png" 
-            alt="Logo App Quản Lý Sản Xuất" 
-            className="h-8 w-auto object-contain hidden sm:block" 
+          <img
+            src={hanghoa}
+            alt="Logo App Quản Lý Sản Xuất"
+            className="h-8 w-auto object-contain hidden sm:block"
           />
           <span className="font-bold text-lg text-gray-800 tracking-tight hidden sm:block">
             APP QUẢN LÝ SẢN XUẤT
@@ -93,7 +94,7 @@ export const Navbar = ({ onToggleSidebar }) => {
                 <p className="text-sm font-bold text-gray-800">{currentUser?.name || 'Người dùng'}</p>
                 <p className="text-xs text-gray-500 truncate">{currentUser?.username || 'N/A'}</p>
               </div>
-              
+
               <button
                 className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-3 transition-colors group"
                 onClick={() => {
@@ -104,9 +105,9 @@ export const Navbar = ({ onToggleSidebar }) => {
                 <Settings size={18} className="text-gray-400 group-hover:text-blue-600" />
                 Thiết lập tài khoản
               </button>
-              
+
               <div className="h-px bg-gray-100 my-1"></div>
-              
+
               <button
                 className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors group"
                 onClick={() => {

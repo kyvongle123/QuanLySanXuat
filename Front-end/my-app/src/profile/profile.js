@@ -61,7 +61,7 @@ export const Profile = () => {
   const getAvatarUrl = () => {
     const path = userData.userAvatar;
     if (!path) return null;
-    
+
     // Nếu path bắt đầu bằng 'data:', đó là ảnh base64 người dùng vừa chọn. Ngược lại là đường dẫn từ server.
     return path.startsWith('data:') ? path : `${API_BASE_URL}${path}`;
   };
@@ -87,12 +87,12 @@ export const Profile = () => {
     try {
       const response = await updateUser(userData.id, userData);
       const updatedData = response?.data || response;
-      
+
       // Cập nhật lại tên hiển thị trong localStorage nếu người dùng đổi tên
       const currentUser = JSON.parse(localStorage.getItem('user'));
       localStorage.setItem('user', JSON.stringify({ ...currentUser, name: userData.name, userAvatar: updatedData.userAvatar || updatedData.UserAvatar }));
       setUserData(prev => ({ ...prev, userAvatar: updatedData.userAvatar || updatedData.UserAvatar }));
-      
+
       setNotification({ isOpen: true, message: 'Cập nhật hồ sơ thành công!', type: 'success' });
     } catch (err) {
       setNotification({ isOpen: true, message: 'Lỗi khi lưu thông tin cá nhân.', type: 'error' });
@@ -129,7 +129,7 @@ export const Profile = () => {
       // Để đảm bảo an toàn, backend cần được sửa đổi để xác minh mật khẩu hiện tại.
       const payload = { ...userData, password: newPassword }; // Gửi toàn bộ userData để không làm mất các trường khác
       await updateUser(userData.id, payload);
-      
+
       setNotification({ isOpen: true, message: 'Cập nhật mật khẩu thành công!', type: 'success' });
       setPasswordForm({ currentPassword: '', newPassword: '', confirmNewPassword: '' }); // Xóa form
     } catch (err) {
@@ -142,7 +142,7 @@ export const Profile = () => {
     <div className="max-w-4xl mx-auto p-2 sm:p-4">
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
         <div className="h-28 bg-gradient-to-r from-blue-600 to-indigo-700"></div>
-        
+
         <div className="px-8 pb-8">
           <div className="relative -mt-16 mb-8 flex flex-col items-center sm:items-start sm:flex-row gap-6">
             <div className="relative">
@@ -176,18 +176,16 @@ export const Profile = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('personalInfo')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  activeTab === 'personalInfo' ? 'bg-blue-600 text-white shadow' : 'text-gray-700 hover:bg-gray-200'
-                }`}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'personalInfo' ? 'bg-blue-600 text-white shadow' : 'text-gray-700 hover:bg-gray-200'
+                  }`}
               >
                 Thông tin cá nhân
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('password')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  activeTab === 'password' ? 'bg-blue-600 text-white shadow' : 'text-gray-700 hover:bg-gray-200'
-                }`}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'password' ? 'bg-blue-600 text-white shadow' : 'text-gray-700 hover:bg-gray-200'
+                  }`}
               >
                 Mật khẩu
               </button>
@@ -261,7 +259,7 @@ export const Profile = () => {
                         name={field.name}
                         value={passwordForm[field.name]}
                         onChange={handlePasswordFormChange}
-                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm font-medium"
+                        className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm font-medium"
                         placeholder={field.placeholder}
                       />
                     </div>
@@ -270,23 +268,23 @@ export const Profile = () => {
               </div>
 
               <div className="pt-4 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="flex items-center gap-2 px-10 py-3 bg-gray-500 text-white rounded-xl font-bold shadow-lg shadow-gray-200 hover:bg-gray-600 transition-all active:scale-95"
-              >
-                <ArrowLeft size={20} />
-                QUAY LẠI
-              </button>
-              <button
-                type="submit"
-                className="flex items-center gap-2 px-10 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 transition-all active:scale-95"
-              >
-                <Save size={20} />
-                ĐỔI MẬT KHẨU
-              </button>
-            </div>
-          </form>
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="flex items-center gap-2 px-10 py-3 bg-gray-500 text-white rounded-xl font-bold shadow-lg shadow-gray-200 hover:bg-gray-600 transition-all active:scale-95"
+                >
+                  <ArrowLeft size={20} />
+                  QUAY LẠI
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-2 px-10 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 transition-all active:scale-95"
+                >
+                  <Save size={20} />
+                  ĐỔI MẬT KHẨU
+                </button>
+              </div>
+            </form>
           )}
         </div>
       </div>

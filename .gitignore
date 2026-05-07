@@ -1,0 +1,13 @@
+# Visual Studio nội bộ
+.vs
+[Bb]in
+[Oo]bj
+.user
+.suo
+.vsidx
+
+# Node.js (cho Front-end)
+node_modules
+npm-debug.log
+build
+dist

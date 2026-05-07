@@ -4833,11 +4833,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Admin\\Downloads\\MyProject ReactJS\\Back-end\\MyProject.Backend.csproj",
+      "projectUniqueName": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\MyProject.Backend.csproj",
       "projectName": "MyProject.Backend",
-      "projectPath": "C:\\Users\\Admin\\Downloads\\MyProject ReactJS\\Back-end\\MyProject.Backend.csproj",
+      "projectPath": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\MyProject.Backend.csproj",
       "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Admin\\Downloads\\MyProject ReactJS\\Back-end\\obj\\",
+      "outputPath": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -4857,6 +4857,7 @@
       },
       "frameworks": {
         "net8.0": {
+          "framework": "net8.0",
           "targetAlias": "net8.0",
           "projectReferences": {}
         }
@@ -4875,6 +4876,7 @@
     },
     "frameworks": {
       "net8.0": {
+        "framework": "net8.0",
         "targetAlias": "net8.0",
         "dependencies": {
           "Aspose.Words": {

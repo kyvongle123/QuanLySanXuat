@@ -18,12 +18,12 @@ export const Warehouses = () => {
   const [loading, setLoading] = useState(true);
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentEditingItem, setCurrentEditingItem] = useState({ type: '', available: 1, location: '' });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
-  
+
   const [openLocationMenuId, setOpenLocationMenuId] = useState(null);
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [openTypeMenuId, setOpenTypeMenuId] = useState(null);
@@ -78,7 +78,7 @@ export const Warehouses = () => {
       setWarehouses(whData.map(w => ({ ...w, id: w.id || w.ID })));
       setTypes(typeData.map(t => ({ value: t.id || t.ID, label: t.name || t.Name })));
       setStatuses(statusData.map(s => ({ value: s.id || s.ID, label: s.name || s.Name })));
-      
+
       setRawRacks(rackData.map(r => ({ value: r.id || r.ID, label: r.name || r.Name })));
       setRawBins(binData.map(b => ({ value: b.id || b.ID, label: b.name || b.Name })));
       setRawLocations(locationData.map(l => ({ ...l, id: l.id || l.ID })));
@@ -88,9 +88,9 @@ export const Warehouses = () => {
         const rackName = rackObj ? (rackObj.name || rackObj.Name) : (l.racks || l.Racks);
         const binObj = binData.find(b => String(b.id || b.ID) === String(l.bin || l.Bin));
         const binName = binObj ? (binObj.name || binObj.Name) : (l.bin || l.Bin);
-        return { 
-          value: l.id || l.ID, 
-          label: `Kệ ${rackName} - Tầng ${l.level || l.Level} - Ô ${binName}` 
+        return {
+          value: l.id || l.ID,
+          label: `Kệ ${rackName} - Tầng ${l.level || l.Level} - Ô ${binName}`
         };
       }));
       setSelectedWarehouseIds([]); // Clear selections after data refresh
@@ -136,11 +136,11 @@ export const Warehouses = () => {
 
   const handleEditItem = (item) => {
     setModalMode('edit');
-    setCurrentEditingItem({ 
-        ...item,
-        type: item.type || item.Type,
-        available: item.available || item.Available,
-        location: item.location || item.Location
+    setCurrentEditingItem({
+      ...item,
+      type: item.type || item.Type,
+      available: item.available || item.Available,
+      location: item.location || item.Location
     });
     setIsModalOpen(true);
   };
@@ -192,7 +192,7 @@ export const Warehouses = () => {
   };
 
   const filteredTypes = useMemo(() => {
-    return types.filter(t => 
+    return types.filter(t =>
       t.label.toLowerCase().includes(typeSearch.toLowerCase()) ||
       String(t.value).includes(typeSearch)
     );
@@ -207,14 +207,14 @@ export const Warehouses = () => {
       render: (row) => (
         <div className="flex gap-2 justify-end">
           <button onClick={() => handleOpenTypeEdit('edit', row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Sửa</button>
-          <button 
-            onClick={() => setConfirmModal({ 
-              isOpen: true, 
-              id: row.value, 
-              type: 'deleteType', 
-              title: 'Xác nhận xóa', 
-              message: `Bạn có chắc chắn muốn xóa loại kho "${row.label}"?` 
-            })} 
+          <button
+            onClick={() => setConfirmModal({
+              isOpen: true,
+              id: row.value,
+              type: 'deleteType',
+              title: 'Xác nhận xóa',
+              message: `Bạn có chắc chắn muốn xóa loại kho "${row.label}"?`
+            })}
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
           >
             Xóa
@@ -253,10 +253,10 @@ export const Warehouses = () => {
 
     try {
       await updateWarehouse(warehouse.id, payload);
-      setWarehouses(prev => prev.map(w => w.id === warehouse.id ? { 
-        ...w, 
-        type: parseInt(newTypeId), 
-        Type: parseInt(newTypeId) 
+      setWarehouses(prev => prev.map(w => w.id === warehouse.id ? {
+        ...w,
+        type: parseInt(newTypeId),
+        Type: parseInt(newTypeId)
       } : w));
       showNotification("Cập nhật loại kho thành công!");
     } catch (err) {
@@ -323,16 +323,16 @@ export const Warehouses = () => {
   }, [rawLocations, locSearchTerm, rawRacks, rawBins]);
 
   const locColumns = [
-    { 
-      header: 'Ô (Bin)', 
+    {
+      header: 'Ô (Bin)',
       render: (row) => rawBins.find(b => String(b.value) === String(row.bin || row.Bin))?.label || 'N/A'
     },
-    { 
-      header: 'Kệ (Rack)', 
+    {
+      header: 'Kệ (Rack)',
       render: (row) => <span className="font-bold text-blue-600">{rawRacks.find(r => String(r.value) === String(row.racks || row.Racks))?.label || 'N/A'}</span>
     },
-    { 
-      header: 'Tầng (Level)', 
+    {
+      header: 'Tầng (Level)',
       render: (row) => `Tầng ${row.level || row.Level}`
     },
     {
@@ -341,8 +341,8 @@ export const Warehouses = () => {
       render: (row) => (
         <div className="flex gap-2 justify-end">
           <button onClick={() => handleOpenLocEdit('edit', row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Sửa</button>
-          <button 
-            onClick={() => setLocConfirmModal({ isOpen: true, id: row.id || row.ID })} 
+          <button
+            onClick={() => setLocConfirmModal({ isOpen: true, id: row.id || row.ID })}
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
           >
             Xóa
@@ -399,8 +399,8 @@ export const Warehouses = () => {
       render: (row) => (
         <div className="flex gap-2 justify-end pr-5">
           <button onClick={() => handleOpenStatusEdit('edit', row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Sửa</button>
-          <button 
-            onClick={() => setStatusConfirmModal({ isOpen: true, id: row.value })} 
+          <button
+            onClick={() => setStatusConfirmModal({ isOpen: true, id: row.value })}
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
           >
             Xóa
@@ -469,7 +469,7 @@ export const Warehouses = () => {
         row.alignment = { vertical: 'middle', horizontal: 'center' };
         if (rowNumber === 1) row.font.bold = true;
         row.eachCell((cell) => {
-            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         });
       });
 
@@ -517,8 +517,8 @@ export const Warehouses = () => {
   const columns = [
     // Checkbox column
     { header: 'STT', render: (row, { index }) => index },
-    { 
-      header: 'Loại kho', 
+    {
+      header: 'Loại kho',
       className: 'w-48',
       render: (row) => {
         const rowId = row.id || row.ID;
@@ -527,8 +527,8 @@ export const Warehouses = () => {
 
         return (
           <div className={`relative ${isOpen ? 'z-30' : 'z-10'}`}>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); setIsTypeMgmtModalOpen(true); }}
               className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
             >
@@ -574,9 +574,8 @@ export const Warehouses = () => {
                         handleTypeChange(row, t.value);
                         setOpenTypeMenuId(null);
                       }}
-                      className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${
-                        String(row.type || row.Type) === String(t.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
-                      }`}
+                      className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.type || row.Type) === String(t.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
                     >
                       <span className="block w-full truncate">{t.label}</span>
                     </button>
@@ -588,13 +587,13 @@ export const Warehouses = () => {
         );
       }
     },
-    { 
-      header: 'Vị trí', 
+    {
+      header: 'Vị trí',
       className: 'w-64',
       render: (row) => (
         <div className={`relative ${openLocationMenuId === row.id ? 'z-30' : 'z-10'}`}>
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); setIsLocMgmtOpen(true); }}
             className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
           >
@@ -637,9 +636,8 @@ export const Warehouses = () => {
                   <button
                     key={s.value}
                     onClick={() => handleLocationChange(row, s.value)}
-                    className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${
-                      String(row.location || row.Location) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                    className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location || row.Location) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
                   >
                     <span className="block w-full !whitespace-normal break-words leading-tight">{s.label}</span>
                   </button>
@@ -650,8 +648,8 @@ export const Warehouses = () => {
         </div>
       )
     },
-    { 
-      header: 'Số lượng tối đa', 
+    {
+      header: 'Số lượng tối đa',
       className: 'text-center',
       render: (row) => (
         <span className="font-bold text-gray-700">
@@ -665,8 +663,8 @@ export const Warehouses = () => {
       render: (row) => (
         <div className="flex gap-2 justify-end">
           <button onClick={(e) => { e.stopPropagation(); handleEditItem(row); }} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Sửa</button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa vị trí kho này?' }); }} 
+          <button
+            onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa vị trí kho này?' }); }}
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
           >
             Xóa
@@ -679,7 +677,7 @@ export const Warehouses = () => {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Danh sách nhà kho</h2>
-      
+
       <div className="flex justify-between items-center mb-4 gap-4">
         <div className="relative w-full max-w-[280px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
@@ -702,20 +700,6 @@ export const Warehouses = () => {
           <button onClick={handleAddItem} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
             Thêm mới
           </button>
-          <button
-            onClick={() => setConfirmModal({
-              isOpen: true,
-              id: selectedWarehouseIds,
-              type: 'bulk-delete-warehouses',
-              title: 'Xác nhận xóa vị trí kho',
-              message: `Bạn có chắc chắn muốn xóa ${selectedWarehouseIds.length} vị trí kho đã chọn không?`
-            })}
-            disabled={selectedWarehouseIds.length === 0}
-            className={`bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-all ${selectedWarehouseIds.length === 0 ? 'opacity-50 cursor-not-allowed' : 'shadow-md active:scale-95'}`}
-          >
-            <Trash2 size={18} />
-            Xóa
-          </button>
         </div>
       </div>
 
@@ -724,34 +708,34 @@ export const Warehouses = () => {
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalMode === 'add' ? 'Thêm nhà kho mới' : 'Chỉnh sửa nhà kho'} isMaximized={isModalMaximized} onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}>
         <form onSubmit={handleModalSubmit} className="space-y-4">
           <div className="relative">
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => setIsTypeMgmtModalOpen(true)}
               className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 text-[11px] font-bold underline z-10"
             >
               hiệu chỉnh
             </button>
-            <CustomSelect label="Loại kho" options={types} value={currentEditingItem?.type || ''} onChange={(e) => setCurrentEditingItem({...currentEditingItem, type: e.target.value})} isModalMaximized={isModalMaximized} />
+            <CustomSelect label="Loại kho" options={types} value={currentEditingItem?.type || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, type: e.target.value })} isModalMaximized={isModalMaximized} />
           </div>
-          
+
           <div className="relative">
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => setIsLocMgmtOpen(true)}
               className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 text-[11px] font-bold underline z-10"
             >
               hiệu chỉnh
             </button>
-            <CustomSelect label="Vị trí chi tiết" options={sections} value={currentEditingItem?.location || ''} onChange={(e) => setCurrentEditingItem({...currentEditingItem, location: e.target.value})} isModalMaximized={isModalMaximized} />
+            <CustomSelect label="Vị trí chi tiết" options={sections} value={currentEditingItem?.location || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, location: e.target.value })} isModalMaximized={isModalMaximized} />
           </div>
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Số lượng tối đa</label>
-            <input 
+            <input
               type="number"
               min="0"
               value={currentEditingItem?.available || 0}
-              onChange={(e) => setCurrentEditingItem({...currentEditingItem, available: e.target.value})}
+              onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, available: e.target.value })}
               className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
             />
           </div>
@@ -763,10 +747,10 @@ export const Warehouses = () => {
         </form>
       </Modal>
 
-      <Modal 
-        isOpen={isTypeMgmtModalOpen} 
-        onClose={() => { setIsTypeMgmtModalOpen(false); setIsTypeMgmtMaximized(false); }} 
-        title="Danh sách loại kho" 
+      <Modal
+        isOpen={isTypeMgmtModalOpen}
+        onClose={() => { setIsTypeMgmtModalOpen(false); setIsTypeMgmtMaximized(false); }}
+        title="Danh sách loại kho"
         maxWidth={isTypeMgmtMaximized ? "max-w-full" : "max-w-5xl"}
         isMaximized={isTypeMgmtMaximized}
         onMaximizeToggle={() => setIsTypeMgmtMaximized(!isTypeMgmtMaximized)}
@@ -775,9 +759,9 @@ export const Warehouses = () => {
           <div className="flex justify-between items-center gap-4">
             <div className="relative max-w-[350px]">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><Search size={16} /></span>
-              <input 
-                type="text" 
-                placeholder="Tìm tên loại kho hoặc ID" 
+              <input
+                type="text"
+                placeholder="Tìm tên loại kho hoặc ID"
                 className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 value={typeSearch}
                 onChange={(e) => setTypeSearch(e.target.value)}
@@ -794,10 +778,10 @@ export const Warehouses = () => {
       </Modal>
 
       {/* Modal Quản lý danh sách Vị trí chi tiết */}
-      <Modal 
-        isOpen={isLocMgmtOpen} 
-        onClose={() => { setIsLocMgmtOpen(false); setIsLocMgmtMaximized(false); }} 
-        title="Danh sách vị trí nhà kho" 
+      <Modal
+        isOpen={isLocMgmtOpen}
+        onClose={() => { setIsLocMgmtOpen(false); setIsLocMgmtMaximized(false); }}
+        title="Danh sách vị trí nhà kho"
         maxWidth={isLocMgmtMaximized ? "max-w-full" : "max-w-5xl"}
         isMaximized={isLocMgmtMaximized}
         onMaximizeToggle={() => setIsLocMgmtMaximized(!isLocMgmtMaximized)}
@@ -806,9 +790,9 @@ export const Warehouses = () => {
           <div className="flex justify-between items-center gap-4">
             <div className="relative max-w-[350px]">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><Search size={16} /></span>
-              <input 
-                type="text" 
-                placeholder="Tìm tên ô, kệ hoặc tầng..." 
+              <input
+                type="text"
+                placeholder="Tìm tên ô, kệ hoặc tầng..."
                 className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 value={locSearchTerm}
                 onChange={(e) => setLocSearchTerm(e.target.value)}
@@ -825,10 +809,10 @@ export const Warehouses = () => {
       </Modal>
 
       {/* Modal Quản lý danh sách Trạng thái kho */}
-      <Modal 
-        isOpen={isStatusMgmtOpen} 
-        onClose={() => { setIsStatusMgmtOpen(false); setIsStatusMgmtMaximized(false); }} 
-        title="Danh sách trạng thái kho" 
+      <Modal
+        isOpen={isStatusMgmtOpen}
+        onClose={() => { setIsStatusMgmtOpen(false); setIsStatusMgmtMaximized(false); }}
+        title="Danh sách trạng thái kho"
         maxWidth={isStatusMgmtMaximized ? "max-w-full" : "max-w-5xl"}
         isMaximized={isStatusMgmtMaximized}
         onMaximizeToggle={() => setIsStatusMgmtMaximized(!isStatusMgmtMaximized)}
@@ -837,9 +821,9 @@ export const Warehouses = () => {
           <div className="flex justify-between items-center gap-4">
             <div className="relative max-w-[350px]">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><Search size={16} /></span>
-              <input 
-                type="text" 
-                placeholder="Tìm tên trạng thái..." 
+              <input
+                type="text"
+                placeholder="Tìm tên trạng thái..."
                 className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 value={statusSearchTerm}
                 onChange={(e) => setStatusSearchTerm(e.target.value)}
@@ -860,12 +844,12 @@ export const Warehouses = () => {
         <form onSubmit={handleStatusMgmtSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Tên Trạng thái</label>
-            <input 
-              type="text" 
-              value={currentEditingStatus.name || ''} 
-              onChange={(e) => setCurrentEditingStatus({...currentEditingStatus, name: e.target.value})} 
-              className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm" 
-              required 
+            <input
+              type="text"
+              value={currentEditingStatus.name || ''}
+              onChange={(e) => setCurrentEditingStatus({ ...currentEditingStatus, name: e.target.value })}
+              className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              required
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -876,10 +860,10 @@ export const Warehouses = () => {
       </Modal>
 
       {/* Modal Thêm/Sửa Loại kho */}
-      <Modal 
-        isOpen={isTypeEditModalOpen} 
-        onClose={() => { setIsTypeEditModalOpen(false); setIsTypeEditMaximized(false); }} 
-        title={typeModalMode === 'add' ? 'Thêm loại kho mới' : 'Sửa loại kho'} 
+      <Modal
+        isOpen={isTypeEditModalOpen}
+        onClose={() => { setIsTypeEditModalOpen(false); setIsTypeEditMaximized(false); }}
+        title={typeModalMode === 'add' ? 'Thêm loại kho mới' : 'Sửa loại kho'}
         maxWidth={isTypeEditMaximized ? "max-w-full" : "max-w-sm"}
         isMaximized={isTypeEditMaximized}
         onMaximizeToggle={() => setIsTypeEditMaximized(!isTypeEditMaximized)}
@@ -887,12 +871,12 @@ export const Warehouses = () => {
         <form onSubmit={handleSaveType} className="space-y-4">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Tên loại kho</label>
-            <input 
-              type="text" 
-              value={typeForm.name || ''} 
-              onChange={(e) => setTypeForm({...typeForm, name: e.target.value})} 
-              className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm" 
-              required 
+            <input
+              type="text"
+              value={typeForm.name || ''}
+              onChange={(e) => setTypeForm({ ...typeForm, name: e.target.value })}
+              className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              required
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -903,37 +887,37 @@ export const Warehouses = () => {
       </Modal>
 
       {/* Modal Thêm/Sửa Vị trí kho */}
-      <Modal 
-        isOpen={isLocEditModalOpen} 
-        onClose={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); }} 
-        title={locModalMode === 'add' ? 'Thêm vị trí mới' : 'Sửa vị trí'} 
+      <Modal
+        isOpen={isLocEditModalOpen}
+        onClose={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); }}
+        title={locModalMode === 'add' ? 'Thêm vị trí mới' : 'Sửa vị trí'}
         maxWidth={isLocEditMaximized ? "max-w-full" : "max-w-xl"}
         isMaximized={isLocEditMaximized}
         onMaximizeToggle={() => setIsLocEditMaximized(!isLocEditMaximized)}
       >
         <form onSubmit={handleLocSubmit} className="space-y-4">
-          <CustomSelect 
-            label="Ô (Bin)" 
-            options={rawBins} 
-            value={currentEditingLoc.bin || ''} 
-            onChange={(e) => setCurrentEditingLoc({...currentEditingLoc, bin: e.target.value})} 
+          <CustomSelect
+            label="Ô (Bin)"
+            options={rawBins}
+            value={currentEditingLoc.bin || ''}
+            onChange={(e) => setCurrentEditingLoc({ ...currentEditingLoc, bin: e.target.value })}
             isModalMaximized={isLocEditMaximized}
           />
-          <CustomSelect 
-            label="Kệ (Rack)" 
-            options={rawRacks} 
-            value={currentEditingLoc.racks || ''} 
-            onChange={(e) => setCurrentEditingLoc({...currentEditingLoc, racks: e.target.value})} 
+          <CustomSelect
+            label="Kệ (Rack)"
+            options={rawRacks}
+            value={currentEditingLoc.racks || ''}
+            onChange={(e) => setCurrentEditingLoc({ ...currentEditingLoc, racks: e.target.value })}
             isModalMaximized={isLocEditMaximized}
           />
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Tầng (Level)</label>
-            <input 
-              type="number" 
-              value={currentEditingLoc.level || ''} 
-              onChange={(e) => setCurrentEditingLoc({...currentEditingLoc, level: e.target.value})} 
-              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none text-sm ${isLocEditMaximized ? 'p-2' : 'p-1.5'}`} 
-              required 
+            <input
+              type="number"
+              value={currentEditingLoc.level || ''}
+              onChange={(e) => setCurrentEditingLoc({ ...currentEditingLoc, level: e.target.value })}
+              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none text-sm ${isLocEditMaximized ? 'p-2' : 'p-1.5'}`}
+              required
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
