@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, UserRound, LogOut, Settings, Bell, User } from 'lucide-react';
-const hanghoa = "/hanghoa.png";
+const hanghoa = "./assets/hanghoa.png";
 
 export const Navbar = ({ onToggleSidebar }) => {
   // Định nghĩa địa chỉ máy chủ Back-end để lấy tệp tĩnh từ wwwroot
