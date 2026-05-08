@@ -204,7 +204,7 @@ export const Customers = () => {
 
   // Cấu hình các cột cho bảng dữ liệu
   const columns = [
-    { header: 'STT', className: 'w-[60px] text-center', render: (row, { index }) => index + 1 },
+    { header: 'STT', className: 'w-[60px] text-center', render: (row, { index }) => index },
     { header: 'Họ tên', accessor: 'name' },
     { header: 'Email', accessor: 'email' },
     { header: 'Số điện thoại', accessor: 'phone' },

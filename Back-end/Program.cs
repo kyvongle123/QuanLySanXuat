@@ -32,6 +32,9 @@ builder.Services.AddCors(options => {
     options.AddPolicy("AllowAll", policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
+var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+builder.WebHost.UseUrls($"http://*:{port}");
+
 // 3. Đăng ký ProductionPlanInfoService vào DI container
 builder.Services.AddScoped<ProductionPlanInfoService>();
 builder.Services.AddScoped<MaterialReceiptInfoService>();
