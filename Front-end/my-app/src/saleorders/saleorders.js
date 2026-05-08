@@ -76,9 +76,9 @@ export const Saleorders = () => {
   }, [orders, searchTerm, customers]);
 
   const handleDeleteOrder = (orderId) => {
-    setConfirmModal({ 
-      isOpen: true, 
-      id: orderId, 
+    setConfirmModal({
+      isOpen: true,
+      id: orderId,
       type: 'delete',
       title: 'Xác nhận xóa đơn hàng',
       message: 'Đơn hàng sẽ bị xóa vĩnh viễn. Bạn có chắc chắn?'
@@ -87,9 +87,9 @@ export const Saleorders = () => {
 
   const handleBulkDelete = () => {
     if (selectedOrderIds.length === 0) return;
-    setConfirmModal({ 
-      isOpen: true, 
-      id: selectedOrderIds, 
+    setConfirmModal({
+      isOpen: true,
+      id: selectedOrderIds,
       type: 'bulkDelete',
       title: 'Xác nhận xóa nhiều đơn hàng',
       message: `Bạn có chắc chắn muốn xóa ${selectedOrderIds.length} đơn hàng đã chọn không?`
@@ -126,7 +126,7 @@ export const Saleorders = () => {
 
   const handleAddOrder = () => {
     setModalMode('add');
-    setCurrentEditingOrder({ 
+    setCurrentEditingOrder({
       orderNumber: `DH${Date.now().toString().slice(-6)}`,
       customerId: '',
       orderDate: new Date().toISOString().split('T')[0],
@@ -218,13 +218,13 @@ export const Saleorders = () => {
     },
     { header: 'STT', render: (row, { index }) => index },
     { header: 'Mã đơn hàng', accessor: 'orderNumber', className: 'font-medium text-blue-600 w-48' },
-    { 
-      header: 'Khách hàng', 
+    {
+      header: 'Khách hàng',
       render: (row) => customers.find(c => String(c.value) === String(row.customerId))?.label || '---',
       className: 'w-64'
     },
-    { 
-      header: 'Tổng tiền', 
+    {
+      header: 'Tổng tiền',
       className: 'w-full text-right pr-4 font-bold text-orange-600',
       render: (row) => `${row.totalAmount?.toLocaleString()} VNĐ`
     },
@@ -246,8 +246,8 @@ export const Saleorders = () => {
 
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Quản lý Đơn bán hàng</h2>
-      
+      <h2 className="text-2xl font-bold mb-4">Quản lý đơn bán hàng</h2>
+
       <div className="flex justify-between items-center mb-4 gap-4">
         <div className="relative w-full max-w-[280px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -263,27 +263,24 @@ export const Saleorders = () => {
         </div>
 
         <div className="flex gap-2">
+          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+            <FileUp size={18} />
+            Nhập Excel
+          </button>
           <button onClick={() => setConfirmModal({ isOpen: true, type: 'export', title: 'Xác nhận', message: 'Xuất danh sách ra Excel?' })} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
             <FileDown size={18} /> Xuất Excel
           </button>
           <button onClick={handleAddOrder} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors">
             Thêm đơn hàng mới
           </button>
-          <button 
-            onClick={handleBulkDelete}
-            disabled={selectedOrderIds.length === 0}
-            className={`bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all ${selectedOrderIds.length === 0 ? 'opacity-50 cursor-not-allowed' : 'shadow-md active:scale-95'}`}
-          >
-            Xóa
-          </button>
         </div>
       </div>
 
       {loading && <p className="text-gray-600 p-4 italic">Đang tải dữ liệu đơn hàng...</p>}
       {!loading && !error && (
-        <CustomDatatable 
-          columns={orderColumns} 
-          data={filteredOrders} 
+        <CustomDatatable
+          columns={orderColumns}
+          data={filteredOrders}
           renderExpansion={(row) => (
             <div className="py-4 pl-48 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-8 text-sm">
@@ -350,66 +347,66 @@ export const Saleorders = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium text-gray-700">Mã đơn hàng</label>
-              <input 
-                type="text" 
-                value={currentEditingOrder?.orderNumber || ''} 
-                onChange={(e) => setCurrentEditingOrder({...currentEditingOrder, orderNumber: e.target.value})}
-                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} 
-                required 
+              <input
+                type="text"
+                value={currentEditingOrder?.orderNumber || ''}
+                onChange={(e) => setCurrentEditingOrder({ ...currentEditingOrder, orderNumber: e.target.value })}
+                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+                required
               />
             </div>
-            <CustomSelect 
+            <CustomSelect
               label="Khách hàng"
               value={currentEditingOrder?.customerId || ''}
-              onChange={(e) => setCurrentEditingOrder({...currentEditingOrder, customerId: e.target.value})}
+              onChange={(e) => setCurrentEditingOrder({ ...currentEditingOrder, customerId: e.target.value })}
               options={customers}
               isModalMaximized={isModalMaximized}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <DateInput 
+            <DateInput
               label="Ngày đặt hàng"
               value={currentEditingOrder?.orderDate || ''}
-              onChange={(e) => setCurrentEditingOrder({...currentEditingOrder, orderDate: e.target.value})}
+              onChange={(e) => setCurrentEditingOrder({ ...currentEditingOrder, orderDate: e.target.value })}
               isModalMaximized={isModalMaximized}
             />
             <div>
               <label className="text-xs font-medium text-gray-700">Tổng tiền (VNĐ)</label>
-              <input 
-                type="number" 
-                value={currentEditingOrder?.totalAmount || ''} 
-                onChange={(e) => setCurrentEditingOrder({...currentEditingOrder, totalAmount: parseFloat(e.target.value)})}
-                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} 
+              <input
+                type="number"
+                value={currentEditingOrder?.totalAmount || ''}
+                onChange={(e) => setCurrentEditingOrder({ ...currentEditingOrder, totalAmount: parseFloat(e.target.value) })}
+                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
             </div>
           </div>
 
           <div>
             <label className="text-xs font-medium text-gray-700">Địa chỉ giao hàng</label>
-            <input 
-              type="text" 
-              value={currentEditingOrder?.shippingAddress || ''} 
-              onChange={(e) => setCurrentEditingOrder({...currentEditingOrder, shippingAddress: e.target.value})}
-              className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} 
+            <input
+              type="text"
+              value={currentEditingOrder?.shippingAddress || ''}
+              onChange={(e) => setCurrentEditingOrder({ ...currentEditingOrder, shippingAddress: e.target.value })}
+              className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
             />
           </div>
 
-          <CustomSelect 
+          <CustomSelect
             label="Trạng thái đơn hàng"
             value={currentEditingOrder?.status || ''}
-            onChange={(e) => setCurrentEditingOrder({...currentEditingOrder, status: e.target.value})}
+            onChange={(e) => setCurrentEditingOrder({ ...currentEditingOrder, status: e.target.value })}
             options={orderStatuses}
             isModalMaximized={isModalMaximized}
           />
 
           <div>
             <label className="text-xs font-medium text-gray-700">Ghi chú / Mô tả</label>
-            <textarea 
+            <textarea
               rows={isModalMaximized ? "4" : "2"}
-              value={currentEditingOrder?.description || ''} 
-              onChange={(e) => setCurrentEditingOrder({...currentEditingOrder, description: e.target.value})}
-              className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} 
+              value={currentEditingOrder?.description || ''}
+              onChange={(e) => setCurrentEditingOrder({ ...currentEditingOrder, description: e.target.value })}
+              className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
             />
           </div>
 
@@ -420,7 +417,7 @@ export const Saleorders = () => {
         </form>
       </Modal>
 
-      <CustomConfirm 
+      <CustomConfirm
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ isOpen: false, id: null })}
         onConfirm={handleConfirmAction}
@@ -429,11 +426,11 @@ export const Saleorders = () => {
         type={confirmModal.type}
       />
 
-      <AppNotification 
-        isOpen={notification.isOpen} 
-        message={notification.message} 
-        type={notification.type} 
-        onClose={closeNotification} 
+      <AppNotification
+        isOpen={notification.isOpen}
+        message={notification.message}
+        type={notification.type}
+        onClose={closeNotification}
       />
     </div>
   );

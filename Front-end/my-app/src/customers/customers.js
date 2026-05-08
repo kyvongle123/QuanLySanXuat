@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Search, Plus, FileDown } from 'lucide-react';
+import { Search, Plus, FileDown, FileUp } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, Modal, AppNotification, CustomConfirm } from '../customComponent/customComponent';
@@ -255,6 +255,10 @@ export const Customers = () => {
           />
         </div>
         <div className="flex gap-2">
+          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+            <FileUp size={18} />
+            Nhập Excel
+          </button>
           <button
             onClick={handleRequestExportExcel}
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors"

@@ -610,6 +610,7 @@ export const Items = () => {
             onChange={handleModalInputChange}
             options={[...warehouses]}
             isModalMaximized={isModalMaximized}
+            placement="top"
           />
         </div>
       </div>

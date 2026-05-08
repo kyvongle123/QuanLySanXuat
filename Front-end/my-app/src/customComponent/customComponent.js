@@ -239,7 +239,7 @@ export const AppNotification = ({ isOpen, message, type = 'success', onClose }) 
   );
 };
 
-export const CustomSelect = ({ label, options, value, onChange, name, isModalMaximized = false, wrapText = false, isMulti = false }) => {
+export const CustomSelect = ({ label, options, value, onChange, name, isModalMaximized = false, wrapText = false, isMulti = false, placement = 'bottom' }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -313,7 +313,9 @@ export const CustomSelect = ({ label, options, value, onChange, name, isModalMax
         {isOpen && (
           <>
             <div className="fixed inset-0 z-[60]" onClick={() => setIsOpen(false)}></div>
-            <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-md shadow-xl z-[70] max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+            <div className={`absolute left-0 ${placement === 'top' ? 'bottom-full mb-1 origin-bottom' : 'top-full mt-1 origin-top'} 
+              w-full bg-white border border-gray-200 rounded-md shadow-xl z-[70] max-h-60 overflow-y-auto overflow-x-hidden animate-in fade-in zoom-in duration-200 whitespace-normal`}
+            >
 
               {/* Ô tìm kiếm bên trong dropdown */}
               <div className="sticky top-0 bg-white p-2 border-b border-gray-100 z-10">

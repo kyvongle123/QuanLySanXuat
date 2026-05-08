@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Search, Plus, FileDown, Trash2 } from 'lucide-react';
+import { Search, Plus, FileDown, Trash2, FileUp } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { LuSquarePen } from "react-icons/lu";
@@ -11,7 +11,7 @@ export const Units = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUnitIds, setSelectedUnitIds] = useState([]);
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentEditingItem, setCurrentEditingItem] = useState({ name: '' });
@@ -57,9 +57,9 @@ export const Units = () => {
 
   const handleEditItem = (unit) => {
     setModalMode('edit');
-    setCurrentEditingItem({ 
-        ...unit,
-        name: unit.name || unit.Name
+    setCurrentEditingItem({
+      ...unit,
+      name: unit.name || unit.Name
     });
     setIsModalOpen(true);
   };
@@ -130,7 +130,7 @@ export const Units = () => {
         row.alignment = { vertical: 'middle', horizontal: 'center' };
         if (rowNumber === 1) row.font.bold = true;
         row.eachCell((cell) => {
-            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         });
       });
 
@@ -169,8 +169,8 @@ export const Units = () => {
 
   const columns = [
     { header: 'STT', render: (row, { index }) => index },
-    { 
-      header: 'Tên đơn vị', 
+    {
+      header: 'Tên đơn vị',
       accessor: 'name',
       render: (row) => <span className="font-bold text-blue-600">{row.name || row.Name}</span>
     },
@@ -179,8 +179,8 @@ export const Units = () => {
       className: 'text-right pr-3',
       render: (row) => (
         <div className="flex gap-2 justify-end">
-          <button 
-            onClick={(e) => { e.stopPropagation(); handleEditItem(row); }} 
+          <button
+            onClick={(e) => { e.stopPropagation(); handleEditItem(row); }}
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
           >
             Sửa
@@ -199,7 +199,7 @@ export const Units = () => {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Danh sách đơn vị tính</h2>
-      
+
       <div className="flex justify-between items-center mb-4 gap-4">
         <div className="relative w-full max-w-[280px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
@@ -215,12 +215,15 @@ export const Units = () => {
         </div>
 
         <div className="flex gap-2">
+          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+            <FileUp size={18} />
+            Nhập Excel
+          </button>
           <button onClick={handleRequestExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
             <FileDown size={18} />
             Xuất Excel
           </button>
           <button onClick={handleAddItem} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
-            <Plus size={18} />
             Thêm đơn vị mới
           </button>
         </div>
@@ -232,12 +235,12 @@ export const Units = () => {
         <form onSubmit={handleModalSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Tên đơn vị</label>
-            <input 
-              type="text" 
-              value={currentEditingItem?.name || ''} 
-              onChange={(e) => setCurrentEditingItem({...currentEditingItem, name: e.target.value})} 
-              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`} 
-              required 
+            <input
+              type="text"
+              value={currentEditingItem?.name || ''}
+              onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, name: e.target.value })}
+              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
+              required
             />
           </div>
 

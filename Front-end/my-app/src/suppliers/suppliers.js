@@ -253,6 +253,10 @@ export const Suppliers = () => {
         </div>
 
         <div className="flex gap-2">
+          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+            <FileUp size={18} />
+            Nhập Excel
+          </button>
           <button onClick={handleRequestExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
             <FileDown size={18} /> Xuất Excel
           </button>

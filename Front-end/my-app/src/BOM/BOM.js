@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Search, FileDown } from 'lucide-react';
+import { Search, FileDown, FileUp } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, AppNotification, CustomConfirm, Modal, CustomSelect } from '../customComponent/customComponent';
@@ -13,7 +13,7 @@ export const BOM = () => {
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentEditingItem, setCurrentEditingItem] = useState({ item: '', materialCategory: '', requiredQuantity: 0 });
@@ -39,7 +39,7 @@ export const BOM = () => {
         // Lấy Name từ ItemsController hiển thị lên Label của Select
         setItems(itemData.map(i => ({ value: i.id, label: i.name })));
         setMaterials(catData.map(c => ({ value: c.id, label: c.name, unit: c.unit })));
-        
+
       } catch (err) {
         showNotification("Lỗi khi tải dữ liệu định mức", "error");
       } finally {
@@ -141,7 +141,7 @@ export const BOM = () => {
       worksheet.eachRow((row, rowNumber) => {
         row.font = { name: 'Times New Roman', size: 12 };
         row.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-        
+
         if (rowNumber === 1) {
           row.height = 30;
           row.font = { name: 'Times New Roman', size: 12, bold: true };
@@ -188,16 +188,16 @@ export const BOM = () => {
 
   const columns = [
     { header: 'STT', render: (row, { index }) => index },
-    { 
-      header: 'Sản phẩm', 
-      render: (row) => items.find(i => String(i.value) === String(row.item))?.label || 'N/A' 
+    {
+      header: 'Sản phẩm',
+      render: (row) => items.find(i => String(i.value) === String(row.item))?.label || 'N/A'
     },
-    { 
-      header: 'Nguyên liệu', 
-      render: (row) => materials.find(m => String(m.value) === String(row.materialCategory))?.label || 'N/A' 
+    {
+      header: 'Nguyên liệu',
+      render: (row) => materials.find(m => String(m.value) === String(row.materialCategory))?.label || 'N/A'
     },
-    { 
-      header: 'Số lượng định mức', 
+    {
+      header: 'Số lượng định mức',
       className: 'min-w-[400px]', // Tăng chiều rộng tối thiểu để chiếm không gian
       render: (row) => {
         const mat = materials.find(m => String(m.value) === String(row.materialCategory));
@@ -210,8 +210,8 @@ export const BOM = () => {
       render: (row) => (
         <div className="flex gap-2 justify-end">
           <button onClick={() => handleEditItem(row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm transition-colors">Sửa</button>
-          <button 
-            onClick={() => setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa định mức này?' })} 
+          <button
+            onClick={() => setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa định mức này?' })}
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-sm transition-colors"
           >
             Xóa
@@ -224,7 +224,7 @@ export const BOM = () => {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Quản lý Định mức (BOM)</h2>
-      
+
       <div className="flex justify-between items-center mb-4 gap-4">
         <div className="relative w-full max-w-[300px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -240,6 +240,10 @@ export const BOM = () => {
         </div>
 
         <div className="flex gap-2">
+          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+            <FileUp size={18} />
+            Nhập Excel
+          </button>
           <button onClick={handleRequestExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
             <FileDown size={18} />
             Xuất Excel
@@ -264,11 +268,11 @@ export const BOM = () => {
         onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}
       >
         <form onSubmit={handleModalSubmit} className="space-y-4">
-          <CustomSelect label="Sản phẩm áp dụng (Thành phẩm)" options={items} value={currentEditingItem?.item || ''} onChange={(e) => setCurrentEditingItem({...currentEditingItem, item: e.target.value})} />
-          <CustomSelect label="Nguyên vật liệu" options={materials} value={currentEditingItem?.materialCategory || ''} onChange={(e) => setCurrentEditingItem({...currentEditingItem, materialCategory: e.target.value})} />
+          <CustomSelect label="Sản phẩm áp dụng (Thành phẩm)" options={items} value={currentEditingItem?.item || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, item: e.target.value })} />
+          <CustomSelect label="Nguyên vật liệu" options={materials} value={currentEditingItem?.materialCategory || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, materialCategory: e.target.value })} />
           <div>
             <label className="block text-sm font-medium text-gray-700">Số lượng (Định mức)</label>
-            <input type="number" step="0.01" value={currentEditingItem?.requiredQuantity || ''} onChange={(e) => setCurrentEditingItem({...currentEditingItem, requiredQuantity: e.target.value})} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 outline-none focus:ring-2 focus:ring-blue-500" required />
+            <input type="number" step="0.01" value={currentEditingItem?.requiredQuantity || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, requiredQuantity: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 outline-none focus:ring-2 focus:ring-blue-500" required />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={handleCloseModal} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Hủy</button>
@@ -277,7 +281,7 @@ export const BOM = () => {
         </form>
       </Modal>
 
-      <CustomConfirm 
+      <CustomConfirm
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' })}
         onConfirm={handleConfirmAction}
@@ -286,11 +290,11 @@ export const BOM = () => {
         type={confirmModal.type}
       />
 
-      <AppNotification 
-        isOpen={notification.isOpen} 
-        message={notification.message} 
-        type={notification.type} 
-        onClose={() => setNotification(prev => ({ ...prev, isOpen: false }))} 
+      <AppNotification
+        isOpen={notification.isOpen}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

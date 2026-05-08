@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Search, Plus, ChevronDown, FileDown } from 'lucide-react';
+import { Search, Plus, ChevronDown, FileDown, FileUp } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, Modal, CustomSelect, AppNotification, CustomConfirm } from '../customComponent/customComponent';
-import { 
-  getProductionSections, 
-  deleteProductionSection, 
-  createProductionSection, 
-  updateProductionSection 
+import {
+  getProductionSections,
+  deleteProductionSection,
+  createProductionSection,
+  updateProductionSection
 } from '../controller/productionSectionsController';
 import { getUsers } from '../controller/usersController';
 
@@ -189,11 +189,11 @@ export const ProductionSections = () => {
 
   const handleAdd = () => {
     setModalMode('add');
-    setCurrentEditingSection({ 
-      productionSectionCode: '', 
-      name: '', 
-      leader: '', 
-      baseUnitCost: 0 
+    setCurrentEditingSection({
+      productionSectionCode: '',
+      name: '',
+      leader: '',
+      baseUnitCost: 0
     });
     setIsModalOpen(true);
   };
@@ -212,9 +212,9 @@ export const ProductionSections = () => {
   const handleLeaderChange = async (section, newLeaderId) => {
     try {
       const id = section.id || section.ID;
-      const payload = { 
-        ...section, 
-        leader: newLeaderId || null 
+      const payload = {
+        ...section,
+        leader: newLeaderId || null
       };
       const updatedItem = await updateProductionSection(id, payload);
       setSections(prev => prev.map(s => (s.id || s.ID) === id ? updatedItem : s));
@@ -247,15 +247,15 @@ export const ProductionSections = () => {
     { header: 'STT', render: (row, { index }) => index },
     { header: 'Mã tổ', accessor: 'productionSectionCode' },
     { header: 'Tên tổ', accessor: 'name' },
-    { 
+    {
       header: 'Tổ trưởng',
       className: 'min-w-[200px]',
       render: (row) => {
         const rowId = row.id || row.ID;
         const isOpen = openDropdownId === rowId;
         const currentLeader = users.find(u => String(u.id || u.ID) === String(row.leader));
-        
-        const filteredUsersForDropdown = users.filter(u => 
+
+        const filteredUsersForDropdown = users.filter(u =>
           u.name?.toLowerCase().includes(dropdownSearch.toLowerCase())
         );
 
@@ -315,8 +315,8 @@ export const ProductionSections = () => {
         );
       }
     },
-    { 
-      header: 'Chi phí cơ bản', 
+    {
+      header: 'Chi phí cơ bản',
       accessor: 'baseUnitCost',
       render: (row) => row.baseUnitCost?.toLocaleString() + ' VNĐ'
     },
@@ -405,15 +405,19 @@ export const ProductionSections = () => {
           />
         </div>
         <div className="flex gap-2">
-          <button 
-            onClick={handleRequestExportExcel} 
+          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+            <FileUp size={18} />
+            Nhập Excel
+          </button>
+          <button
+            onClick={handleRequestExportExcel}
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors"
           >
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button 
-            onClick={handleAdd} 
+          <button
+            onClick={handleAdd}
             className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors"
           >
             Thêm tổ sản xuất mới
@@ -436,20 +440,20 @@ export const ProductionSections = () => {
         {formContent}
       </Modal>
 
-      <CustomConfirm 
-        isOpen={confirmModal.isOpen} 
-        onClose={() => setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' })} 
-        onConfirm={handleConfirmAction} 
-        title={confirmModal.title} 
-        message={confirmModal.message} 
+      <CustomConfirm
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' })}
+        onConfirm={handleConfirmAction}
+        title={confirmModal.title}
+        message={confirmModal.message}
         type={confirmModal.type}
       />
 
-      <AppNotification 
-        isOpen={notification.isOpen} 
-        message={notification.message} 
-        type={notification.type} 
-        onClose={() => setNotification(prev => ({ ...prev, isOpen: false }))} 
+      <AppNotification
+        isOpen={notification.isOpen}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

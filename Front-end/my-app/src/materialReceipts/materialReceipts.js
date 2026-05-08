@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { Search, Plus, ChevronDown, FileText, Eye, Edit2, Trash2, FileDown, X, Upload, Maximize, Minimize, ChevronRight } from 'lucide-react';
+import { Search, Plus, ChevronDown, FileText, Eye, Edit2, Trash2, FileDown, X, Upload, Maximize, Minimize, ChevronRight, FileUp } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import {
@@ -989,6 +989,10 @@ export const MaterialReceipts = () => {
           />
         </div>
         <div className="flex gap-2 w-full md:w-auto">
+          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+            <FileUp size={18} />
+            Nhập Excel
+          </button>
           <button
             onClick={handleRequestExportExcel}
             className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 text-sm"
@@ -999,7 +1003,7 @@ export const MaterialReceipts = () => {
             onClick={() => handleOpenModal('add')}
             className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
-            <Plus size={18} /> Thêm phiếu mới
+            Thêm phiếu mới
           </button>
         </div>
       </div>

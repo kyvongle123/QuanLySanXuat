@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Search, Plus, FileDown, Trash2, ChevronDown } from 'lucide-react';
+import { Search, Plus, FileDown, Trash2, ChevronDown, FileUp } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, AppNotification, CustomConfirm, Modal, CustomSelect } from '../customComponent/customComponent';
@@ -15,7 +15,7 @@ export const WarehouseLocations = () => {
   const [selectedLocationIds, setSelectedLocationIds] = useState([]); // New state for selected locations
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentEditingItem, setCurrentEditingItem] = useState({ bin: '', racks: '', level: 1 });
@@ -176,7 +176,7 @@ export const WarehouseLocations = () => {
     { header: 'STT', render: (_, { index }) => index },
     { header: 'Tên Ô', accessor: 'label' },
     {
-      header: 'Hành động', 
+      header: 'Hành động',
       className: 'text-right pr-5',
       render: (row) => (
         <div className="flex gap-2 justify-end">
@@ -231,15 +231,15 @@ export const WarehouseLocations = () => {
   const rackColumns = [
     { header: 'STT', render: (_, { index }) => index },
     { header: 'Tên Kệ', accessor: 'label' },
-    { 
-      header: 'Hành động', 
-      className: 'text-right pr-5', 
+    {
+      header: 'Hành động',
+      className: 'text-right pr-5',
       render: (row) => (
         <div className="flex gap-2 justify-end">
           <button onClick={() => handleOpenRackEdit('edit', row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Sửa</button>
           <button onClick={() => setRackConfirmModal({ isOpen: true, id: row.value })} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Xóa</button>
         </div>
-      ) 
+      )
     }
   ];
 
@@ -251,11 +251,11 @@ export const WarehouseLocations = () => {
 
   const handleEditItem = (location) => {
     setModalMode('edit');
-    setCurrentEditingItem({ 
-        ...location,
-        bin: location.bin || location.Bin,
-        racks: location.racks || location.Racks,
-        level: location.level || location.Level
+    setCurrentEditingItem({
+      ...location,
+      bin: location.bin || location.Bin,
+      racks: location.racks || location.Racks,
+      level: location.level || location.Level
     });
     setIsModalOpen(true);
   };
@@ -324,7 +324,7 @@ export const WarehouseLocations = () => {
         row.alignment = { vertical: 'middle', horizontal: 'center' };
         if (rowNumber === 1) row.font.bold = true;
         row.eachCell((cell) => {
-            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         });
       });
 
@@ -366,17 +366,17 @@ export const WarehouseLocations = () => {
   const columns = [
     // Checkbox column
     { header: 'STT', render: (row, { index }) => index }, // Changed to index + 1 for 1-based numbering
-    { 
-      header: 'Ô (Bin)', 
+    {
+      header: 'Ô (Bin)',
       render: (row) => bins.find(b => String(b.value) === String(row.bin || row.Bin))?.label || 'N/A'
     },
-    { 
-      header: 'Kệ (Rack)', 
+    {
+      header: 'Kệ (Rack)',
       className: 'w-48',
       render: (row) => (
         <div className="relative">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); setIsRackMgmtOpen(true); }}
             className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
           >
@@ -422,9 +422,8 @@ export const WarehouseLocations = () => {
                       handleRackChange(row, r.value);
                       setOpenRackMenuId(null);
                     }}
-                    className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${
-                      String(row.racks || row.Racks) === String(r.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                    className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.racks || row.Racks) === String(r.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
                   >
                     <span className="block w-full !whitespace-normal break-words leading-tight">{r.label}</span>
                   </button>
@@ -435,18 +434,18 @@ export const WarehouseLocations = () => {
         </div>
       )
     },
-    { 
-      header: 'Tầng (Level)', 
+    {
+      header: 'Tầng (Level)',
       render: (row) => `Tầng ${row.level || row.Level}`
     },
     {
       header: 'Hành động',
-      className: 'text-right pr-4', 
+      className: 'text-right pr-4',
       render: (row) => (
         <div className="flex gap-2 justify-end">
           <button onClick={() => handleEditItem(row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Sửa</button>
-          <button 
-            onClick={() => setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa vị trí kho này?' })} 
+          <button
+            onClick={() => setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa vị trí kho này?' })}
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
           >
             Xóa
@@ -459,7 +458,7 @@ export const WarehouseLocations = () => {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Danh sách vị trí kho</h2>
-      
+
       <div className="flex justify-between items-center mb-4 gap-4">
         <div className="relative max-w-[260px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
@@ -475,6 +474,10 @@ export const WarehouseLocations = () => {
         </div>
 
         <div className="flex gap-2">
+          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+            <FileUp size={18} />
+            Nhập Excel
+          </button>
           <button onClick={handleRequestExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
             <FileDown size={18} />
             Xuất Excel
@@ -491,15 +494,15 @@ export const WarehouseLocations = () => {
         <form onSubmit={handleModalSubmit} className="space-y-4">
           <div className="relative">
             <div className="absolute right-0 -top-1 z-20">
-              <button 
-                type="button" 
-                onClick={() => setIsBinMgmtOpen(true)} 
+              <button
+                type="button"
+                onClick={() => setIsBinMgmtOpen(true)}
                 className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline transition-colors p-1"
               >
                 hiệu chỉnh
               </button>
             </div>
-            <CustomSelect label="Ô (Bin)" options={bins} value={currentEditingItem?.bin || ''} onChange={(e) => setCurrentEditingItem({...currentEditingItem, bin: e.target.value})} isModalMaximized={isModalMaximized} />
+            <CustomSelect label="Ô (Bin)" options={bins} value={currentEditingItem?.bin || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, bin: e.target.value })} isModalMaximized={isModalMaximized} />
           </div>
 
           {/* Nút hiệu chỉnh cho Kệ (Rack) */}
@@ -509,17 +512,17 @@ export const WarehouseLocations = () => {
                 hiệu chỉnh
               </button>
             </div>
-            <CustomSelect label="Kệ (Rack)" options={racks} value={currentEditingItem?.racks || ''} onChange={(e) => setCurrentEditingItem({...currentEditingItem, racks: e.target.value})} isModalMaximized={isModalMaximized} />
+            <CustomSelect label="Kệ (Rack)" options={racks} value={currentEditingItem?.racks || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, racks: e.target.value })} isModalMaximized={isModalMaximized} />
           </div>
-          
+
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Tầng (Level)</label>
-            <input 
-              type="number" 
-              value={currentEditingItem?.level || ''} 
-              onChange={(e) => setCurrentEditingItem({...currentEditingItem, level: e.target.value})} 
-              className={`w-full border border-gray-300 rounded-md shadow-sm p-1.5 focus:ring-2 focus:ring-blue-500 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`} 
-              required 
+            <input
+              type="number"
+              value={currentEditingItem?.level || ''}
+              onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, level: e.target.value })}
+              className={`w-full border border-gray-300 rounded-md shadow-sm p-1.5 focus:ring-2 focus:ring-blue-500 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`}
+              required
             />
           </div>
 
@@ -536,9 +539,9 @@ export const WarehouseLocations = () => {
           <div className="flex justify-between items-center gap-4">
             <div className="relative max-w-[350px]">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><Search size={16} /></span>
-              <input 
-                type="text" 
-                placeholder="Tìm tên ô..." 
+              <input
+                type="text"
+                placeholder="Tìm tên ô..."
                 className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 value={binSearchTerm}
                 onChange={(e) => setBinSearchTerm(e.target.value)}
@@ -559,12 +562,12 @@ export const WarehouseLocations = () => {
         <form onSubmit={handleBinSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Tên Ô</label>
-            <input 
-              type="text" 
-              value={currentEditingBin?.name || ''} 
-              onChange={(e) => setCurrentEditingBin({...currentEditingBin, name: e.target.value})} 
-              className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-              required 
+            <input
+              type="text"
+              value={currentEditingBin?.name || ''}
+              onChange={(e) => setCurrentEditingBin({ ...currentEditingBin, name: e.target.value })}
+              className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              required
               autoFocus
             />
           </div>
@@ -576,20 +579,20 @@ export const WarehouseLocations = () => {
       </Modal>
 
       {/* Xác nhận xóa Ô */}
-      <CustomConfirm 
-        isOpen={binConfirmModal.isOpen} 
-        onClose={() => setBinConfirmModal({ isOpen: false, id: null })} 
-        onConfirm={handleBinDelete} 
-        title="Xác nhận xóa ô" 
-        message="Hành động này không thể hoàn tác nếu ô đang có dữ liệu liên quan." 
-        type="delete" 
+      <CustomConfirm
+        isOpen={binConfirmModal.isOpen}
+        onClose={() => setBinConfirmModal({ isOpen: false, id: null })}
+        onConfirm={handleBinDelete}
+        title="Xác nhận xóa ô"
+        message="Hành động này không thể hoàn tác nếu ô đang có dữ liệu liên quan."
+        type="delete"
       />
 
       {/* Modal Quản lý danh sách Kệ của kho */}
-      <Modal 
-        isOpen={isRackMgmtOpen} 
-        onClose={() => { setIsRackMgmtOpen(false); setIsRackMgmtMaximized(false); }} 
-        title="Quản lý danh sách kệ của kho" 
+      <Modal
+        isOpen={isRackMgmtOpen}
+        onClose={() => { setIsRackMgmtOpen(false); setIsRackMgmtMaximized(false); }}
+        title="Quản lý danh sách kệ của kho"
         maxWidth={isRackMgmtMaximized ? "max-w-full" : "max-w-5xl"}
         isMaximized={isRackMgmtMaximized}
         onMaximizeToggle={() => setIsRackMgmtMaximized(!isRackMgmtMaximized)}
@@ -598,9 +601,9 @@ export const WarehouseLocations = () => {
           <div className="flex justify-between items-center gap-4">
             <div className="relative max-w-[350px]">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><Search size={16} /></span>
-              <input 
-                type="text" 
-                placeholder="Tìm tên kệ..." 
+              <input
+                type="text"
+                placeholder="Tìm tên kệ..."
                 className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 value={rackSearchTerm}
                 onChange={(e) => setRackSearchTerm(e.target.value)}
@@ -621,12 +624,12 @@ export const WarehouseLocations = () => {
         <form onSubmit={handleRackSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Tên Kệ</label>
-            <input 
-              type="text" 
-              value={currentEditingRack?.name || ''} 
-              onChange={(e) => setCurrentEditingRack({...currentEditingRack, name: e.target.value})} 
-              className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-              required 
+            <input
+              type="text"
+              value={currentEditingRack?.name || ''}
+              onChange={(e) => setCurrentEditingRack({ ...currentEditingRack, name: e.target.value })}
+              className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              required
               autoFocus
             />
           </div>
@@ -638,13 +641,13 @@ export const WarehouseLocations = () => {
       </Modal>
 
       {/* Xác nhận xóa Kệ */}
-      <CustomConfirm 
-        isOpen={rackConfirmModal.isOpen} 
-        onClose={() => setRackConfirmModal({ isOpen: false, id: null })} 
-        onConfirm={handleRackDelete} 
-        title="Xác nhận xóa kệ" 
-        message="Hành động này không thể hoàn tác nếu kệ đang có dữ liệu liên quan." 
-        type="delete" 
+      <CustomConfirm
+        isOpen={rackConfirmModal.isOpen}
+        onClose={() => setRackConfirmModal({ isOpen: false, id: null })}
+        onConfirm={handleRackDelete}
+        title="Xác nhận xóa kệ"
+        message="Hành động này không thể hoàn tác nếu kệ đang có dữ liệu liên quan."
+        type="delete"
       />
 
       <CustomConfirm isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ isOpen: false, id: null })} onConfirm={handleConfirmAction} title={confirmModal.title} message={confirmModal.message} type={confirmModal.type} />

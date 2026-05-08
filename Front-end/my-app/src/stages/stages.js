@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Search, Plus, FileDown, ChevronDown } from 'lucide-react';
+import { Search, Plus, FileDown, ChevronDown, FileUp } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, AppNotification, CustomConfirm, Modal, CustomSelect } from '../customComponent/customComponent';
 import { getStages, createStage, updateStage, deleteStage } from '../controller/stagesController';
-import { 
-  getProductionSections, 
-  createProductionSection, 
-  updateProductionSection, 
-  deleteProductionSection 
+import {
+  getProductionSections,
+  createProductionSection,
+  updateProductionSection,
+  deleteProductionSection
 } from '../controller/productionSectionsController';
 
 export const Stages = () => {
@@ -23,14 +23,14 @@ export const Stages = () => {
   const [sectionConfirmModal, setSectionConfirmModal] = useState({ isOpen: false, id: null });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
-  const [currentEditingItem, setCurrentEditingItem] = useState({ 
-    stageCode: '', 
-    name: '', 
-    sequence: 0, 
-    productionSection: '' 
+  const [currentEditingItem, setCurrentEditingItem] = useState({
+    stageCode: '',
+    name: '',
+    sequence: 0,
+    productionSection: ''
   });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
 
@@ -65,9 +65,9 @@ export const Stages = () => {
       // Đảm bảo dữ liệu có trường id nhất quán (hỗ trợ cả id và ID từ backend)
       setStages(stageData.map(s => ({ ...s, id: s.id || s.ID })));
       // Chuyển đổi đồng nhất dữ liệu tổ sản xuất
-      setProductionSections(sectionData.map(s => ({ 
-        value: s.id || s.ID, 
-        label: s.name || s.Name 
+      setProductionSections(sectionData.map(s => ({
+        value: s.id || s.ID,
+        label: s.name || s.Name
       })));
     } catch (err) {
       showNotification("Lỗi khi tải dữ liệu danh sách công đoạn", "error");
@@ -80,9 +80,9 @@ export const Stages = () => {
     try {
       const data = await getProductionSections();
       // Chuyển đổi dữ liệu về dạng { value, label } cho Select
-      setProductionSections(data.map(s => ({ 
-        value: s.id || s.ID, 
-        label: s.name || s.Name 
+      setProductionSections(data.map(s => ({
+        value: s.id || s.ID,
+        label: s.name || s.Name
       })));
     } catch (err) {
       showNotification("Lỗi khi tải danh sách tổ sản xuất", "error");
@@ -108,7 +108,7 @@ export const Stages = () => {
   };
 
   const filteredSectionsForMgmt = useMemo(() => {
-    return productionSections.filter(s => 
+    return productionSections.filter(s =>
       (s.label || "").toLowerCase().includes(sectionSearch.toLowerCase())
     );
   }, [productionSections, sectionSearch]);
@@ -131,8 +131,8 @@ export const Stages = () => {
       render: (row) => (
         <div className="flex gap-2 justify-end">
           <button onClick={() => handleOpenSectionEdit('edit', row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Sửa</button>
-          <button 
-            onClick={() => setSectionConfirmModal({ isOpen: true, id: row.value })} 
+          <button
+            onClick={() => setSectionConfirmModal({ isOpen: true, id: row.value })}
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
           >
             Xóa
@@ -178,20 +178,20 @@ export const Stages = () => {
 
   const handleAddItem = () => {
     setModalMode('add');
-    setCurrentEditingItem({ 
-      stageCode: '', name: '', sequence: stages.length + 1, productionSection: '' 
+    setCurrentEditingItem({
+      stageCode: '', name: '', sequence: stages.length + 1, productionSection: ''
     });
     setIsModalOpen(true);
   };
 
   const handleEditItem = (stage) => {
     setModalMode('edit');
-    setCurrentEditingItem({ 
-        ...stage,
-        stageCode: stage.stageCode || stage.StageCode || '',
-        name: stage.name || stage.Name || '',
-        sequence: stage.sequence || stage.Sequence || 0,
-        productionSection: stage.productionSection || stage.ProductionSection || ''
+    setCurrentEditingItem({
+      ...stage,
+      stageCode: stage.stageCode || stage.StageCode || '',
+      name: stage.name || stage.Name || '',
+      sequence: stage.sequence || stage.Sequence || 0,
+      productionSection: stage.productionSection || stage.ProductionSection || ''
     });
     setIsModalOpen(true);
   };
@@ -268,8 +268,8 @@ export const Stages = () => {
       console.log("filteredData la", filteredData);
       filteredData.forEach((item, index) => {
         const section = productionSections.find(s => String(s.value) === String(item.productionSection || item.ProductionSection));
-        worksheet.addRow({ 
-          stt: index + 1, 
+        worksheet.addRow({
+          stt: index + 1,
           stageCode: item.stageCode || item.StageCode,
           name: item.name || item.Name,
           sequence: item.sequence || item.Sequence,
@@ -333,8 +333,8 @@ export const Stages = () => {
 
   const columns = [
     { header: 'STT', render: (row, { index }) => index },
-    { 
-      header: 'Tổ sản xuất', 
+    {
+      header: 'Tổ sản xuất',
       className: 'min-w-[200px]',
       render: (row) => {
         const rowId = row.id || row.ID;
@@ -343,90 +343,89 @@ export const Stages = () => {
 
         return (
           <div className="relative w-full">
-          {/* Nút Hiệu chỉnh nằm trên lề trên của Select */}
-          <button 
-            type="button" 
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              setIsSectionMgmtModalOpen(true); 
-            }}
-            className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
-          >
-            hiệu chỉnh
-          </button>
+            {/* Nút Hiệu chỉnh nằm trên lề trên của Select */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsSectionMgmtModalOpen(true);
+              }}
+              className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+            >
+              hiệu chỉnh
+            </button>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpenDropdownId(isOpen ? null : rowId);
-            }}
-            className="bg-gray-50 border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[26px] font-bold text-gray-700"
-          >
-            <span className="truncate block">
-              {currentSection?.label || '-- Chọn tổ sản xuất --'}
-            </span>
-            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
-              <ChevronDown size={14} />
-            </div>
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenDropdownId(isOpen ? null : rowId);
+              }}
+              className="bg-gray-50 border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[26px] font-bold text-gray-700"
+            >
+              <span className="truncate block">
+                {currentSection?.label || '-- Chọn tổ sản xuất --'}
+              </span>
+              <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                <ChevronDown size={14} />
+              </div>
+            </button>
 
-          {isOpen && (
-            <div className="absolute left-0 top-full mt-1 w-full min-w-[200px] bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top">
-              <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
-                <div className="relative">
-                  <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
-                    placeholder="Tìm nhanh..."
-                    value={dropdownSearch}
-                    onChange={(e) => setDropdownSearch(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    autoFocus
-                  />
+            {isOpen && (
+              <div className="absolute left-0 top-full mt-1 w-full min-w-[200px] bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top">
+                <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                  <div className="relative">
+                    <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+                      placeholder="Tìm nhanh..."
+                      value={dropdownSearch}
+                      onChange={(e) => setDropdownSearch(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
+                  {productionSections
+                    .filter(s => (s.label || "").toLowerCase().includes(dropdownSearch.toLowerCase()))
+                    .map((s) => (
+                      <button
+                        key={s.value}
+                        onClick={() => handleSectionChange(row, s.value)}
+                        className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.productionSection || row.ProductionSection) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                      >
+                        <span className="block w-full truncate">{s.label}</span>
+                      </button>
+                    ))}
                 </div>
               </div>
-              <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
-                {productionSections
-                  .filter(s => (s.label || "").toLowerCase().includes(dropdownSearch.toLowerCase()))
-                  .map((s) => (
-                  <button
-                    key={s.value}
-                    onClick={() => handleSectionChange(row, s.value)}
-                    className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${
-                      String(row.productionSection || row.ProductionSection) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span className="block w-full truncate">{s.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         );
       }
     },
-    { 
-      header: 'Mã công đoạn', 
+    {
+      header: 'Mã công đoạn',
       render: (row) => <span className="font-medium text-gray-900">{row.stageCode || row.StageCode}</span>
     },
-    { 
-      header: 'Tên công đoạn', 
+    {
+      header: 'Tên công đoạn',
       render: (row) => <span className="font-bold text-blue-600">{row.name || row.Name}</span>
     },
-    { 
-      header: 'Thứ tự', 
+    {
+      header: 'Thứ tự',
       className: 'text-center',
-      render: (row) => row.sequence || row.Sequence 
+      render: (row) => row.sequence || row.Sequence
     },
     {
       header: 'Hành động',
       className: 'text-right pr-3',
       render: (row) => (
         <div className="flex gap-2 justify-end">
-          <button 
-            onClick={(e) => { e.stopPropagation(); handleEditItem(row); }} 
+          <button
+            onClick={(e) => { e.stopPropagation(); handleEditItem(row); }}
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
           >
             Sửa
@@ -445,7 +444,7 @@ export const Stages = () => {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Danh sách công đoạn</h2>
-      
+
       <div className="flex justify-between items-center mb-4 gap-4">
         <div className="relative w-full max-w-[320px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
@@ -461,6 +460,10 @@ export const Stages = () => {
         </div>
 
         <div className="flex gap-2">
+          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+            <FileUp size={18} />
+            Nhập Excel
+          </button>
           <button onClick={handleRequestExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
             <FileDown size={18} />
             Xuất Excel
@@ -477,51 +480,51 @@ export const Stages = () => {
         <CustomDatatable columns={columns} data={filteredData} />
       )}
 
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={handleCloseModal} 
-        title={modalMode === 'add' ? 'Thêm công đoạn mới' : 'Chỉnh sửa công đoạn'} 
-        isMaximized={isModalMaximized} 
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={modalMode === 'add' ? 'Thêm công đoạn mới' : 'Chỉnh sửa công đoạn'}
+        isMaximized={isModalMaximized}
         onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}
       >
         <form onSubmit={handleModalSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-gray-700">Mã công đoạn</label>
-              <input 
-                type="text" 
-                value={currentEditingItem?.stageCode || ''} 
-                onChange={(e) => setCurrentEditingItem({...currentEditingItem, stageCode: e.target.value})} 
-                className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`} 
-                required 
+              <input
+                type="text"
+                value={currentEditingItem?.stageCode || ''}
+                onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, stageCode: e.target.value })}
+                className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
+                required
               />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-gray-700">Thứ tự</label>
-              <input 
-                type="number" 
-                value={currentEditingItem?.sequence || 0} 
-                onChange={(e) => setCurrentEditingItem({...currentEditingItem, sequence: e.target.value})} 
-                className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`} 
-                required 
+              <input
+                type="number"
+                value={currentEditingItem?.sequence || 0}
+                onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, sequence: e.target.value })}
+                className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
+                required
               />
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Tên công đoạn</label>
-            <input 
-              type="text" 
-              value={currentEditingItem?.name || ''} 
-              onChange={(e) => setCurrentEditingItem({...currentEditingItem, name: e.target.value})} 
-              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`} 
-              required 
+            <input
+              type="text"
+              value={currentEditingItem?.name || ''}
+              onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, name: e.target.value })}
+              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
+              required
             />
           </div>
 
           <div className="relative">
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => setIsSectionMgmtModalOpen(true)}
               className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 text-[11px] font-bold underline z-10"
             >
@@ -531,7 +534,7 @@ export const Stages = () => {
               label="Tổ sản xuất"
               name="productionSection"
               value={currentEditingItem?.productionSection || ''}
-              onChange={(e) => setCurrentEditingItem({...currentEditingItem, productionSection: e.target.value})}
+              onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, productionSection: e.target.value })}
               options={productionSections}
               isModalMaximized={isModalMaximized}
             />
@@ -545,13 +548,13 @@ export const Stages = () => {
       </Modal>
 
       {/* Modal Quản lý Danh sách Tổ sản xuất */}
-      <Modal 
-        isOpen={isSectionMgmtModalOpen} 
-        onClose={() => { 
-          setIsSectionMgmtModalOpen(false); 
-          setSectionForm({ id: null, name: '' }); 
-          setIsSectionMgmtMaximized(false); 
-        }} 
+      <Modal
+        isOpen={isSectionMgmtModalOpen}
+        onClose={() => {
+          setIsSectionMgmtModalOpen(false);
+          setSectionForm({ id: null, name: '' });
+          setIsSectionMgmtMaximized(false);
+        }}
         title="Quản lý Danh sách Tổ sản xuất"
         maxWidth={isSectionMgmtMaximized ? "max-w-full" : "max-w-5xl"}
         isMaximized={isSectionMgmtMaximized}
@@ -563,7 +566,7 @@ export const Stages = () => {
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
                 <Search size={16} />
               </span>
-              <input 
+              <input
                 type="text"
                 placeholder="Tìm kiếm nhanh tổ sản xuất..."
                 className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -571,8 +574,8 @@ export const Stages = () => {
                 onChange={(e) => setSectionSearch(e.target.value)}
               />
             </div>
-            <button 
-              onClick={() => handleOpenSectionEdit('add')} 
+            <button
+              onClick={() => handleOpenSectionEdit('add')}
               className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors"
             >
               <Plus size={16} /> Thêm tổ sản xuất
@@ -590,7 +593,7 @@ export const Stages = () => {
         <div className="space-y-4">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Tên Tổ sản xuất</label>
-            <input 
+            <input
               type="text"
               value={sectionForm.name}
               onChange={(e) => setSectionForm({ ...sectionForm, name: e.target.value })}
@@ -607,29 +610,29 @@ export const Stages = () => {
       </Modal>
 
       {/* Component xác nhận xóa Tổ sản xuất */}
-      <CustomConfirm 
-        isOpen={sectionConfirmModal.isOpen} 
-        onClose={() => setSectionConfirmModal({ isOpen: false, id: null })} 
-        onConfirm={handleDeleteSection} 
-        title="Xác nhận xóa tổ sản xuất" 
-        message="Bạn có chắc chắn muốn xóa tổ sản xuất này không? Hành động này không thể hoàn tác." 
-        type="delete" 
+      <CustomConfirm
+        isOpen={sectionConfirmModal.isOpen}
+        onClose={() => setSectionConfirmModal({ isOpen: false, id: null })}
+        onConfirm={handleDeleteSection}
+        title="Xác nhận xóa tổ sản xuất"
+        message="Bạn có chắc chắn muốn xóa tổ sản xuất này không? Hành động này không thể hoàn tác."
+        type="delete"
       />
 
-      <CustomConfirm 
-        isOpen={confirmModal.isOpen} 
-        onClose={() => setConfirmModal({ isOpen: false, id: null })} 
-        onConfirm={handleConfirmAction} 
-        title={confirmModal.title} 
-        message={confirmModal.message} 
-        type={confirmModal.type} 
+      <CustomConfirm
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, id: null })}
+        onConfirm={handleConfirmAction}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
       />
-      
-      <AppNotification 
-        isOpen={notification.isOpen} 
-        message={notification.message} 
-        type={notification.type} 
-        onClose={() => setNotification(prev => ({ ...prev, isOpen: false }))} 
+
+      <AppNotification
+        isOpen={notification.isOpen}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   );
