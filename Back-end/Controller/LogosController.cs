@@ -18,21 +18,27 @@ namespace MyProject.Backend.Controller
         [HttpGet("hanghoa")]
         public IActionResult GetHangHoaLogo()
         {
-            // Lấy đường dẫn thư mục root (wwwroot)
-            string rootPath = _environment.WebRootPath;
+            // Thử lấy đường dẫn từ ContentRootPath (thư mục gốc của project Back-end)
+            string contentPath = _environment.ContentRootPath;
             
-            // Xử lý trường hợp WebRootPath bị null (thường xảy ra khi chạy môi trường dev nhất định)
-            if (string.IsNullOrEmpty(rootPath))
+            // Xây dựng đường dẫn tuyệt đối đến file
+            string filePath = Path.Combine(contentPath, "wwwroot", "Public", "WebLogo", "hanghoa.png");
+
+            // Nếu không tìm thấy, thử dùng WebRootPath (trong trường hợp đã cấu hình StaticFiles)
+            if (!System.IO.File.Exists(filePath) && !string.IsNullOrEmpty(_environment.WebRootPath))
             {
-                rootPath = Path.Combine(_environment.ContentRootPath, "wwwroot");
+                filePath = Path.Combine(_environment.WebRootPath, "Public", "WebLogo", "hanghoa.png");
             }
 
-            // Đường dẫn tuyệt đối đến file hanghoa.png dựa trên cấu trúc bạn đã cung cấp
-            string filePath = Path.Combine(rootPath, "Public", "WebLogo", "hanghoa.png");
+            // Chuẩn hóa đường dẫn để tránh lỗi dấu gạch chéo trên các hệ điều hành khác nhau
+            filePath = Path.GetFullPath(filePath);
 
             if (!System.IO.File.Exists(filePath))
             {
-                return NotFound(new { message = "Logo file not found at: " + filePath });
+                return NotFound(new { 
+                    message = "Không tìm thấy file logo tại đường dẫn vật lý.",
+                    pathTested = filePath 
+                });
             }
 
             // Mở file và trả về dưới dạng file stream với định dạng image/png
