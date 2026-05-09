@@ -34,10 +34,10 @@ export const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-6">
         <div className="text-center">
-          <img 
-            src="/hanghoa.png" 
-            alt="Logo" 
-            className="w-20 h-18 mx-auto mb-4 object-contain" 
+          <img
+            src="https://quanlysanxuat-back-end.onrender.com/api/logos/hanghoa"
+            alt="Logo"
+            className="w-20 h-18 mx-auto mb-4 object-contain"
           />
           <h2 className="text-3xl font-bold text-gray-900">Đăng nhập</h2>
           <p className="text-gray-500 mt-2 text-sm">Vui lòng nhập tài khoản để tiếp tục</p>
@@ -83,11 +83,11 @@ export const Login = () => {
           </button>
         </form>
       </div>
-      <AppNotification 
-        isOpen={notification.isOpen} 
-        message={notification.message} 
-        type={notification.type} 
-        onClose={() => setNotification(prev => ({ ...prev, isOpen: false }))} 
+      <AppNotification
+        isOpen={notification.isOpen}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

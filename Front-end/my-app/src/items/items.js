@@ -316,19 +316,6 @@ export const Items = () => {
     }
   };
 
-  const handleStatusChange = async (item, newStatusId) => {
-    try {
-      const updatedValue = newStatusId === "" ? null : parseInt(newStatusId);
-      const updated = await updateItem(item.id, { ...item, status: updatedValue });
-      setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
-      setOpenStatusMenuId(null);
-      showNotification("Cập nhật tình trạng thành công!");
-    } catch (err) {
-      console.error("Error updating status:", err);
-      showNotification("Lỗi khi cập nhật tình trạng.", "error");
-    }
-  };
-
   const handleLocationChange = async (item, newLocationId) => {
     try {
       const updatedValue = newLocationId === "" ? null : parseInt(newLocationId);
@@ -477,7 +464,6 @@ export const Items = () => {
         { header: 'Tồn kho', key: 'inventory', width: 12 },
         { header: 'Thuế', key: 'tax', width: 10 },
         { header: 'Cân nặng', key: 'weight', width: 15 },
-        { header: 'Tình trạng', key: 'status', width: 20 },
         { header: 'Vị trí', key: 'location', width: 40 },
       ];
 
@@ -569,20 +555,6 @@ export const Items = () => {
       <div>
         <label htmlFor="description" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Mô tả</label>
         <textarea id="description" name="description" value={currentEditingItem?.description || ''} onChange={handleModalInputChange} rows={isModalMaximized ? "3" : "2"} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}></textarea>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <CustomSelect
-          label="Tình trạng"
-          name="status"
-          value={currentEditingItem?.status || ''}
-          onChange={handleModalInputChange}
-          options={[...itemStatuses]}
-          isModalMaximized={isModalMaximized}
-        />
-        <div>
-          <label htmlFor="material" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Chất liệu</label>
-          <input type="text" id="material" name="material" value={currentEditingItem?.material || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} required />
-        </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -852,131 +824,79 @@ export const Items = () => {
               );
               return (
                 <div className="py-4 pl-40 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
-                  <div className="flex flex-col gap-6 text-sm">
-                    {/* Hàng trên: 3 cột */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Thuế</span>
-                        <span className="text-gray-900 font-medium">{row.tax}%</span>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Cân nặng</span>
-                        <span className="text-gray-900 font-medium">{row.weight} kg</span>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tình trạng</span>
-                        <div className="relative">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (openStatusMenuId !== row.id) setMenuSearchQuery('');
-                              setOpenStatusMenuId(openStatusMenuId === row.id ? null : row.id);
-                              setOpenManufactoryMenuId(null);
-                              setOpenCategoryMenuId(null);
-                              setOpenLocationMenuId(null);
-                            }}
-                            className={`text-xs font-bold block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors ${String(row.status) === '1' ? 'text-green-600' : 'text-orange-500'}`}
-                          >
-                            <span className="truncate block">
-                              {itemStatuses.find(s => String(s.value) === String(row.status))?.label || '-- Chọn --'}
-                            </span>
-                            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
-                              <ChevronDown size={14} />
-                            </div>
-                          </button>
+                  <div className="flex flex-wrap md:flex-nowrap items-end gap-x-[150px] gap-y-4 text-sm">
+                    {/* Cột 1: Vị trí */}
+                    <div className="flex flex-col gap-1 w-full md:w-64 flex-none">
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Vị trí</span>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setIsWarehousesModalOpen(true); }}
+                          className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+                        >
+                          hiệu chỉnh
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (openLocationMenuId !== row.id) setMenuSearchQuery('');
+                            setOpenLocationMenuId(openLocationMenuId === row.id ? null : row.id);
+                            setOpenStatusMenuId(null);
+                            setOpenManufactoryMenuId(null);
+                            setOpenCategoryMenuId(null);
+                          }}
+                          className="text-xs font-bold block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors text-blue-600"
+                        >
+                          <span className="truncate block">
+                            {warehouses.find(w => String(w.value) === String(row.location))?.label || '-- Chọn --'}
+                          </span>
+                          <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                            <ChevronDown size={14} />
+                          </div>
+                        </button>
 
-                          {openStatusMenuId === row.id && (
-                            <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
-                              <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                        {openLocationMenuId === row.id && (
+                          <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+                            <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                              <div className="relative">
+                                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
                                   type="text"
-                                  className="w-full pl-2 pr-2 py-0.5 text-[10px] border border-gray-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
-                                  placeholder="Lọc tình trạng"
+                                  className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+                                  placeholder="Lọc vị trí"
                                   value={menuSearchQuery}
                                   onChange={(e) => setMenuSearchQuery(e.target.value)}
                                   onClick={(e) => e.stopPropagation()}
                                   autoFocus
                                 />
                               </div>
-                              <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
-                                {filteredStatuses.map((s) => (
-                                  <button
-                                    key={s.value}
-                                    onClick={() => handleStatusChange(row, s.value)}
-                                    className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.status) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
-                                  >
-                                    <span className="block w-full !whitespace-normal break-words leading-tight">{s.label}</span>
-                                  </button>
-                                ))}
-                              </div>
                             </div>
-                          )}
-                        </div>
+                            <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
+                              {warehouses.filter(w => w.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
+                                <button
+                                  key={w.value}
+                                  onClick={() => handleLocationChange(row, w.value)}
+                                  className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location) === String(w.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                                >
+                                  <span className="block w-full !whitespace-normal break-words leading-tight">{w.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Hàng dưới: 1 cột */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Vị trí</span>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setIsWarehousesModalOpen(true); }}
-                            className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
-                          >
-                            hiệu chỉnh
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (openLocationMenuId !== row.id) setMenuSearchQuery('');
-                              setOpenLocationMenuId(openLocationMenuId === row.id ? null : row.id);
-                              setOpenStatusMenuId(null);
-                              setOpenManufactoryMenuId(null);
-                              setOpenCategoryMenuId(null);
-                            }}
-                            className="text-xs font-bold block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors text-blue-600"
-                          >
-                            <span className="truncate block">
-                              {warehouses.find(w => String(w.value) === String(row.location))?.label || '-- Chọn --'}
-                            </span>
-                            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
-                              <ChevronDown size={14} />
-                            </div>
-                          </button>
+                    {/* Cột 2: Cân nặng */}
+                    <div className="flex flex-col gap-1 whitespace-nowrap flex-none">
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Cân nặng</span>
+                      <span className="text-gray-900 font-medium">{row.weight} kg</span>
+                    </div>
 
-                          {openLocationMenuId === row.id && (
-                            <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
-                              <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
-                                <div className="relative">
-                                  <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-                                  <input
-                                    type="text"
-                                    className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
-                                    placeholder="Lọc vị trí"
-                                    value={menuSearchQuery}
-                                    onChange={(e) => setMenuSearchQuery(e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    autoFocus
-                                  />
-                                </div>
-                              </div>
-                              <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
-                                {warehouses.filter(w => w.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
-                                  <button
-                                    key={w.value}
-                                    onClick={() => handleLocationChange(row, w.value)}
-                                    className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location) === String(w.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
-                                  >
-                                    <span className="block w-full !whitespace-normal break-words leading-tight">{w.label}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                    {/* Cột 3: Thuế */}
+                    <div className="flex flex-col gap-1 whitespace-nowrap flex-none">
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Thuế</span>
+                      <span className="text-gray-900 font-medium">{row.tax}%</span>
                     </div>
                   </div>
                 </div>
