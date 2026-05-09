@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{6F5B49A8-7CEC-788F-2575-C0466FC88418}|MyProject.Backend.csproj|c:\\users\\admin\\downloads\\myproject reactjs git\\quanlysanxuat\\back-end\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{6F5B49A8-7CEC-788F-2575-C0466FC88418}|MyProject.Backend.csproj|solutionrelative:appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{6F5B49A8-7CEC-788F-2575-C0466FC88418}|MyProject.Backend.csproj|c:\\users\\admin\\downloads\\myproject reactjs git\\quanlysanxuat\\back-end\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6F5B49A8-7CEC-788F-2575-C0466FC88418}|MyProject.Backend.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -46,19 +50,32 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\appsettings.json",
+              "RelativeDocumentMoniker": "appsettings.json",
+              "ToolTip": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\appsettings.json",
+              "RelativeToolTip": "appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAQwAkAAAC9AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-05-09T06:07:31.419Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
               "ToolTip": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\Program.cs",
               "RelativeToolTip": "Program.cs",
-              "ViewState": "AgIAACIAAAAAMzMzMzMrwAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAABYAAAAAMzMzMzMrwCAAAAADAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-05-09T03:53:05.017Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "User.cs",
               "DocumentMoniker": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\Model\\User.cs",
               "RelativeDocumentMoniker": "Model\\User.cs",
@@ -70,7 +87,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 7,
               "Title": "WarehousesController.cs",
               "DocumentMoniker": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\Controller\\WarehousesController.cs",
               "RelativeDocumentMoniker": "Controller\\WarehousesController.cs",
@@ -82,7 +99,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "CreateMaterialReceiptDto.cs",
               "DocumentMoniker": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\Dto\\CreateMaterialReceiptDto.cs",
               "RelativeDocumentMoniker": "Dto\\CreateMaterialReceiptDto.cs",
@@ -94,7 +111,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "MaterialReceiptsController.cs",
               "DocumentMoniker": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\Controller\\MaterialReceiptsController.cs",
               "RelativeDocumentMoniker": "Controller\\MaterialReceiptsController.cs",
@@ -106,7 +123,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "MaterialReceiptInfoService.cs",
               "DocumentMoniker": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\Services\\MaterialReceiptInfoService.cs",
               "RelativeDocumentMoniker": "Services\\MaterialReceiptInfoService.cs",
@@ -119,7 +136,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "Microsoft.NET.Sdk.StaticWebAssets.targets",
               "DocumentMoniker": "C:\\Program Files\\dotnet\\sdk\\10.0.203\\Sdks\\Microsoft.NET.Sdk.StaticWebAssets\\targets\\Microsoft.NET.Sdk.StaticWebAssets.targets",
               "RelativeDocumentMoniker": "..\\..\\..\\..\\..\\..\\Program Files\\dotnet\\sdk\\10.0.203\\Sdks\\Microsoft.NET.Sdk.StaticWebAssets\\targets\\Microsoft.NET.Sdk.StaticWebAssets.targets",
@@ -131,7 +148,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 8,
               "Title": "MaterialReceiptBatchesController.cs",
               "DocumentMoniker": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\Controller\\MaterialReceiptBatchesController.cs",
               "RelativeDocumentMoniker": "Controller\\MaterialReceiptBatchesController.cs",
