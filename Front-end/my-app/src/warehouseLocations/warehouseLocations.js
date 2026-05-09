@@ -180,8 +180,14 @@ export const WarehouseLocations = () => {
       className: 'text-right pr-5',
       render: (row) => (
         <div className="flex gap-2 justify-end">
-          <button onClick={() => handleOpenBinEdit('edit', row)} className="text-blue-600 hover:bg-blue-100 p-1 rounded"><LuSquarePen size={14} /></button>
-          <button onClick={() => setBinConfirmModal({ isOpen: true, id: row.value })} className="text-red-600 hover:bg-red-100 p-1 rounded"><Trash2 size={14} /></button>
+          <button
+            onClick={() => handleOpenBinEdit('edit', row)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+          >Sửa</button>
+          <button
+            onClick={() => setBinConfirmModal({ isOpen: true, id: row.value })}
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+          >Xóa</button>
         </div>
       )
     }

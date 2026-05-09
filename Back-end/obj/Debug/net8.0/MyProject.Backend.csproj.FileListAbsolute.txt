@@ -462,3 +462,4 @@ C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\
 C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\net8.0\ref\MyProject.Backend.dll
 C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\bin\Debug\net8.0\MySqlConnector.dll
 C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\bin\Debug\net8.0\Pomelo.EntityFrameworkCore.MySql.dll
+C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
