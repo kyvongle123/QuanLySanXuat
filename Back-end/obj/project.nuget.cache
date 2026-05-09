@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "s/HXSGhogfo=",
+  "dgSpecHash": "vpnTMkaiSd4=",
   "success": true,
   "projectFilePath": "C:\\Users\\Admin\\Downloads\\MyProject Reactjs git\\QuanLySanXuat\\Back-end\\MyProject.Backend.csproj",
   "expectedPackageFiles": [
@@ -53,6 +53,8 @@
     "C:\\Users\\Admin\\.nuget\\packages\\microsoft.win32.systemevents\\6.0.0\\microsoft.win32.systemevents.6.0.0.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\miniword\\0.9.2\\miniword.0.9.2.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\mono.texttemplating\\2.2.1\\mono.texttemplating.2.2.1.nupkg.sha512",
+    "C:\\Users\\Admin\\.nuget\\packages\\mysqlconnector\\2.3.5\\mysqlconnector.2.3.5.nupkg.sha512",
+    "C:\\Users\\Admin\\.nuget\\packages\\pomelo.entityframeworkcore.mysql\\8.0.2\\pomelo.entityframeworkcore.mysql.8.0.2.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\skiasharp\\3.119.0\\skiasharp.3.119.0.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\skiasharp.nativeassets.macos\\3.119.0\\skiasharp.nativeassets.macos.3.119.0.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\skiasharp.nativeassets.win32\\3.119.0\\skiasharp.nativeassets.win32.3.119.0.nupkg.sha512",
@@ -95,8 +97,8 @@
     "C:\\Users\\Admin\\.nuget\\packages\\system.threading.channels\\6.0.0\\system.threading.channels.6.0.0.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\system.threading.tasks.extensions\\4.5.4\\system.threading.tasks.extensions.4.5.4.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\system.windows.extensions\\6.0.0\\system.windows.extensions.6.0.0.nupkg.sha512",
-    "C:\\Users\\Admin\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.26\\microsoft.windowsdesktop.app.ref.8.0.26.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.26\\microsoft.netcore.app.ref.8.0.26.nupkg.sha512",
+    "C:\\Users\\Admin\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.26\\microsoft.windowsdesktop.app.ref.8.0.26.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.26\\microsoft.aspnetcore.app.ref.8.0.26.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\8.0.26\\microsoft.netcore.app.host.win-x64.8.0.26.nupkg.sha512"
   ],

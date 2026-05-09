@@ -454,10 +454,11 @@ C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\
 C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\net8.0\staticwebassets.development.json
 C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\net8.0\staticwebassets.build.endpoints.json
 C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\net8.0\swae.build.ex.cache
-C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
 C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\net8.0\MyProjec.791C6B4C.Up2Date
 C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\net8.0\MyProject.Backend.dll
 C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\net8.0\refint\MyProject.Backend.dll
 C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\net8.0\MyProject.Backend.pdb
 C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\net8.0\MyProject.Backend.genruntimeconfig.cache
 C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\obj\Debug\net8.0\ref\MyProject.Backend.dll
+C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\bin\Debug\net8.0\MySqlConnector.dll
+C:\Users\Admin\Downloads\MyProject Reactjs git\QuanLySanXuat\Back-end\bin\Debug\net8.0\Pomelo.EntityFrameworkCore.MySql.dll

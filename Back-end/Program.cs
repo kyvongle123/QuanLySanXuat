@@ -21,11 +21,8 @@ foreach (var source in ((IConfigurationRoot)builder.Configuration).Providers)
 Console.WriteLine("=================================================");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(
-        connectionString,
-        sqlServerOptionsAction: sqlOptions => {
-            sqlOptions.EnableRetryOnFailure();
-        }));
+    // TiDB tương thích tốt với MySQL 8.0.11
+    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 11))));
 
 // 2. Cấu hình CORS (Cho phép Front-end gọi API)
 builder.Services.AddCors(options => {
