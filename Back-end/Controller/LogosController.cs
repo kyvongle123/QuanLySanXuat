@@ -22,12 +22,12 @@ namespace MyProject.Backend.Controller
             string contentPath = _environment.ContentRootPath;
             
             // Xây dựng đường dẫn tuyệt đối đến file
-            string filePath = Path.Combine(contentPath, "wwwroot", "Public", "WebLogo", "hanghoa.png");
+            string filePath = Path.Combine(contentPath, "wwwroot", "Public", "WebLogo", "hanghoa.PNG");
 
             // Nếu không tìm thấy, thử dùng WebRootPath (trong trường hợp đã cấu hình StaticFiles)
             if (!System.IO.File.Exists(filePath) && !string.IsNullOrEmpty(_environment.WebRootPath))
             {
-                filePath = Path.Combine(_environment.WebRootPath, "Public", "WebLogo", "hanghoa.png");
+                filePath = Path.Combine(_environment.WebRootPath, "Public", "WebLogo", "hanghoa.PNG");
             }
 
             // Chuẩn hóa đường dẫn để tránh lỗi dấu gạch chéo trên các hệ điều hành khác nhau
