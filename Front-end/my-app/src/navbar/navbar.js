@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, UserRound, LogOut, Settings, Bell, User } from 'lucide-react';
-const hanghoa = "/hanghoa.png";
 
 export const Navbar = ({ onToggleSidebar }) => {
   // Định nghĩa địa chỉ máy chủ Back-end để lấy tệp tĩnh từ wwwroot
@@ -55,7 +54,7 @@ export const Navbar = ({ onToggleSidebar }) => {
         {/* Logo và Tên dự án */}
         <div className="flex items-center gap-2 select-none">
           <img
-            src={hanghoa}
+            src={`${API_BASE_URL}/api/Logos/hanghoa`}
             alt="Logo App Quản Lý Sản Xuất"
             className="h-8 w-auto object-contain hidden sm:block"
           />
