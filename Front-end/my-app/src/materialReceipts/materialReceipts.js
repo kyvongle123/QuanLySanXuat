@@ -1229,7 +1229,7 @@ export const MaterialReceipts = () => {
                     {currentReceipt?.certificateOfOrigin && typeof currentReceipt.certificateOfOrigin === 'string' && (
                       <button
                         type="button"
-                        onClick={() => handleRequestDownload(`https://localhost:49851${currentReceipt.certificateOfOrigin}`)}
+                        onClick={() => handleRequestDownload(`https://quanlysanxuat-back-end.onrender.com${currentReceipt.certificateOfOrigin}`)}
                         className="p-2 bg-blue-50 text-blue-600 rounded-r-lg hover:bg-blue-100 transition-colors border border-blue-200 shadow-sm"
                         title="Tải file hiện tại"
                       >
@@ -1265,7 +1265,7 @@ export const MaterialReceipts = () => {
                     {currentReceipt?.certificateOfQuality && typeof currentReceipt.certificateOfQuality === 'string' && (
                       <button
                         type="button"
-                        onClick={() => handleRequestDownload(`https://localhost:49851${currentReceipt.certificateOfQuality}`)}
+                        onClick={() => handleRequestDownload(`https://quanlysanxuat-back-end.onrender.com${currentReceipt.certificateOfQuality}`)}
                         className="p-2 bg-blue-50 text-blue-600 rounded-r-lg hover:bg-blue-100 transition-colors border border-blue-200 shadow-sm"
                         title="Tải file hiện tại"
                       >
@@ -1302,7 +1302,7 @@ export const MaterialReceipts = () => {
                     {currentReceipt?.inspectationReport && typeof currentReceipt.inspectationReport === 'string' && (
                       <button
                         type="button"
-                        onClick={() => handleRequestDownload(`https://localhost:49851${currentReceipt.inspectationReport}`)}
+                        onClick={() => handleRequestDownload(`https://quanlysanxuat-back-end.onrender.com${currentReceipt.inspectationReport}`)}
                         className="p-2 bg-blue-50 text-blue-600 rounded-r-lg hover:bg-blue-100 transition-colors border border-blue-200 shadow-sm"
                         title="Tải file hiện tại"
                       >

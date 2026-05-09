@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Sử dụng port 49851 thống nhất với các controller khác trong dự án
-const API_URL = 'https://localhost:49851/api/MachineStatuses';
+const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/MachineStatuses';
 
 export const getMachineStatuses = async () => {
     try {

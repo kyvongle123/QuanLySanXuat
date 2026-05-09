@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://localhost:49851/api/WarehouseRacks';
+const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/WarehouseRacks';
 
 const normalizeRackData = (data) => {
     if (Array.isArray(data)) {

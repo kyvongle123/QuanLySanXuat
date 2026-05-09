@@ -6,7 +6,7 @@ import { AppNotification } from '../customComponent/customComponent';
 
 export const Profile = () => {
   // Định nghĩa địa chỉ máy chủ Back-end để lấy tệp tĩnh từ wwwroot
-  const API_BASE_URL = 'https://localhost:49851';
+  const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com';
 
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);

@@ -5,7 +5,7 @@ const hanghoa = "/hanghoa.png";
 
 export const Navbar = ({ onToggleSidebar }) => {
   // Định nghĩa địa chỉ máy chủ Back-end để lấy tệp tĩnh từ wwwroot
-  const API_BASE_URL = 'https://localhost:49851';
+  const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com';
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);

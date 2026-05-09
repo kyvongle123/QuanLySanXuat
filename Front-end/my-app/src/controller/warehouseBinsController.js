@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://localhost:49851/api/WarehouseBins';
+const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/WarehouseBins';
 
 const normalizeBinData = (data) => {
     if (Array.isArray(data)) {

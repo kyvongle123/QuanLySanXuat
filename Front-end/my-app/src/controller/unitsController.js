@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://localhost:49851/api/Units'; // Đảm bảo URL này khớp với địa chỉ API của bạn
+const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/Units'; // Đảm bảo URL này khớp với địa chỉ API của bạn
 
 const normalizeData = (data) => {
     if (Array.isArray(data)) {
