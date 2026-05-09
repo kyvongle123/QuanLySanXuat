@@ -689,7 +689,7 @@ export const Items = () => {
       accessor: 'inventory',
       className: 'w-[100px] text-center',
       render: (row) => (
-        <span className={`font-bold ${row.inventory > 10 ? 'text-green-600' : 'text-red-500'}`}>
+        <span>
           {row.inventory || 0}
         </span>
       )
@@ -824,7 +824,7 @@ export const Items = () => {
               );
               return (
                 <div className="py-4 pl-40 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
-                  <div className="flex flex-wrap md:flex-nowrap items-end gap-x-[150px] gap-y-4 text-sm">
+                  <div className="flex flex-wrap md:flex-nowrap items-end gap-x-[140px] gap-y-4 text-sm">
                     {/* Cột 1: Vị trí */}
                     <div className="flex flex-col gap-1 w-full md:w-64 flex-none">
                       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Vị trí</span>

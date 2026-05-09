@@ -374,7 +374,7 @@ export const WarehouseLocations = () => {
     { header: 'STT', render: (row, { index }) => index }, // Changed to index + 1 for 1-based numbering
     {
       header: 'Ô (Bin)',
-      render: (row) => bins.find(b => String(b.value) === String(row.bin || row.Bin))?.label || 'N/A'
+      render: (row) => `${row.bin || row.Bin}`
     },
     {
       header: 'Kệ (Rack)',
@@ -499,16 +499,14 @@ export const WarehouseLocations = () => {
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalMode === 'add' ? 'Thêm vị trí kho mới' : 'Chỉnh sửa vị trí kho'} isMaximized={isModalMaximized} onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)} maxWidth="max-w-xl">
         <form onSubmit={handleModalSubmit} className="space-y-4">
           <div className="relative">
-            <div className="absolute right-0 -top-1 z-20">
-              <button
-                type="button"
-                onClick={() => setIsBinMgmtOpen(true)}
-                className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline transition-colors p-1"
-              >
-                hiệu chỉnh
-              </button>
-            </div>
-            <CustomSelect label="Ô (Bin)" options={bins} value={currentEditingItem?.bin || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, bin: e.target.value })} isModalMaximized={isModalMaximized} />
+            <label className="text-xs font-medium text-gray-700">Ô</label>
+            <input
+              type="number"
+              value={currentEditingItem?.bin || ''}
+              onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, bin: e.target.value })}
+              className={`w-full border border-gray-300 rounded-md shadow-sm p-1.5 focus:ring-2 focus:ring-blue-500 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`}
+              required
+            />
           </div>
 
           {/* Nút hiệu chỉnh cho Kệ (Rack) */}
