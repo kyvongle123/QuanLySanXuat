@@ -168,26 +168,33 @@ export const Units = () => {
   };
 
   const columns = [
-    { header: 'STT', render: (row, { index }) => index },
+    {
+      header: 'STT',
+      className: 'w-[30px] sm:w-[50px] !px-2 sm:!px-4 text-center',
+      headerCellClassName: 'text-[10px] sm:text-sm',
+      render: (row, { index }) => index
+    },
     {
       header: 'Tên đơn vị',
       accessor: 'name',
+      headerCellClassName: 'text-[10px] sm:text-sm',
+      className: 'text-[11px] sm:text-sm !px-2 sm:!px-6',
       render: (row) => <span className="font-bold text-blue-600">{row.name || row.Name}</span>
     },
     {
-      header: 'Hành động',
-      className: 'text-right pr-3',
+      header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>,
+      className: 'text-center w-[100px] sm:w-[180px]',
       render: (row) => (
-        <div className="flex gap-2 justify-end">
+        <div className="flex justify-center items-center gap-2">
           <button
             onClick={(e) => { e.stopPropagation(); handleEditItem(row); }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-[11px] sm:text-xs transition-all active:scale-95"
           >
             Sửa
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa đơn vị tính này?' }); }}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-[11px] sm:text-xs transition-all active:scale-95"
           >
             Xóa
           </button>
@@ -197,39 +204,48 @@ export const Units = () => {
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-2 lg:p-6">
       <h2 className="text-2xl font-bold mb-4">Danh sách đơn vị tính</h2>
 
-      <div className="flex justify-between items-center mb-4 gap-4">
-        <div className="relative w-full max-w-[280px]">
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4">
+        <div className="relative w-full lg:max-w-[280px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
             <Search size={18} />
           </span>
           <input
             type="text"
             placeholder="Tìm theo tên đơn vị..."
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 sm:text-sm outline-none transition-all"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="flex gap-2">
-          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button className="flex-1 lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
+          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
-            Thêm đơn vị mới
+          <button onClick={handleAddItem} className="w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+            <span className="hidden sm:inline">Thêm đơn vị mới</span>
+            <span className="sm:hidden">Thêm đơn vị</span>
           </button>
         </div>
       </div>
 
-      {loading ? <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p> : <CustomDatatable columns={columns} data={filteredData} />}
+      {loading ? (
+        <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p>
+      ) : (
+        <CustomDatatable
+          columns={columns}
+          data={filteredData}
+          bodyCellClassName="!py-2 lg:!py-3"
+        />
+      )}
 
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalMode === 'add' ? 'Thêm đơn vị tính mới' : 'Chỉnh sửa đơn vị tính'} isMaximized={isModalMaximized} onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}>
         <form onSubmit={handleModalSubmit} className="space-y-4">

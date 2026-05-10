@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Search, Plus, FileDown, ChevronDown, Trash2, FileUp } from 'lucide-react';
+import { Search, Plus, FileDown, ChevronDown, Trash2, FileUp, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, AppNotification, CustomConfirm, Modal, CustomSelect } from '../customComponent/customComponent';
@@ -9,6 +9,7 @@ import { getWarehouseLocations, createWarehouseLocation, updateWarehouseLocation
 import { getWarehouseRacks } from '../controller/warehouseRacksController';
 import { getWarehouseBins } from '../controller/warehouseBinsController';
 import { getWarehouseStatuses, createWarehouseStatus, updateWarehouseStatus, deleteWarehouseStatus } from '../controller/warehouseStatusesController';
+import { LuSquarePen } from "react-icons/lu";
 
 export const Warehouses = () => {
   const [warehouses, setWarehouses] = useState([]);
@@ -199,14 +200,27 @@ export const Warehouses = () => {
   }, [types, typeSearch]);
 
   const typeColumns = [
-    { header: 'STT', render: (_, { index }) => index },
-    { header: 'Tên loại kho', render: (row) => <span className="font-bold text-gray-700">{row.label}</span> },
+    {
+      header: 'STT',
+      className: 'text-[11px] sm:text-sm !px-2',
+      headerCellClassName: 'text-[10px] sm:text-xs !px-2',
+      render: (_, { index }) => index
+    },
+    {
+      header: <><span className="hidden sm:inline">Tên loại kho</span><span className="sm:hidden">Tên</span></>,
+      className: 'text-[11px] sm:text-sm !px-2',
+      headerCellClassName: 'text-[10px] sm:text-xs !px-2',
+      render: (row) => <span className="font-bold text-gray-700">{row.label}</span>
+    },
     {
       header: 'Hành động',
-      className: 'text-right pr-5',
+      className: 'text-right pr-2 sm:pr-5',
       render: (row) => (
         <div className="flex gap-2 justify-end">
-          <button onClick={() => handleOpenTypeEdit('edit', row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Sửa</button>
+          <button
+            onClick={() => handleOpenTypeEdit('edit', row)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-[11px] sm:text-xs transition-all active:scale-95"
+          >Sửa</button>
           <button
             onClick={() => setConfirmModal({
               isOpen: true,
@@ -215,7 +229,7 @@ export const Warehouses = () => {
               title: 'Xác nhận xóa',
               message: `Bạn có chắc chắn muốn xóa loại kho "${row.label}"?`
             })}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-[11px] sm:text-xs transition-all active:scale-95"
           >
             Xóa
           </button>
@@ -325,25 +339,28 @@ export const Warehouses = () => {
   const locColumns = [
     {
       header: 'Ô (Bin)',
+      className: '!px-2 sm:!px-6',
       render: (row) => rawBins.find(b => String(b.value) === String(row.bin || row.Bin))?.label || 'N/A'
     },
     {
       header: 'Kệ (Rack)',
+      className: '!px-2 sm:!px-6',
       render: (row) => <span className="font-bold text-blue-600">{rawRacks.find(r => String(r.value) === String(row.racks || row.Racks))?.label || 'N/A'}</span>
     },
     {
       header: 'Tầng (Level)',
+      className: '!px-2 sm:!px-6',
       render: (row) => `Tầng ${row.level || row.Level}`
     },
     {
       header: 'Hành động',
-      className: 'text-right pr-5',
+      className: 'text-right pr-5 !px-2 sm:!px-6',
       render: (row) => (
         <div className="flex gap-2 justify-end">
-          <button onClick={() => handleOpenLocEdit('edit', row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Sửa</button>
+          <button onClick={() => handleOpenLocEdit('edit', row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-colors">Sửa</button>
           <button
             onClick={() => setLocConfirmModal({ isOpen: true, id: row.id || row.ID })}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-colors"
           >
             Xóa
           </button>
@@ -515,11 +532,26 @@ export const Warehouses = () => {
   };
 
   const columns = [
-    // Checkbox column
-    { header: 'STT', render: (row, { index }) => index },
+    {
+      header: '',
+      className: 'w-[20px] sm:w-[40px] !px-2 sm:!px-4 text-center',
+      render: (row, { isExpanded, toggleExpand }) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
+          className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
+        >
+          <ChevronRight
+            size={18}
+            className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`}
+          />
+        </button>
+      ),
+    },
+    { header: 'STT', className: 'w-[30px] sm:w-[50px] !px-2 sm:!px-4 text-center', headerCellClassName: 'text-[10px] sm:text-sm', render: (row, { index }) => index },
     {
       header: 'Loại kho',
-      className: 'w-48',
+      className: 'hidden sm:table-cell w-32 sm:w-48 !px-2 sm:!px-6',
+      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
       render: (row) => {
         const rowId = row.id || row.ID;
         const isOpen = openTypeMenuId === rowId;
@@ -589,7 +621,8 @@ export const Warehouses = () => {
     },
     {
       header: 'Vị trí',
-      className: 'w-64',
+      className: 'w-40 sm:w-64 !px-2 sm:!px-6',
+      headerCellClassName: 'text-[10px] sm:text-sm',
       render: (row) => (
         <div className={`relative ${openLocationMenuId === row.id ? 'z-30' : 'z-10'}`}>
           <button
@@ -650,7 +683,8 @@ export const Warehouses = () => {
     },
     {
       header: 'Số lượng tối đa',
-      className: 'text-center',
+      className: 'hidden sm:table-cell text-center text-[11px] sm:text-sm !px-2 sm:!px-6',
+      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
       render: (row) => (
         <span className="font-bold text-gray-700">
           {row.available || row.Available || 0}
@@ -658,16 +692,23 @@ export const Warehouses = () => {
       )
     },
     {
-      header: 'Hành động',
-      className: 'text-right pr-3',
+      header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>,
+      className: 'text-center w-[100px] sm:w-[180px]',
       render: (row) => (
-        <div className="flex gap-2 justify-end">
-          <button onClick={(e) => { e.stopPropagation(); handleEditItem(row); }} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Sửa</button>
+        <div className="flex justify-center items-center gap-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); handleEditItem(row); }}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
+            title="Sửa"
+          >
+            <span>Sửa</span>
+          </button>
           <button
             onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa vị trí kho này?' }); }}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
+            title="Xóa"
           >
-            Xóa
+            <span>Xóa</span>
           </button>
         </div>
       ),
@@ -675,11 +716,12 @@ export const Warehouses = () => {
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-2 lg:p-6">
       <h2 className="text-2xl font-bold mb-4">Danh sách nhà kho</h2>
 
-      <div className="flex justify-between items-center mb-4 gap-4">
-        <div className="relative w-full max-w-[280px]">
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4">
+        {/* Thanh tìm kiếm */}
+        <div className="relative w-full lg:max-w-[280px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
             <Search size={18} />
           </span>
@@ -692,22 +734,103 @@ export const Warehouses = () => {
           />
         </div>
 
-        <div className="flex gap-2">
-          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button className="flex-1 lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
+          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
-            Thêm mới
+          <button onClick={handleAddItem} className="w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+            Thêm nhà kho mới
           </button>
         </div>
       </div>
 
-      {loading ? <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p> : <CustomDatatable columns={columns} data={filteredData} />}
+      {loading ? (
+        <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p>
+      ) : (
+        <CustomDatatable
+          columns={columns}
+          data={filteredData}
+          bodyCellClassName="!py-2 lg:!py-3"
+          renderExpansion={(row) => (
+            <div className="py-4 pl-6 lg:pl-40 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
+              <div className="flex flex-wrap lg:flex-nowrap items-end gap-x-8 lg:gap-x-[140px] gap-y-4 text-sm !overflow-visible">
+                {/* Thông tin hiển thị khi bị ẩn ở bảng chính trên Mobile */}
+                <div className="flex flex-col gap-1 sm:hidden flex-none !overflow-visible">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Loại kho</span>
+                  <div className="relative w-40">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setIsTypeMgmtModalOpen(true); }}
+                      className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+                    >
+                      hiệu chỉnh
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rowId = row.id || row.ID;
+                        if (openTypeMenuId !== rowId) setTypeMenuSearchQuery('');
+                        setOpenTypeMenuId(openTypeMenuId === rowId ? null : rowId);
+                      }}
+                      className="bg-white border border-gray-300 text-gray-900 text-[11px] rounded-lg p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[30px] w-full block hover:border-blue-400 transition-colors font-bold"
+                    >
+                      <span className="truncate block">
+                        {types.find(t => String(t.value) === String(row.type || row.Type))?.label || '-- Chọn loại --'}
+                      </span>
+                      <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                        <ChevronDown size={14} />
+                      </div>
+                    </button>
+
+                    {openTypeMenuId === (row.id || row.ID) && (
+                      <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+                        <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                          <div className="relative">
+                            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                              type="text"
+                              className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+                              placeholder="Tìm nhanh..."
+                              value={typeMenuSearchQuery}
+                              onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              autoFocus
+                            />
+                          </div>
+                        </div>
+                        <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
+                          {types.filter(t => t.label.toLowerCase().includes(typeMenuSearchQuery.toLowerCase())).map((t) => (
+                            <button
+                              key={t.value}
+                              onClick={() => {
+                                handleTypeChange(row, t.value);
+                                setOpenTypeMenuId(null);
+                              }}
+                              className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.type || row.Type) === String(t.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                            >
+                              <span className="block w-full truncate">{t.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1 sm:hidden flex-none">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Số lượng tối đa</span>
+                  <span className="text-gray-900 font-medium">{row.available || row.Available || 0}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        />
+      )}
 
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalMode === 'add' ? 'Thêm nhà kho mới' : 'Chỉnh sửa nhà kho'} isMaximized={isModalMaximized} onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}>
         <form onSubmit={handleModalSubmit} className="space-y-4">
@@ -771,8 +894,9 @@ export const Warehouses = () => {
                 onChange={(e) => setTypeSearch(e.target.value)}
               />
             </div>
-            <button onClick={() => handleOpenTypeEdit('add')} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors">
-              <Plus size={16} /> Thêm loại kho
+            <button onClick={() => handleOpenTypeEdit('add')} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
+              <span className="hidden sm:inline">Thêm loại kho</span>
+              <span className="sm:hidden">Thêm</span>
             </button>
           </div>
           <div className={`${isTypeMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[450px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm transition-all duration-300`}>
@@ -803,7 +927,8 @@ export const Warehouses = () => {
               />
             </div>
             <button onClick={() => handleOpenLocEdit('add')} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors">
-              <Plus size={16} /> Thêm vị trí
+              <span className="hidden sm:inline">Thêm vị trí</span>
+              <span className="sm:hidden">Thêm</span>
             </button>
           </div>
           <div className={`${isLocMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[450px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm transition-all duration-300`}>

@@ -235,15 +235,31 @@ export const WarehouseLocations = () => {
   };
 
   const rackColumns = [
-    { header: 'STT', render: (_, { index }) => index },
-    { header: 'Tên Kệ', accessor: 'label' },
+    {
+      header: 'STT',
+      className: 'text-[11px] sm:text-sm !px-2',
+      headerCellClassName: 'text-[11px] sm:text-xs !px-2',
+      render: (_, { index }) => index
+    },
+    {
+      header: <><span className="hidden sm:inline">Tên Kệ</span><span className="sm:hidden">Tên</span></>,
+      className: 'text-[11px] sm:text-sm !px-2',
+      headerCellClassName: 'text-[11px] sm:text-xs !px-2',
+      accessor: 'label'
+    },
     {
       header: 'Hành động',
-      className: 'text-right pr-5',
+      className: 'text-right pr-2 sm:pr-5',
       render: (row) => (
         <div className="flex gap-2 justify-end">
-          <button onClick={() => handleOpenRackEdit('edit', row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Sửa</button>
-          <button onClick={() => setRackConfirmModal({ isOpen: true, id: row.value })} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Xóa</button>
+          <button
+            onClick={() => handleOpenRackEdit('edit', row)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-[11px] sm:text-xs transition-all active:scale-95"
+          >Sửa</button>
+          <button
+            onClick={() => setRackConfirmModal({ isOpen: true, id: row.value })}
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-[11px] sm:text-xs transition-all active:scale-95"
+          >Xóa</button>
         </div>
       )
     }
@@ -371,14 +387,17 @@ export const WarehouseLocations = () => {
 
   const columns = [
     // Checkbox column
-    { header: 'STT', render: (row, { index }) => index }, // Changed to index + 1 for 1-based numbering
+    { header: 'STT', className: 'w-[30px] sm:w-[50px] !px-2 sm:!px-4 text-center', headerCellClassName: 'text-[10px] sm:text-sm', render: (row, { index }) => index },
     {
       header: 'Ô (Bin)',
+      className: 'text-[11px] sm:text-sm !px-2 sm:!px-6',
+      headerCellClassName: 'text-[10px] sm:text-sm',
       render: (row) => `${row.bin || row.Bin}`
     },
     {
       header: 'Kệ (Rack)',
-      className: 'w-48',
+      className: 'w-36 sm:w-48 !px-2 sm:!px-6',
+      headerCellClassName: 'text-[10px] sm:text-sm',
       render: (row) => (
         <div className="relative">
           <button
@@ -442,19 +461,28 @@ export const WarehouseLocations = () => {
     },
     {
       header: 'Tầng (Level)',
+      className: 'text-[11px] sm:text-sm !px-2 sm:!px-6',
+      headerCellClassName: 'text-[10px] sm:text-sm',
       render: (row) => `Tầng ${row.level || row.Level}`
     },
     {
-      header: 'Hành động',
-      className: 'text-right pr-4',
+      header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>,
+      className: 'text-center w-[100px] sm:w-[180px]',
       render: (row) => (
-        <div className="flex gap-2 justify-end">
-          <button onClick={() => handleEditItem(row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors">Sửa</button>
+        <div className="flex justify-center items-center gap-2">
           <button
-            onClick={() => setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa vị trí kho này?' })}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors"
+            onClick={(e) => { e.stopPropagation(); handleEditItem(row); }}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
+            title="Sửa"
           >
-            Xóa
+            <span>Sửa</span>
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa vị trí kho này?' }); }}
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
+            title="Xóa"
+          >
+            <span>Xóa</span>
           </button>
         </div>
       ),
@@ -462,39 +490,48 @@ export const WarehouseLocations = () => {
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-2 lg:p-6">
       <h2 className="text-2xl font-bold mb-4">Danh sách vị trí kho</h2>
 
-      <div className="flex justify-between items-center mb-4 gap-4">
-        <div className="relative max-w-[260px]">
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4">
+        {/* Thanh tìm kiếm */}
+        <div className="relative w-full lg:max-w-[260px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
             <Search size={18} />
           </span>
           <input
             type="text"
             placeholder="Tìm theo Ô, Kệ hoặc Tầng..."
-            className="block pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 sm:text-sm outline-none transition-all"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 sm:text-sm outline-none transition-all"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="flex gap-2">
-          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button className="flex-1 lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
+          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
+          <button onClick={handleAddItem} className="w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
             Thêm vị trí mới
           </button>
         </div>
       </div>
 
-      {loading ? <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p> : <CustomDatatable columns={columns} data={filteredData} />}
+      {loading ? (
+        <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p>
+      ) : (
+        <CustomDatatable
+          columns={columns}
+          data={filteredData}
+          bodyCellClassName="!py-2 lg:!py-3"
+        />
+      )}
 
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalMode === 'add' ? 'Thêm vị trí kho mới' : 'Chỉnh sửa vị trí kho'} isMaximized={isModalMaximized} onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)} maxWidth="max-w-xl">
         <form onSubmit={handleModalSubmit} className="space-y-4">
@@ -596,7 +633,7 @@ export const WarehouseLocations = () => {
       <Modal
         isOpen={isRackMgmtOpen}
         onClose={() => { setIsRackMgmtOpen(false); setIsRackMgmtMaximized(false); }}
-        title="Quản lý danh sách kệ của kho"
+        title={<><span className="hidden sm:inline">Quản lý danh sách kệ của kho</span><span className="sm:hidden">Quản lý danh sách kệ</span></>}
         maxWidth={isRackMgmtMaximized ? "max-w-full" : "max-w-5xl"}
         isMaximized={isRackMgmtMaximized}
         onMaximizeToggle={() => setIsRackMgmtMaximized(!isRackMgmtMaximized)}
@@ -613,8 +650,9 @@ export const WarehouseLocations = () => {
                 onChange={(e) => setRackSearchTerm(e.target.value)}
               />
             </div>
-            <button onClick={() => handleOpenRackEdit('add')} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors">
-              <Plus size={16} /> Thêm kệ
+            <button onClick={() => handleOpenRackEdit('add')} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
+              <span className="hidden sm:inline">Thêm kệ</span>
+              <span className="sm:hidden">Thêm</span>
             </button>
           </div>
           <div className={`${isRackMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[400px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm transition-all duration-300`}>

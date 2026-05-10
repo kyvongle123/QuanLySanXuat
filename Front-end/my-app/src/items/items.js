@@ -596,7 +596,7 @@ export const Items = () => {
   const itemColumns = [
     {
       header: '',
-      className: 'w-[20px] sm:w-[40px] !px-2 text-center',
+      className: 'w-[20px] sm:w-[40px] !px-2 sm:!px-6 text-center',
       render: (row, { isExpanded, toggleExpand }) => (
         <button
           onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
@@ -609,12 +609,12 @@ export const Items = () => {
         </button>
       ),
     },
-    { header: 'STT', className: 'w-[30px] sm:w-[50px] !px-2 text-center', headerCellClassName: 'text-[10px] sm:text-sm', render: (row, { index }) => index },
-    { header: 'Tên sản phẩm', accessor: 'name', headerCellClassName: 'text-[10px] sm:text-sm', className: 'font-medium text-blue-600 text-[11px] sm:text-sm min-w-[100px] sm:min-w-[140px] !px-2' },
+    { header: 'STT', className: 'w-[30px] sm:w-[50px] !px-2 sm:!px-6 text-center', headerCellClassName: 'text-[10px] sm:text-sm', render: (row, { index }) => index },
+    { header: 'Tên sản phẩm', accessor: 'name', headerCellClassName: 'text-[10px]  sm:text-sm', className: 'font-medium text-blue-600 text-[11px] sm:text-sm min-w-[100px] sm:min-w-[140px] !px-2 sm:!px-6' },
     {
       header: 'Danh mục',
-      className: 'hidden lg:table-cell w-[180px]',
-      headerCellClassName: 'hidden lg:table-cell text-[10px] sm:text-sm',
+      className: 'hidden lg:table-cell w-[180px] lg:relative lg:left-[-80px]',
+      headerCellClassName: 'hidden lg:table-cell text-[10px] sm:text-sm lg:relative lg:left-[-80px]',
       render: (row) => (
         <div className="relative">
           <button
@@ -678,8 +678,8 @@ export const Items = () => {
     },
     {
       header: 'Giá (VNĐ)',
-      className: 'hidden sm:table-cell w-[120px] text-left',
-      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
+      className: 'hidden sm:table-cell w-[60px] sm:w-[150px] text-left lg:relative lg:left-[-80px]',
+      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm lg:relative lg:left-[-80px]',
       render: (row) => (
         <span className="text-gray-700 font-semibold text-sm">
           {row.price?.toLocaleString()}
@@ -689,8 +689,8 @@ export const Items = () => {
     {
       header: 'Tồn kho',
       accessor: 'inventory',
-      headerCellClassName: 'text-[10px] sm:text-sm',
-      className: 'w-[60px] sm:w-[100px] text-center text-[11px] sm:text-sm !px-2',
+      headerCellClassName: 'text-[10px] sm:text-sm lg:relative lg:left-[-80px]',
+      className: 'w-[60px] sm:w-[120px] text-center text-[11px] sm:text-sm !px-2 sm:!px-6 lg:relative lg:left-[-80px]',
       render: (row) => (
         <span>
           {row.inventory || 0}

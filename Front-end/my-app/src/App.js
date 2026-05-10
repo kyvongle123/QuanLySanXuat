@@ -32,7 +32,8 @@ import './index.css'; // Đảm bảo bạn định nghĩa layout trong index.cs
 import { MaterialReceipts } from './materialReceipts/materialReceipts';
 
 const AppContent = () => {
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  // Mặc định mở trên desktop (>= 1024px) và đóng trên mobile (< 1024px)
+  const [isSidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
