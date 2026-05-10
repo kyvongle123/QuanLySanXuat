@@ -596,7 +596,7 @@ export const Items = () => {
   const itemColumns = [
     {
       header: '',
-      className: 'w-[40px] text-center',
+      className: 'w-[20px] sm:w-[40px] !px-2 text-center',
       render: (row, { isExpanded, toggleExpand }) => (
         <button
           onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
@@ -609,11 +609,12 @@ export const Items = () => {
         </button>
       ),
     },
-    { header: 'STT', className: 'w-[50px] text-center', render: (row, { index }) => index },
-    { header: 'Tên sản phẩm', accessor: 'name', className: 'font-medium text-blue-600 w-[180px]' },
+    { header: 'STT', className: 'w-[30px] sm:w-[50px] !px-2 text-center', headerCellClassName: 'text-[10px] sm:text-sm', render: (row, { index }) => index },
+    { header: 'Tên sản phẩm', accessor: 'name', headerCellClassName: 'text-[10px] sm:text-sm', className: 'font-medium text-blue-600 text-[11px] sm:text-sm min-w-[100px] sm:min-w-[140px] !px-2' },
     {
       header: 'Danh mục',
-      className: 'w-[180px]',
+      className: 'hidden lg:table-cell w-[180px]',
+      headerCellClassName: 'hidden lg:table-cell text-[10px] sm:text-sm',
       render: (row) => (
         <div className="relative">
           <button
@@ -677,7 +678,8 @@ export const Items = () => {
     },
     {
       header: 'Giá (VNĐ)',
-      className: 'w-[120px] text-left',
+      className: 'hidden sm:table-cell w-[120px] text-left',
+      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
       render: (row) => (
         <span className="text-gray-700 font-semibold text-sm">
           {row.price?.toLocaleString()}
@@ -687,7 +689,8 @@ export const Items = () => {
     {
       header: 'Tồn kho',
       accessor: 'inventory',
-      className: 'w-[100px] text-center',
+      headerCellClassName: 'text-[10px] sm:text-sm',
+      className: 'w-[60px] sm:w-[100px] text-center text-[11px] sm:text-sm !px-2',
       render: (row) => (
         <span>
           {row.inventory || 0}
@@ -695,8 +698,8 @@ export const Items = () => {
       )
     },
     {
-      header: <div className="flex justify-center items-center w-full">Hành động</div>,
-      className: 'text-center w-[180px]',
+      header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>,
+      className: 'text-center w-[100px] sm:w-[180px]',
       render: (row, { isExpanded, toggleExpand }) => (
         <div className="flex justify-center items-center gap-3">
           {/* <RxDrawingPinFilled
@@ -718,15 +721,17 @@ export const Items = () => {
             <div className="flex gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
               <button
                 onClick={(e) => { e.stopPropagation(); handleEditItem(row); }}
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
+                title="Sửa"
               >
-                Sửa
+                <span className="sm:inline">Sửa</span>
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); handleDeleteItem(row.id); }}
-                className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+                className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
+                title="Xóa"
               >
-                Xóa
+                <span className="sm:inline">Xóa</span>
               </button>
             </div>
           )}
@@ -768,12 +773,12 @@ export const Items = () => {
   }, [categories, categorySearch]);
 
   return (
-    <div className="p-6"> {/* Removed bg-white, rounded-lg, shadow-md from here, moved to CustomDatatable */}
+    <div className="p-2 lg:p-6"> {/* Removed bg-white, rounded-lg, shadow-md from here, moved to CustomDatatable */}
       <h2 className="text-2xl font-bold mb-4">Danh sách thành phẩm</h2>
 
-      <div className="flex justify-between items-center mb-4 gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4">
         {/* Thanh tìm kiếm */}
-        <div className="relative w-full max-w-[280px]">
+        <div className="relative w-full lg:max-w-[280px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <Search size={18} className="text-gray-400" />
           </span>
@@ -786,7 +791,7 @@ export const Items = () => {
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {/* <button
             onClick={handleBulkDelete}
             disabled={selectedItemIds.length === 0}
@@ -796,15 +801,15 @@ export const Items = () => {
             Xóa nhiều dòng {selectedItemIds.length > 0 && `(${selectedItemIds.length})`}
           </button> */}
 
-          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+          <button className="flex-1 lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors">
+          <button onClick={handleAddItem} className="w-full lg:w-auto justify-center bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors text-sm">
             Thêm hàng hóa mới
           </button>
         </div>
@@ -817,14 +822,28 @@ export const Items = () => {
         <CustomDatatable
           columns={itemColumns}
           data={filteredItems}
+          bodyCellClassName="!py-2 lg:!py-3"
           renderExpansion={(row) => (
             (() => {
               const filteredStatuses = itemStatuses.filter(s =>
                 s.label.toLowerCase().includes(menuSearchQuery.toLowerCase())
               );
               return (
-                <div className="py-4 pl-40 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
-                  <div className="flex flex-wrap md:flex-nowrap items-end gap-x-[140px] gap-y-4 text-sm">
+                <div className="py-4 pl-6 lg:pl-40 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
+                  <div className="flex flex-wrap lg:flex-nowrap items-end gap-x-8 lg:gap-x-[140px] gap-y-4 text-sm">
+                    {/* Thông tin hiển thị khi bị ẩn ở bảng chính trên Mobile */}
+                    <div className="flex flex-col gap-1 lg:hidden flex-none">
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Danh mục</span>
+                      <span className="text-gray-900 font-medium">
+                        {categories.find(c => String(c.value) === String(row.category))?.label || 'Chưa chọn'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1 sm:hidden flex-none">
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Giá bán</span>
+                      <span className="text-gray-900 font-medium">{row.price?.toLocaleString()} VNĐ</span>
+                    </div>
+
                     {/* Cột 1: Vị trí */}
                     <div className="flex flex-col gap-1 w-full md:w-64 flex-none">
                       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Vị trí</span>
@@ -845,7 +864,7 @@ export const Items = () => {
                             setOpenManufactoryMenuId(null);
                             setOpenCategoryMenuId(null);
                           }}
-                          className="text-xs font-bold block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors text-blue-600"
+                          className="text-xs block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors"
                         >
                           <span className="truncate block">
                             {warehouses.find(w => String(w.value) === String(row.location))?.label || '-- Chọn --'}
@@ -856,7 +875,7 @@ export const Items = () => {
                         </button>
 
                         {openLocationMenuId === row.id && (
-                          <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+                          <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal z-[1000]">
                             <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                               <div className="relative">
                                 <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />

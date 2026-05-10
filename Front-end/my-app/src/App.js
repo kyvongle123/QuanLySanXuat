@@ -50,7 +50,7 @@ const AppContent = () => {
     <div className="flex flex-col h-screen">
       <Navbar onToggleSidebar={toggleSidebar} />
       <div className="flex flex-1 overflow-hidden">
-        {!isProfilePage && <Sidebar isOpen={isSidebarOpen} />}
+        {!isProfilePage && <Sidebar isOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />}
         <main className="flex-1 overflow-auto p-1 bg-gray-100">
           <Routes>
             <Route path="/" element={<Navigate to="/items" replace />} />

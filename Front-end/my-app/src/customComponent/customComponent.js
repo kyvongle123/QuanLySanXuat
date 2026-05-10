@@ -146,11 +146,11 @@ export const CustomDatatable = ({ columns, data, renderExpansion, paginationClas
       <div className={`relative z-0 px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-4 ${paginationClassName || ''}`}>
         <div className="flex items-center gap-6">
           <div className="text-sm text-gray-700">
-            Hiển thị trang <span className="font-medium">{currentPage}</span> / <span className="font-medium">{totalPages}</span>
+            <span className="hidden sm:inline">Hiển thị trang </span><span className="font-medium">{currentPage}</span> / <span className="font-medium">{totalPages}</span>
           </div>
 
           <div className="flex items-center gap-2 text-sm text-gray-600 border-l pl-6 border-gray-300">
-            <span>Hiển thị</span>
+            <span className="hidden sm:inline">Hiển thị</span>
             <select
               value={rowsPerPage}
               onChange={(e) => {
