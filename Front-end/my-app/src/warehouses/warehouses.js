@@ -22,7 +22,7 @@ export const Warehouses = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
-  const [currentEditingItem, setCurrentEditingItem] = useState({ type: '', available: 1, location: '' });
+  const [currentEditingItem, setCurrentEditingItem] = useState({ type: '', available: 0, location: '' });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
 
   const [openLocationMenuId, setOpenLocationMenuId] = useState(null);
@@ -131,7 +131,7 @@ export const Warehouses = () => {
 
   const handleAddItem = () => {
     setModalMode('add');
-    setCurrentEditingItem({ type: '', available: 1, location: '' });
+    setCurrentEditingItem({ type: '', available: 0, location: '' });
     setIsModalOpen(true);
   };
 
@@ -242,7 +242,7 @@ export const Warehouses = () => {
     const payload = {
       ID: warehouse.id,
       Type: parseInt(warehouse.type || warehouse.Type),
-      Available: parseInt(warehouse.available || warehouse.Available),
+      Available: Number(warehouse.available || warehouse.Available || 0),
       Location: parseInt(newLocationId)
     };
 
@@ -261,7 +261,7 @@ export const Warehouses = () => {
     const payload = {
       ID: warehouse.id,
       Type: parseInt(newTypeId),
-      Available: parseInt(warehouse.available || warehouse.Available),
+      Available: Number(warehouse.available || warehouse.Available || 0),
       Location: parseInt(warehouse.location || warehouse.Location)
     };
 
@@ -432,7 +432,7 @@ export const Warehouses = () => {
     const payload = {
       ID: currentEditingItem.id || 0,
       Type: parseInt(currentEditingItem.type),
-      Available: parseInt(currentEditingItem.available),
+      Available: Number(currentEditingItem.available || 0),
       Location: parseInt(currentEditingItem.location)
     };
 

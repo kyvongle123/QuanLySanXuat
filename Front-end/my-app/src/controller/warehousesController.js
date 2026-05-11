@@ -12,6 +12,7 @@ const normalizeWarehouseData = (data) => {
             type: item.type || item.Type,
             status: item.status || item.Status,
             location: item.location || item.Location,
+            available: item.available || item.Available || 0,
             // Thêm các trường khác nếu có
         }));
     }
@@ -22,6 +23,7 @@ const normalizeWarehouseData = (data) => {
         type: data.type || data.Type,
         status: data.status || data.Status,
         location: data.location || data.Location,
+        available: data.available || data.Available || 0,
         // Thêm các trường khác nếu có
     };
 };
