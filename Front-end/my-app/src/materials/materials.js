@@ -38,7 +38,11 @@ export const Material = () => {
   const [warehouses, setWarehouses] = useState([]);
   const [openLocationMenuId, setOpenLocationMenuId] = useState(null);
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [openTypeMenuId, setOpenTypeMenuId] = useState(null);
+  const [typeMenuSearchQuery, setTypeMenuSearchQuery] = useState('');
   const [isWarehousesModalOpen, setIsWarehousesModalOpen] = useState(false);
+  const [isLocMgmtOpen, setIsLocMgmtOpen] = useState(false);
+  const [isLocMgmtMaximized, setIsLocMgmtMaximized] = useState(false);
   const [isWarehousesMgmtMaximized, setIsWarehousesMgmtMaximized] = useState(false);
   const [warehouseSearchTerm, setWarehouseSearchTerm] = useState('');
   const [warehousesRawData, setWarehousesRawData] = useState([]);
@@ -63,7 +67,9 @@ export const Material = () => {
   useEffect(() => {
     const handleGlobalClick = () => {
       setOpenLocationMenuId(null);
+      setOpenTypeMenuId(null);
       setMenuSearchQuery('');
+      setTypeMenuSearchQuery('');
     };
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
@@ -91,7 +97,16 @@ export const Material = () => {
         setWarehousesRawData(warehousesData);
         setWarehouseTypes(typesData.map(wt => ({ value: wt.id, label: wt.name })));
         setWarehouseStatuses(statusesData.map(ws => ({ value: ws.id, label: ws.name })));
-        setWarehouseLocations(locationData);
+        setWarehouseLocations(locationData.map(l => {
+          const rackObj = rackData.find(r => String(r.id || r.ID) === String(l.racks || l.Racks));
+          const rackName = rackObj ? (rackObj.name || rackObj.Name) : (l.racks || l.Racks);
+          const binObj = binData.find(b => String(b.id || b.ID) === String(l.bin || l.Bin));
+          const binName = binObj ? (binObj.name || binObj.Name) : (l.bin || l.Bin);
+          return {
+            value: l.id || l.ID,
+            label: `Kệ ${rackName} - Tầng ${l.level || l.Level} - Ô ${binName}`
+          };
+        }));
         setWarehouseRacks(rackData);
         setWarehouseBins(binData);
       } catch (err) {
@@ -128,7 +143,7 @@ export const Material = () => {
   const filteredData = useMemo(() => {
     return materials.filter(m => {
       const catLabel = categories.find(c => String(c.value) === String(m.name))?.label || '';
-      const warehouseLabel = warehouses.find(w => String(w.value) === String(m.location))?.label || '';
+      const warehouseLabel = warehouseOptions.find(w => String(w.value) === String(m.location))?.label || '';
       return (
         catLabel.toLowerCase().includes(searchTerm.toLowerCase()) ||
         warehouseLabel.toLowerCase().includes(searchTerm.toLowerCase())
@@ -172,6 +187,38 @@ export const Material = () => {
     } catch (err) {
       console.error("Error updating location:", err);
       showNotification("Lỗi khi cập nhật vị trí.", "error");
+    }
+  };
+
+  const handleWarehouseLocationChange = async (warehouse, newLocationId) => {
+    const payload = {
+      ...warehouse,
+      location: parseInt(newLocationId),
+      Location: parseInt(newLocationId)
+    };
+
+    try {
+      await updateWarehouse(warehouse.id, payload);
+      setWarehousesRawData(prev => prev.map(w => (w.id || w.ID) === warehouse.id ? { ...w, location: parseInt(newLocationId), Location: parseInt(newLocationId) } : w));
+      showNotification("Cập nhật vị trí kho thành công!");
+    } catch (err) {
+      showNotification("Lỗi khi cập nhật vị trí kho.", "error");
+    }
+  };
+
+  const handleWarehouseTypeChange = async (warehouse, newTypeId) => {
+    const payload = {
+      ...warehouse,
+      type: parseInt(newTypeId),
+      Type: parseInt(newTypeId)
+    };
+
+    try {
+      await updateWarehouse(warehouse.id, payload);
+      setWarehousesRawData(prev => prev.map(w => (w.id || w.ID) === warehouse.id ? { ...w, type: parseInt(newTypeId), Type: parseInt(newTypeId) } : w));
+      showNotification("Cập nhật loại kho thành công!");
+    } catch (err) {
+      showNotification("Lỗi khi cập nhật loại kho.", "error");
     }
   };
 
@@ -384,38 +431,194 @@ export const Material = () => {
 
   // Định nghĩa cột cho bảng danh sách Nhà kho
   const warehouseTableColumns = useMemo(() => [
-    { header: 'STT', render: (_, { index }) => index + 1 },
-    { header: 'Mã kho', accessor: 'code' },
-    { header: 'Tên kho', accessor: 'name' },
+    {
+      header: '',
+      headerCellClassName: 'sm:hidden',
+      render: (row, { isExpanded, toggleExpand }) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
+          className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
+        >
+          <ChevronRight
+            size={18}
+            className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`}
+          />
+        </button>
+      ),
+      className: 'sm:hidden w-[20px] !px-1 sm:!px-6 text-center',
+    },
+    {
+      header: 'STT',
+      className: '!px-1 sm:!px-6',
+      render: (_, { index }) => index
+    },
+    {
+      header: 'Vị trí',
+      className: 'w-40 sm:w-64 !px-1 sm:!px-6',
+      headerCellClassName: 'text-[10px] sm:text-sm',
+      render: (row) => (
+        // <div className="relative">
+        //   <button
+        //     type="button"
+        //     onClick={(e) => { e.stopPropagation(); setIsLocMgmtOpen(true); }}
+        //     className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+        //   >
+        //     hiệu chỉnh
+        //   </button>
+        //   <CustomSelect
+        //     label="" // Label được xử lý bởi header cột
+        //     options={warehouseLocations}
+        //     value={row.location}
+        //     onChange={(e) => handleWarehouseLocationChange(row, e.target.value)}
+        //     className="text-[11px] font-bold block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors text-blue-600"
+        //   // CustomSelect tự quản lý trạng thái mở/đóng và tìm kiếm nội bộ
+        //   />
+        // </div>
+        <div className={`relative ${openLocationMenuId === row.id ? 'z-30' : 'z-10'}`}>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setIsLocMgmtOpen(true); }}
+            className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+          >
+            hiệu chỉnh
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (openLocationMenuId !== row.id) setMenuSearchQuery('');
+              setOpenLocationMenuId(openLocationMenuId === row.id ? null : row.id);
+            }}
+            className="bg-gray-50 border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[26px] font-bold text-blue-600"
+          >
+            <span className="truncate block">
+              {warehouseLocations.find(s => String(s.value) === String(row.location || row.Location))?.label || '-- Chọn vị trí --'}
+            </span>
+            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+              <ChevronDown size={14} />
+            </div>
+          </button>
+
+          {openLocationMenuId === row.id && (
+            <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+              <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                <div className="relative">
+                  <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+                    placeholder="Tìm nhanh vị trí..."
+                    value={menuSearchQuery}
+                    onChange={(e) => setMenuSearchQuery(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="max-h-56 overflow-y-auto flex flex-col gap-0.5">
+                {warehouseLocations.filter(s => s.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((s) => (
+                  <button
+                    key={s.value}
+                    onClick={() => handleLocationChange(row, s.value)}
+                    className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location || row.Location) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    <span className="block w-full !whitespace-normal break-words leading-tight">{s.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )
+    },
     {
       header: 'Loại kho',
-      render: (row) => warehouseTypes.find(wt => String(wt.value) === String(row.type))?.label || 'N/A'
+      className: 'hidden sm:table-cell w-32 sm:w-48 !px-1 sm:!px-6',
+      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
+      render: (row) => {
+        const rowId = row.id || row.ID;
+        const isOpen = openTypeMenuId === rowId;
+        const currentType = warehouseTypes.find(t => String(t.value) === String(row.type));
+
+        return (
+          <div className={`relative ${isOpen ? 'z-30' : 'z-10'}`}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (openTypeMenuId !== rowId) setTypeMenuSearchQuery('');
+                setOpenTypeMenuId(isOpen ? null : rowId);
+              }}
+              className="bg-gray-50 border border-gray-300 text-gray-900 text-[9px] sm:text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[26px] font-bold text-gray-700"
+            >
+              <span className="truncate block">
+                {currentType?.label || '-- Chọn loại --'}
+              </span>
+              <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                <ChevronDown size={14} />
+              </div>
+            </button>
+
+            {isOpen && (
+              <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+                <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                  <div className="relative">
+                    <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+                      placeholder="Tìm nhanh..."
+                      value={typeMenuSearchQuery}
+                      onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
+                  {warehouseTypes.filter(t => t.label.toLowerCase().includes(typeMenuSearchQuery.toLowerCase())).map((t) => (
+                    <button
+                      key={t.value}
+                      onClick={() => {
+                        handleWarehouseTypeChange(row, t.value);
+                        setOpenTypeMenuId(null);
+                      }}
+                      className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.type) === String(t.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      <span className="block w-full truncate">{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
     },
     {
       header: 'Hành động',
-      className: 'text-right pr-5',
+      className: 'text-right pr-5 !px-3 sm:!px-6',
       render: (row) => (
         <div className="flex gap-2 justify-end">
           <button
             onClick={() => { setEditingWarehouse(row); setWarehouseModalMode('edit'); setIsWarehouseEditModalOpen(true); }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+            className="bg-blue-600 px-2 sm:px-3 hover:bg-blue-700 text-white font-bold py-1 rounded text-xs transition-all active:scale-95"
           >Sửa</button>
           <button
             onClick={() => setConfirmModal({
               isOpen: true, id: row.id, type: 'deleteWarehouse', title: 'Xác nhận xóa kho', message: `Bạn có chắc chắn muốn xóa kho "${row.name}"?`
             })}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+            className="bg-red-500 px-2 sm:px-3 hover:bg-red-700 text-white font-bold py-1 rounded text-xs transition-all active:scale-95"
           >Xóa</button>
         </div>
       )
     }
-  ], [warehouseTypes, setEditingWarehouse, setWarehouseModalMode, setIsWarehouseEditModalOpen, setConfirmModal]);
+  ], [warehouseTypes, warehouseLocations, setEditingWarehouse, setWarehouseModalMode, setIsWarehouseEditModalOpen, setConfirmModal, handleWarehouseLocationChange, setIsLocMgmtOpen]);
 
   const categoryMgmtColumns = [
     { header: 'STT', className: 'text-[11px] sm:text-sm !px-2', headerCellClassName: 'text-[10px] sm:text-xs', render: (_, { index }) => index },
-    { header: 'Tên danh mục', className: 'text-[11px] sm:text-sm !px-2', headerCellClassName: 'text-[10px] sm:text-xs', render: (row) => <span className="font-bold text-gray-700">{row.label}</span> },
+    { header: <><span className="hidden sm:inline">Tên danh mục</span><span className="sm:hidden">Tên</span></>, className: 'text-[11px] sm:text-sm !px-2', headerCellClassName: 'text-[10px] sm:text-xs', render: (row) => <span className="font-bold text-gray-700">{row.label}</span> },
     {
-      header: 'Đơn vị tính',
+      header: <><span className="hidden sm:inline">Đơn vị tính</span><span className="sm:hidden">Đơn vị</span></>,
       className: 'text-[11px] sm:text-sm !px-2',
       headerCellClassName: 'text-[10px] sm:text-xs',
       render: (row) => <span className="text-gray-600">{row.unit || 'N/A'}</span>
@@ -773,8 +976,8 @@ export const Material = () => {
         onMaximizeToggle={() => setIsWarehousesMgmtMaximized(!isWarehousesMgmtMaximized)}
       >
         <div className="space-y-4">
-          <div className="flex justify-between items-center gap-4">
-            <div className="relative max-w-[350px] flex-1">
+          <div className="flex justify-between gap-4 items-center">
+            <div className="relative max-w-[350px]">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><Search size={16} /></span>
               <input
                 type="text"
@@ -784,9 +987,84 @@ export const Material = () => {
                 onChange={(e) => setWarehouseSearchTerm(e.target.value)}
               />
             </div>
+            <button
+              onClick={() => { setEditingWarehouse({ name: '', code: '', type: '', status: '', location: '' }); setWarehouseModalMode('add'); setIsWarehouseEditModalOpen(true); }}
+              className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1 transition-colors active:scale-95"
+            >
+              Thêm
+            </button>
           </div>
           <div className={`${isWarehousesMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[450px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm transition-all duration-300`}>
-            <CustomDatatable columns={warehouseTableColumns} data={warehousesRawData.filter(w => (w.name || '').toLowerCase().includes(warehouseSearchTerm.toLowerCase()) || (w.code || '').toLowerCase().includes(warehouseSearchTerm.toLowerCase()))} />
+            <CustomDatatable
+              columns={warehouseTableColumns}
+              data={warehousesRawData.filter(w => (w.name || '').toLowerCase().includes(warehouseSearchTerm.toLowerCase()) || (w.code || '').toLowerCase().includes(warehouseSearchTerm.toLowerCase()))}
+              renderExpansion={(row) => (
+                <div className="py-4 pl-6 pr-6 bg-blue-50/30 border-b border-gray-100 relative sm:hidden">
+                  <div className="flex flex-wrap items-end gap-x-8 gap-y-4 text-sm">
+                    {/* Loại kho */}
+                    <div className="flex flex-col gap-1 !overflow-visible">
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Loại kho</span>
+                      <div className="relative w-36">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rowId = row.id || row.ID;
+                            if (openTypeMenuId !== rowId) setTypeMenuSearchQuery('');
+                            setOpenTypeMenuId(openTypeMenuId === rowId ? null : rowId);
+                          }}
+                          className="bg-white border border-gray-300 text-gray-900 text-[11px] rounded-lg p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[30px] w-full block hover:border-blue-400 transition-colors font-bold"
+                        >
+                          <span className="truncate block">
+                            {warehouseTypes.find(t => String(t.value) === String(row.type || row.Type))?.label || '-- Chọn loại --'}
+                          </span>
+                          <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                            <ChevronDown size={14} />
+                          </div>
+                        </button>
+
+                        {openTypeMenuId === (row.id || row.ID) && (
+                          <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+                            <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                              <div className="relative">
+                                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                  type="text"
+                                  className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+                                  placeholder="Tìm nhanh..."
+                                  value={typeMenuSearchQuery}
+                                  onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  autoFocus
+                                />
+                              </div>
+                            </div>
+                            <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
+                              {warehouseTypes.filter(t => t.label.toLowerCase().includes(typeMenuSearchQuery.toLowerCase())).map((t) => (
+                                <button
+                                  key={t.value}
+                                  onClick={() => {
+                                    handleWarehouseTypeChange(row, t.value);
+                                    setOpenTypeMenuId(null);
+                                  }}
+                                  className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.type || row.Type) === String(t.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                                >
+                                  <span className="block w-full truncate">{t.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {/* Sức chứa */}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sức chứa</span>
+                      <span className="text-gray-900 font-medium">{row.available || row.Available || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            />
           </div>
         </div>
       </Modal>
@@ -795,7 +1073,7 @@ export const Material = () => {
       <Modal
         isOpen={isCategoryMgmtModalOpen}
         onClose={() => { setIsCategoryMgmtModalOpen(false); setIsCategoryMgmtMaximized(false); }}
-        title="Danh sách danh mục nguyên liệu"
+        title={<><span className="hidden sm:inline">Danh sách danh mục nguyên liệu</span><span className="sm:hidden">Danh sách danh mục</span></>}
         maxWidth={isCategoryMgmtMaximized ? "max-w-full" : "max-w-4xl"}
         isMaximized={isCategoryMgmtMaximized}
         onMaximizeToggle={() => setIsCategoryMgmtMaximized(!isCategoryMgmtMaximized)}
@@ -813,13 +1091,79 @@ export const Material = () => {
               />
             </div>
             <button onClick={() => handleOpenCategoryEdit('add')} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
-              <Plus size={16} />
               <span className="hidden sm:inline">Thêm danh mục</span>
               <span className="sm:hidden">Thêm</span>
             </button>
           </div>
           <div className={`${isCategoryMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[450px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm`}>
-            <CustomDatatable columns={categoryMgmtColumns} data={categories.filter(cat => cat.label.toLowerCase().includes(categorySearch.toLowerCase()))} />
+            <CustomDatatable
+              columns={categoryMgmtColumns}
+              data={categories.filter(cat => cat.label.toLowerCase().includes(categorySearch.toLowerCase()))}
+              renderExpansion={(row) => (
+                <div className="py-4 pl-12 pr-6 bg-blue-50/30 border-b border-gray-100 relative sm:hidden">
+                  <div className="flex flex-wrap items-end gap-x-8 gap-y-4 text-sm">
+                    <div className="flex flex-col gap-1 !overflow-visible">
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Loại kho</span>
+                      <div className="relative w-40">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rowId = row.id || row.ID;
+                            if (openTypeMenuId !== rowId) setTypeMenuSearchQuery('');
+                            setOpenTypeMenuId(openTypeMenuId === rowId ? null : rowId);
+                          }}
+                          className="bg-white border border-gray-300 text-gray-900 text-[11px] rounded-lg p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[30px] w-full block hover:border-blue-400 transition-colors font-bold"
+                        >
+                          <span className="truncate block">
+                            {warehouseTypes.find(t => String(t.value) === String(row.type))?.label || '-- Chọn loại --'}
+                          </span>
+                          <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                            <ChevronDown size={14} />
+                          </div>
+                        </button>
+
+                        {openTypeMenuId === (row.id || row.ID) && (
+                          <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+                            <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                              <div className="relative">
+                                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                  type="text"
+                                  className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+                                  placeholder="Tìm nhanh..."
+                                  value={typeMenuSearchQuery}
+                                  onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  autoFocus
+                                />
+                              </div>
+                            </div>
+                            <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
+                              {warehouseTypes.filter(t => t.label.toLowerCase().includes(typeMenuSearchQuery.toLowerCase())).map((t) => (
+                                <button
+                                  key={t.value}
+                                  onClick={() => {
+                                    handleWarehouseTypeChange(row, t.value);
+                                    setOpenTypeMenuId(null);
+                                  }}
+                                  className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.type) === String(t.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                                >
+                                  <span className="block w-full truncate">{t.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sức chứa</span>
+                      <span className="text-gray-900 font-medium">{row.available || row.Available || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            />
           </div>
         </div>
       </Modal>

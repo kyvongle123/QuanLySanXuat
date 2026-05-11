@@ -15,6 +15,7 @@ import { BsLayoutSidebarInset, BsLayoutSidebarInsetReverse } from "react-icons/b
 import { VscLayoutSidebarLeftDock, VscLayoutSidebarRightDock } from "react-icons/vsc";
 import { RxDrawingPinFilled } from "react-icons/rx";
 import { LuSquarePen } from "react-icons/lu";
+import { getWarehouseBins } from '../controller/warehouseBinsController';
 
 export const Items = () => {
   const [items, setItems] = useState([]);
@@ -24,6 +25,7 @@ export const Items = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLocMgmtOpen, setIsLocMgmtOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
   const [currentEditingItem, setCurrentEditingItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,7 +33,9 @@ export const Items = () => {
   const [openManufactoryMenuId, setOpenManufactoryMenuId] = useState(null);
   const [openStatusMenuId, setOpenStatusMenuId] = useState(null);
   const [openLocationMenuId, setOpenLocationMenuId] = useState(null);
+  const [openTypeMenuId, setOpenTypeMenuId] = useState(null);
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [typeMenuSearchQuery, setTypeMenuSearchQuery] = useState('');
   const [selectedItemIds, setSelectedItemIds] = useState([]);
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
@@ -65,7 +69,9 @@ export const Items = () => {
       setOpenManufactoryMenuId(null);
       setOpenStatusMenuId(null);
       setOpenLocationMenuId(null);
+      setOpenTypeMenuId(null);
       setMenuSearchQuery('');
+      setTypeMenuSearchQuery('');
     };
 
     document.addEventListener('click', handleGlobalClick);
@@ -133,18 +139,28 @@ export const Items = () => {
 
     const fetchWarehouses = async () => {
       try {
-        const [warehousesData, locationData, rackData, typesData, statusesData] = await Promise.all([
+        const [warehousesData, locationData, rackData, typesData, statusesData, binData] = await Promise.all([
           getWarehouses(),
           getWarehouseLocations(),
           getWarehouseRacks(),
           getWarehouseTypes(),
-          getWarehouseStatuses()
+          getWarehouseStatuses(),
+          getWarehouseBins()
         ]);
 
         setWarehousesRawData(warehousesData);
         setWarehouseTypes(typesData.map(wt => ({ value: wt.id, label: wt.name })));
         setWarehouseStatuses(statusesData.map(ws => ({ value: ws.id, label: ws.name })));
-        setWarehouseLocations(locationData.map(l => ({ value: l.id, label: `Bin ${l.bin} - Tầng ${l.level}` })));
+        setWarehouseLocations(locationData.map(l => {
+          const rackObj = rackData.find(r => String(r.id || r.ID) === String(l.racks || l.Racks));
+          const rackName = rackObj ? (rackObj.name || rackObj.Name) : (l.racks || l.Racks);
+          const binObj = binData.find(b => String(b.id || b.ID) === String(l.bin || l.Bin));
+          const binName = binObj ? (binObj.name || binObj.Name) : (l.bin || l.Bin);
+          return {
+            value: l.id || l.ID,
+            label: `Kệ ${rackName} - Tầng ${l.level || l.Level} - Ô ${binName}`
+          };
+        }));
 
         // Lọc những nhà kho có type === 1 và thiết kế lại label dựa trên vị trí
         const mappedWarehouses = warehousesData
@@ -258,6 +274,22 @@ export const Items = () => {
     setIsModalOpen(true);
   };
 
+  const handleWarehouseTypeChange = async (warehouse, newTypeId) => {
+    const payload = {
+      ...warehouse,
+      type: parseInt(newTypeId),
+      Type: parseInt(newTypeId)
+    };
+
+    try {
+      await updateWarehouse(warehouse.id, payload);
+      setWarehousesRawData(prev => prev.map(w => (w.id || w.ID) === warehouse.id ? { ...w, type: parseInt(newTypeId), Type: parseInt(newTypeId) } : w));
+      showNotification("Cập nhật loại kho thành công!");
+    } catch (err) {
+      showNotification("Lỗi khi cập nhật loại kho.", "error");
+    }
+  };
+
   const handleAddItem = () => {
     setModalMode('add');
     setCurrentEditingItem({
@@ -368,32 +400,119 @@ export const Items = () => {
   };
 
   const warehouseTableColumns = useMemo(() => [
-    { header: 'STT', render: (_, { index }) => index },
     {
-      header: 'Loại kho',
-      render: (row) => warehouseTypes.find(wt => String(wt.value) === String(row.type))?.label || 'N/A'
+      header: '',
+      headerCellClassName: 'sm:hidden',
+      render: (row, { isExpanded, toggleExpand }) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
+          className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
+        >
+          <ChevronRight
+            size={18}
+            className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`}
+          />
+        </button>
+      ),
+      className: 'sm:hidden w-[20px] !px-1 sm:!px-6 text-center',
     },
+    { header: 'STT', className: '!px-1 sm:!px-6', render: (_, { index }) => index },
     {
       header: 'Vị trí',
-      render: (row) => warehouseLocations.find(wl => String(wl.value) === String(row.location))?.label || 'N/A'
+      className: 'w-40 sm:w-64 !px-1 sm:!px-6',
+      headerCellClassName: 'text-[10px] sm:text-sm',
+      render: (row) => (
+        // <div className="relative">
+        //   <button
+        //     type="button"
+        //     onClick={(e) => { e.stopPropagation(); setIsLocMgmtOpen(true); }}
+        //     className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+        //   >
+        //     hiệu chỉnh
+        //   </button>
+        //   <CustomSelect
+        //     label="" // Label được xử lý bởi header cột
+        //     options={warehouseLocations}
+        //     value={row.location}
+        //     onChange={(e) => handleWarehouseLocationChange(row, e.target.value)}
+        //     className="text-[11px] font-bold block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors text-blue-600"
+        //   // CustomSelect tự quản lý trạng thái mở/đóng và tìm kiếm nội bộ
+        //   />
+        // </div>
+        <div className={`relative ${openLocationMenuId === row.id ? 'z-30' : 'z-10'}`}>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setIsLocMgmtOpen(true); }}
+            className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+          >
+            hiệu chỉnh
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (openLocationMenuId !== row.id) setMenuSearchQuery('');
+              setOpenLocationMenuId(openLocationMenuId === row.id ? null : row.id);
+            }}
+            className="bg-gray-50 border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[26px] font-bold text-blue-600"
+          >
+            <span className="truncate block">
+              {warehouseLocations.find(s => String(s.value) === String(row.location || row.Location))?.label || '-- Chọn vị trí --'}
+            </span>
+            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+              <ChevronDown size={14} />
+            </div>
+          </button>
+
+          {openLocationMenuId === row.id && (
+            <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+              <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                <div className="relative">
+                  <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+                    placeholder="Tìm nhanh vị trí..."
+                    value={menuSearchQuery}
+                    onChange={(e) => setMenuSearchQuery(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="max-h-56 overflow-y-auto flex flex-col gap-0.5">
+                {warehouseLocations.filter(s => s.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((s) => (
+                  <button
+                    key={s.value}
+                    onClick={() => handleLocationChange(row, s.value)}
+                    className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location || row.Location) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    <span className="block w-full !whitespace-normal break-words leading-tight">{s.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )
     },
     {
       header: 'Hành động',
-      className: 'text-right pr-5',
+      className: 'text-right pr-5 !px-3 sm:!px-6',
       render: (row) => (
         <div className="flex gap-2 justify-end">
           <button
             onClick={() => { setEditingWarehouse(row); setWarehouseModalMode('edit'); setIsWarehouseEditModalOpen(true); }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95"
           >Sửa</button>
           <button
             onClick={() => handleDeleteWarehouse(row.id)}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95"
           >Xóa</button>
         </div>
       )
     }
-  ], [warehouseTypes, warehouseStatuses, warehouseLocations, handleDeleteWarehouse]);
+  ], [warehouseTypes, warehouseStatuses, warehouseLocations, handleDeleteWarehouse, setIsLocMgmtOpen]);
 
   const handleWarehouseSubmit = async (e) => {
     e.preventDefault();
@@ -1009,11 +1128,80 @@ export const Items = () => {
               />
             </div>
             <button onClick={() => { setEditingWarehouse({ name: '', code: '', type: '', status: '', location: '' }); setWarehouseModalMode('add'); setIsWarehouseEditModalOpen(true); }} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
-              <Plus size={16} /> Thêm nhà kho
+              Thêm
             </button>
           </div>
           <div className={`${isWarehousesMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[450px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm transition-all duration-300`}> {/* This is the div for the CustomDatatable */}
-            <CustomDatatable columns={warehouseTableColumns} data={warehousesRawData.filter(w => (w.name || '').toLowerCase().includes(warehouseSearchTerm.toLowerCase()) || (w.code || '').toLowerCase().includes(warehouseSearchTerm.toLowerCase()))} />
+            <CustomDatatable
+              columns={warehouseTableColumns}
+              data={warehousesRawData.filter(w => (w.name || '').toLowerCase().includes(warehouseSearchTerm.toLowerCase()) || (w.code || '').toLowerCase().includes(warehouseSearchTerm.toLowerCase()))}
+              renderExpansion={(row) => (
+                <div className="py-4 pl-6 pr-6 bg-blue-50/30 border-b border-gray-100 relative sm:hidden">
+                  <div className="flex flex-wrap items-end gap-x-8 gap-y-4 text-sm">
+                    {/* Loại kho */}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Loại kho</span>
+                      <div className="relative w-36">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rowId = row.id || row.ID;
+                            if (openTypeMenuId !== rowId) setTypeMenuSearchQuery('');
+                            setOpenTypeMenuId(openTypeMenuId === rowId ? null : rowId);
+                          }}
+                          className="bg-white border border-gray-300 text-gray-900 text-[11px] rounded-lg p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[30px] w-full block hover:border-blue-400 transition-colors font-bold"
+                        >
+                          <span className="truncate block">
+                            {warehouseTypes.find(t => String(t.value) === String(row.type || row.Type))?.label || '-- Chọn loại --'}
+                          </span>
+                          <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                            <ChevronDown size={14} />
+                          </div>
+                        </button>
+
+                        {openTypeMenuId === (row.id || row.ID) && (
+                          <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+                            <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                              <div className="relative">
+                                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                  type="text"
+                                  className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+                                  placeholder="Tìm nhanh..."
+                                  value={typeMenuSearchQuery}
+                                  onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  autoFocus
+                                />
+                              </div>
+                            </div>
+                            <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
+                              {warehouseTypes.filter(t => t.label.toLowerCase().includes(typeMenuSearchQuery.toLowerCase())).map((t) => (
+                                <button
+                                  key={t.value}
+                                  onClick={() => {
+                                    handleWarehouseTypeChange(row, t.value);
+                                    setOpenTypeMenuId(null);
+                                  }}
+                                  className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.type || row.Type) === String(t.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                                >
+                                  <span className="block w-full truncate">{t.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {/* Sức chứa */}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sức chứa</span>
+                      <span className="text-gray-900 font-medium">{row.available || row.Available || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            />
           </div>
         </div>
       </Modal>

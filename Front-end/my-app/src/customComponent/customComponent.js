@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, Fragment, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check, ChevronDown, ArrowUp, ArrowDown, CheckCircle, XCircle, Search, Maximize, Minimize, Calendar, X } from 'lucide-react'; // Đã chuyển lại lucide-react như bạn yêu cầu
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check, ChevronDown, ArrowUp, ArrowDown, CheckCircle, XCircle, Search, Maximize, Minimize, Calendar, X } from 'lucide-react';
 
 export const CustomDatatable = ({ columns, data, renderExpansion, paginationClassName, headerCellClassName, bodyCellClassName }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -171,10 +171,12 @@ export const CustomDatatable = ({ columns, data, renderExpansion, paginationClas
           <button
             onClick={() => goToPage(1)}
             disabled={currentPage === 1}
-            className="px-3 py-1 text-sm font-medium rounded-md border border-gray-300 disabled:opacity-50 hover:bg-white transition-colors text-gray-700 bg-white"
+            className="p-1 sm:px-3 sm:py-1 text-sm font-medium rounded-md border border-gray-300 disabled:opacity-50 hover:bg-white transition-colors text-gray-700 bg-white flex items-center justify-center"
           >
-            Trang đầu
+            <span>Trang đầu</span>
           </button>
+
+          {/* Nút Previous Page */}
           <button
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage === 1}
@@ -182,6 +184,8 @@ export const CustomDatatable = ({ columns, data, renderExpansion, paginationClas
           >
             <ChevronLeft size={20} />
           </button>
+
+          {/* Nút Next Page */}
           <button
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage === totalPages}
@@ -192,9 +196,9 @@ export const CustomDatatable = ({ columns, data, renderExpansion, paginationClas
           <button
             onClick={() => goToPage(totalPages)}
             disabled={currentPage === totalPages}
-            className="px-3 py-1 text-sm font-medium rounded-md border border-gray-300 disabled:opacity-50 hover:bg-white transition-colors text-gray-700 bg-white"
+            className="p-1 sm:px-3 sm:py-1 text-sm font-medium rounded-md border border-gray-300 disabled:opacity-50 hover:bg-white transition-colors text-gray-700 bg-white flex items-center justify-center"
           >
-            Trang cuối
+            <span >Trang cuối</span>
           </button>
         </div>
       </div>
