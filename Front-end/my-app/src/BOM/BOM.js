@@ -15,6 +15,8 @@ export const BOM = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [openItemMenuId, setOpenItemMenuId] = useState(null);
   const [itemMenuSearchQuery, setItemMenuSearchQuery] = useState('');
+  const [focusedMaterialId, setFocusedMaterialId] = useState(null);
+  const [tempQuantity, setTempQuantity] = useState('');
   const [openMaterialMenuId, setOpenMaterialMenuId] = useState(null);
   const [materialMenuSearchQuery, setMaterialMenuSearchQuery] = useState('');
 
@@ -30,6 +32,7 @@ export const BOM = () => {
       setItemMenuSearchQuery('');
       setOpenMaterialMenuId(null);
       setMaterialMenuSearchQuery('');
+      setFocusedMaterialId(null);
     };
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
@@ -106,6 +109,23 @@ export const BOM = () => {
       showNotification("Cập nhật nguyên liệu thành công!");
     } catch (err) {
       showNotification("Lỗi khi cập nhật nguyên liệu.", "error");
+    }
+  };
+
+  const handleBOMQuickUpdate = async (bom, newMaterialId, newQuantity) => {
+    try {
+      const payload = {
+        ...bom,
+        materialCategory: parseInt(newMaterialId),
+        requiredQuantity: parseFloat(newQuantity) || 0
+      };
+      const updated = await updateBOM(bom.id, payload);
+      setBoms(prev => prev.map(b => b.id === updated.id ? updated : b));
+      setOpenMaterialMenuId(null);
+      setFocusedMaterialId(null);
+      showNotification("Cập nhật định mức thành công!");
+    } catch (err) {
+      showNotification("Lỗi khi cập nhật định mức.", "error");
     }
   };
 
@@ -324,7 +344,7 @@ export const BOM = () => {
             </button>
 
             {isOpen && (
-              <div className="absolute right-0 top-full mt-1 w-full min-w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top-right whitespace-normal">
+              <div className="absolute right-0 top-full mt-1 w-max min-w-[220px] bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top-right whitespace-normal">
                 <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                   <div className="relative">
                     <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -343,19 +363,40 @@ export const BOM = () => {
                   {materials.filter(m => m.label.toLowerCase().includes(materialMenuSearchQuery.toLowerCase())).map((m) => (
                     <button
                       key={m.value}
-                      onClick={() => handleBOMMaterialChange(row, m.value)}
-                      className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center justify-between min-w-0 group ${String(row.materialCategory) === String(m.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.innerWidth >= 640) {
+                          handleBOMMaterialChange(row, m.value);
+                        } else {
+                          const isCurrentlyFocused = focusedMaterialId === m.value;
+                          setFocusedMaterialId(isCurrentlyFocused ? null : m.value);
+                          setTempQuantity(row.requiredQuantity);
+                        }
+                      }}
+                      className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 group ${String(row.materialCategory) === String(m.value) || focusedMaterialId === m.value ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
                     >
-                      <span className="truncate flex-1">{m.label}</span>
-                      <div className="hidden group-hover:flex items-center gap-2 ml-2 shrink-0 animate-in fade-in slide-in-from-right-1 duration-200">
-                        <span className="text-[10px] text-gray-400 font-normal">Số lượng</span>
+                      <span className="truncate">{m.label}</span>
+                      <div className={`${focusedMaterialId === m.value ? 'flex' : 'hidden group-hover:flex'} items-center gap-1.5 ml-1.5 shrink-0 animate-in fade-in duration-200`}>
+                        <span className="text-gray-400 font-normal whitespace-nowrap">- Số lượng</span>
                         <input
                           type="number"
-                          className="w-14 border border-gray-300 rounded px-1 py-0.5 text-black font-normal outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                          defaultValue={row.requiredQuantity}
-                          onClick={(e) => e.stopPropagation()} // Ngăn chặn việc đóng menu khi click vào input
+                          className="w-12 border border-gray-300 rounded px-1 py-0 text-black font-normal outline-none focus:ring-1 focus:ring-blue-500 bg-white h-5"
+                          value={focusedMaterialId === m.value ? tempQuantity : row.requiredQuantity}
+                          onChange={(e) => setTempQuantity(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => e.stopPropagation()}
                         />
+                        <span className="text-gray-400 font-normal">{m.unit}</span>
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const qty = focusedMaterialId === m.value ? tempQuantity : row.requiredQuantity;
+                            handleBOMQuickUpdate(row, m.value, qty);
+                          }}
+                          className="ml-1 text-green-600 font-bold text-[10px] hover:text-green-700 active:scale-95 transition-all cursor-pointer"
+                        >
+                          Chọn
+                        </span>
                       </div>
                     </button>
                   ))}

@@ -6,7 +6,7 @@ import { CustomDatatable, AppNotification, CustomConfirm, Modal, CustomSelect } 
 import { getMaterials, createMaterial, updateMaterial, deleteMaterial } from '../controller/materialsController';
 import { getMaterialCategories, createMaterialCategory, updateMaterialCategory, deleteMaterialCategory } from '../controller/materialCategoriesController';
 import { getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse } from '../controller/warehousesController';
-import { getWarehouseLocations } from '../controller/warehouseLocationsController';
+import { getWarehouseLocations, createWarehouseLocation, updateWarehouseLocation, deleteWarehouseLocation } from '../controller/warehouseLocationsController';
 import { getWarehouseRacks } from '../controller/warehouseRacksController';
 import { getWarehouseTypes } from '../controller/warehouseTypesController';
 import { getWarehouseStatuses } from '../controller/warehouseStatusesController';
@@ -24,7 +24,8 @@ export const Material = () => {
   const [currentEditingItem, setCurrentEditingItem] = useState({ name: '', materialCategory: '', quantity: 0, unit: '', location: '' });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
   const [importingStates, setImportingStates] = useState({}); // { [materialId]: quantityString }
-
+  const [typeSearch, setTypeSearch] = useState('');
+  const [typeModalMode, setTypeModalMode] = useState('add');
   // States cho quản lý Danh mục nguyên liệu
   const [isCategoryMgmtModalOpen, setIsCategoryMgmtModalOpen] = useState(false);
   const [isCategoryMgmtMaximized, setIsCategoryMgmtMaximized] = useState(false);
@@ -41,6 +42,8 @@ export const Material = () => {
   const [openTypeMenuId, setOpenTypeMenuId] = useState(null);
   const [typeMenuSearchQuery, setTypeMenuSearchQuery] = useState('');
   const [isWarehousesModalOpen, setIsWarehousesModalOpen] = useState(false);
+  const [isTypeMgmtModalOpen, setIsTypeMgmtModalOpen] = useState(false);
+  const [isTypeMgmtMaximized, setIsTypeMgmtMaximized] = useState(false);
   const [isLocMgmtOpen, setIsLocMgmtOpen] = useState(false);
   const [isLocMgmtMaximized, setIsLocMgmtMaximized] = useState(false);
   const [isWarehousesMgmtMaximized, setIsWarehousesMgmtMaximized] = useState(false);
@@ -49,12 +52,20 @@ export const Material = () => {
   const [warehouseTypes, setWarehouseTypes] = useState([]);
   const [warehouseStatuses, setWarehouseStatuses] = useState([]);
   const [warehouseLocations, setWarehouseLocations] = useState([]);
+  const [rawWarehouseLocations, setRawWarehouseLocations] = useState([]);
+  const [locSearchTerm, setLocSearchTerm] = useState('');
+  const [isLocEditModalOpen, setIsLocEditModalOpen] = useState(false);
+  const [isLocEditMaximized, setIsLocEditMaximized] = useState(false);
+  const [locModalMode, setLocModalMode] = useState('add');
+  const [currentEditingLoc, setCurrentEditingLoc] = useState({ bin: '', racks: '', level: 1 });
+  const [locConfirmModal, setLocConfirmModal] = useState({ isOpen: false, id: null });
   const [warehouseRacks, setWarehouseRacks] = useState([]);
   const [warehouseBins, setWarehouseBins] = useState([]);
   const [isWarehouseEditModalOpen, setIsWarehouseEditModalOpen] = useState(false);
+  const [isWarehouseEditMaximized, setIsWarehouseEditMaximized] = useState(false);
   const [warehouseModalMode, setWarehouseModalMode] = useState('list');
   const [units, setUnits] = useState([]);
-  const [editingWarehouse, setEditingWarehouse] = useState({ name: '', code: '', type: '', status: '', location: '' });
+  const [editingWarehouse, setEditingWarehouse] = useState({ name: '', code: '', type: '', available: 0, location: '' });
 
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
@@ -95,6 +106,7 @@ export const Material = () => {
         setUnits(unitsData.map(u => ({ value: u.name || u.Name, label: u.name || u.Name })));
 
         setWarehousesRawData(warehousesData);
+        setRawWarehouseLocations(locationData.map(l => ({ ...l, id: l.id || l.ID })));
         setWarehouseTypes(typesData.map(wt => ({ value: wt.id, label: wt.name })));
         setWarehouseStatuses(statusesData.map(ws => ({ value: ws.id, label: ws.name })));
         setWarehouseLocations(locationData.map(l => {
@@ -102,6 +114,7 @@ export const Material = () => {
           const rackName = rackObj ? (rackObj.name || rackObj.Name) : (l.racks || l.Racks);
           const binObj = binData.find(b => String(b.id || b.ID) === String(l.bin || l.Bin));
           const binName = binObj ? (binObj.name || binObj.Name) : (l.bin || l.Bin);
+          console.log("rackName la", rackName, "level la", l.level, "binName la", binName);
           return {
             value: l.id || l.ID,
             label: `Kệ ${rackName} - Tầng ${l.level || l.Level} - Ô ${binName}`
@@ -109,6 +122,27 @@ export const Material = () => {
         }));
         setWarehouseRacks(rackData);
         setWarehouseBins(binData);
+
+        // Lọc những nhà kho có loại là Nguyên liệu (Type 2) và thiết kế lại label dựa trên vị trí
+        const mappedWarehouses = warehousesData
+          .filter(w => (w.type || w.Type) === 2)
+          .map(w => {
+            const locId = w.location || w.Location;
+            const loc = locationData.find(l => String(l.id || l.ID) === String(locId));
+            let label = w.name || 'N/A';
+
+            if (loc) {
+              const rackId = loc.racks || loc.Racks;
+              const rackObj = rackData.find(r => String(r.id || r.ID) === String(rackId));
+              const rackName = rackObj ? (rackObj.name || rackObj.Name) : rackId;
+              const level = loc.level || loc.Level;
+              const binObj = binData.find(b => String(b.id || b.ID) === String(loc.bin || loc.Bin));
+              const binName = binObj ? (binObj.name || binObj.Name) : (loc.bin || loc.Bin);
+              label = `Kho nguyên liệu: Kệ ${rackName} - Tầng ${level} - Ô ${binName}`;
+            }
+            return { value: w.id || w.ID, label };
+          });
+        setWarehouses(mappedWarehouses);
       } catch (err) {
         showNotification("Lỗi khi tải dữ liệu", "error");
       } finally {
@@ -118,32 +152,10 @@ export const Material = () => {
     fetchData();
   }, []);
 
-  // Tự động tính toán danh sách tùy chọn nhà kho dựa trên dữ liệu thô từ Backend
-  const warehouseOptions = useMemo(() => {
-    return warehousesRawData
-      .filter(w => (w.type || w.Type) === 2) // Chỉ lấy các kho có loại là Nguyên liệu (Type 2)
-      .map(w => {
-        const locId = w.location || w.Location;
-        const loc = warehouseLocations.find(l => String(l.id || l.ID) === String(locId));
-        let label = w.name || 'N/A';
-
-        if (loc) {
-          const rackId = loc.racks || loc.Racks;
-          const rackObj = warehouseRacks.find(r => String(r.id || r.ID) === String(rackId));
-          const rackName = rackObj ? (rackObj.name || rackObj.Name) : rackId;
-          const level = loc.level || loc.Level;
-          const binObj = warehouseBins.find(b => String(b.id || b.ID) === String(loc.bin || loc.Bin));
-          const binName = binObj ? (binObj.name || binObj.Name) : (loc.bin || loc.Bin);
-          label = `Kho nguyên liệu: Kệ ${rackName} - Tầng ${level} - Ô ${binName}`;
-        }
-        return { value: w.id || w.ID, label };
-      });
-  }, [warehousesRawData, warehouseLocations, warehouseRacks, warehouseBins]);
-
   const filteredData = useMemo(() => {
     return materials.filter(m => {
       const catLabel = categories.find(c => String(c.value) === String(m.name))?.label || '';
-      const warehouseLabel = warehouseOptions.find(w => String(w.value) === String(m.location))?.label || '';
+      const warehouseLabel = warehouses.find(w => String(w.value) === String(m.location))?.label || '';
       return (
         catLabel.toLowerCase().includes(searchTerm.toLowerCase()) ||
         warehouseLabel.toLowerCase().includes(searchTerm.toLowerCase())
@@ -206,6 +218,13 @@ export const Material = () => {
     }
   };
 
+  const handleOpenTypeEdit = (mode, type = null) => {
+    setTypeModalMode(mode);
+    setTypeForm(type ? { id: type.value, name: type.label } : { id: null, name: '' });
+    setIsTypeEditModalOpen(true);
+    setIsTypeEditMaximized(false);
+  };
+
   const handleWarehouseTypeChange = async (warehouse, newTypeId) => {
     const payload = {
       ...warehouse,
@@ -225,7 +244,12 @@ export const Material = () => {
   const handleWarehouseSubmit = async (e) => {
     e.preventDefault();
     try {
-      const payload = { ...editingWarehouse };
+      const payload = {
+        ...editingWarehouse,
+        type: editingWarehouse.type === '' ? null : parseInt(editingWarehouse.type),
+        available: editingWarehouse.available === '' ? null : parseInt(editingWarehouse.available),
+        location: editingWarehouse.location === '' ? null : parseInt(editingWarehouse.location),
+      };
       if (warehouseModalMode === 'add') {
         await createWarehouse(payload);
         showNotification("Thêm nhà kho thành công!");
@@ -240,6 +264,143 @@ export const Material = () => {
       showNotification("Lỗi khi lưu nhà kho", "error");
     }
   };
+
+  const handleOpenLocEdit = (mode, loc = null) => {
+    setLocModalMode(mode);
+    setCurrentEditingLoc(loc ? {
+      id: loc.id,
+      bin: loc.bin || loc.Bin,
+      racks: loc.racks || loc.Racks,
+      level: loc.level || loc.Level
+    } : { bin: '', racks: '', level: 1 });
+    setIsLocEditModalOpen(true);
+    setIsLocEditMaximized(false);
+  };
+
+  const handleLocSubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      ID: currentEditingLoc.id || 0,
+      Bin: parseInt(currentEditingLoc.bin),
+      Racks: parseInt(currentEditingLoc.racks),
+      Level: parseInt(currentEditingLoc.level)
+    };
+    try {
+      if (locModalMode === 'add') {
+        await createWarehouseLocation(payload);
+        showNotification("Thêm vị trí mới thành công!");
+      } else {
+        await updateWarehouseLocation(currentEditingLoc.id, payload);
+        showNotification("Cập nhật vị trí thành công!");
+      }
+      const locationData = await getWarehouseLocations();
+      setRawWarehouseLocations(locationData.map(l => ({ ...l, id: l.id || l.ID })));
+      setIsLocEditModalOpen(false);
+    } catch (err) {
+      showNotification("Lỗi khi lưu thông tin vị trí.", "error");
+    }
+  };
+
+  const handleLocDelete = async () => {
+    try {
+      await deleteWarehouseLocation(locConfirmModal.id);
+      showNotification("Xóa vị trí thành công!");
+      const locationData = await getWarehouseLocations();
+      setRawWarehouseLocations(locationData.map(l => ({ ...l, id: l.id || l.ID })));
+      setLocConfirmModal({ isOpen: false, id: null });
+    } catch (err) {
+      showNotification("Không thể xóa vị trí này vì có thể đang được sử dụng.", "error");
+    }
+  };
+
+  const filteredLocs = useMemo(() => {
+    return rawWarehouseLocations.filter(l => {
+      const rackLabel = warehouseRacks.find(r => String(r.id || r.ID) === String(l.racks || l.Racks))?.name || '';
+      const binLabel = warehouseBins.find(b => String(b.id || b.ID) === String(l.bin || l.Bin))?.name || '';
+      return (
+        rackLabel.toLowerCase().includes(locSearchTerm.toLowerCase()) ||
+        binLabel.toLowerCase().includes(locSearchTerm.toLowerCase()) ||
+        String(l.level || l.Level).includes(locSearchTerm)
+      );
+    });
+  }, [rawWarehouseLocations, locSearchTerm, warehouseRacks, warehouseBins]);
+
+  const locColumns = [
+    {
+      header: 'STT',
+      className: '!px-2 sm:!px-6',
+      render: (_, { index }) => index
+    },
+    {
+      header: 'Ô (Bin)',
+      className: '!px-2 sm:!px-6',
+      render: (row) => warehouseBins.find(b => String(b.id || b.ID) === String(row.bin || row.Bin))?.name || 'N/A'
+    },
+    {
+      header: 'Kệ (Rack)',
+      className: '!px-2 sm:!px-6',
+      render: (row) => <span className="font-bold text-blue-600">{warehouseRacks.find(r => String(r.id || r.ID) === String(row.racks || row.Racks))?.name || 'N/A'}</span>
+    },
+    {
+      header: 'Tầng (Level)',
+      className: '!px-2 sm:!px-6',
+      render: (row) => `Tầng ${row.level || row.Level}`
+    },
+    {
+      header: 'Hành động',
+      className: 'text-right pr-5 !px-2 sm:!px-6',
+      render: (row) => (
+        <div className="flex gap-2 justify-end">
+          <button onClick={() => handleOpenLocEdit('edit', row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-colors">Sửa</button>
+          <button
+            onClick={() => setLocConfirmModal({ isOpen: true, id: row.id || row.ID })}
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-colors"
+          >
+            Xóa
+          </button>
+        </div>
+      )
+    }
+  ];
+
+  const typeColumns = [
+    {
+      header: 'STT',
+      className: 'text-[11px] sm:text-sm !px-2',
+      headerCellClassName: 'text-[10px] sm:text-xs !px-2',
+      render: (_, { index }) => index
+    },
+    {
+      header: <><span className="hidden sm:inline">Tên loại kho</span><span className="sm:hidden">Tên</span></>,
+      className: 'text-[11px] sm:text-sm !px-2',
+      headerCellClassName: 'text-[10px] sm:text-xs !px-2',
+      render: (row) => <span className="font-bold text-gray-700">{row.label}</span>
+    },
+    {
+      header: 'Hành động',
+      className: 'text-right pr-2 sm:pr-5',
+      render: (row) => (
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={() => handleOpenTypeEdit('edit', row)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-[11px] sm:text-xs transition-all active:scale-95"
+          >Sửa</button>
+          <button
+            onClick={() => setConfirmModal({
+              isOpen: true,
+              id: row.value,
+              type: 'deleteType',
+              title: 'Xác nhận xóa',
+              message: `Bạn có chắc chắn muốn xóa loại kho "${row.label}"?`
+            })}
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-[11px] sm:text-xs transition-all active:scale-95"
+          >
+            Xóa
+          </button>
+        </div>
+      )
+    }
+  ];
 
   const handleAddItem = () => {
     setModalMode('add');
@@ -543,6 +704,13 @@ export const Material = () => {
         return (
           <div className={`relative ${isOpen ? 'z-30' : 'z-10'}`}>
             <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setIsTypeMgmtModalOpen(true); }}
+              className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+            >
+              hiệu chỉnh
+            </button>
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 if (openTypeMenuId !== rowId) setTypeMenuSearchQuery('');
@@ -612,7 +780,7 @@ export const Material = () => {
         </div>
       )
     }
-  ], [warehouseTypes, warehouseLocations, setEditingWarehouse, setWarehouseModalMode, setIsWarehouseEditModalOpen, setConfirmModal, handleWarehouseLocationChange, setIsLocMgmtOpen]);
+  ], [warehouseTypes, warehouseLocations, setEditingWarehouse, setWarehouseModalMode, setIsWarehouseEditModalOpen, setConfirmModal, handleWarehouseLocationChange, setIsLocMgmtOpen, setIsTypeMgmtModalOpen]);
 
   const categoryMgmtColumns = [
     { header: 'STT', className: 'text-[11px] sm:text-sm !px-2', headerCellClassName: 'text-[10px] sm:text-xs', render: (_, { index }) => index },
@@ -720,7 +888,7 @@ export const Material = () => {
             className="text-[11px] font-bold block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors text-blue-600"
           >
             <span className="truncate block">
-              {warehouseOptions.find(w => String(w.value) === String(row.location))?.label || '-- Chọn --'}
+              {warehouses.find(w => String(w.value) === String(row.location))?.label || '-- Chọn --'}
             </span>
             <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
               <ChevronDown size={14} />
@@ -744,7 +912,7 @@ export const Material = () => {
                 </div>
               </div>
               <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
-                {warehouseOptions.filter(w => w.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
+                {warehouses.filter(w => w.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
                   <button
                     key={w.value}
                     onClick={() => handleLocationChange(row, w.value)}
@@ -862,7 +1030,7 @@ export const Material = () => {
                       className="text-[11px] font-bold block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors text-blue-600"
                     >
                       <span className="truncate block">
-                        {warehouseOptions.find(w => String(w.value) === String(row.location))?.label || '-- Chọn --'}
+                        {warehouses.find(w => String(w.value) === String(row.location))?.label || '-- Chọn --'}
                       </span>
                       <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
                         <ChevronDown size={14} />
@@ -886,7 +1054,7 @@ export const Material = () => {
                           </div>
                         </div>
                         <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
-                          {warehouseOptions.filter(w => w.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
+                          {warehouses.filter(w => w.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
                             <button
                               key={w.value}
                               onClick={() => handleLocationChange(row, w.value)}
@@ -957,7 +1125,7 @@ export const Material = () => {
             >
               hiệu chỉnh
             </button>
-            <CustomSelect label="Vị trí kho" options={warehouseOptions} value={currentEditingItem?.location || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, location: e.target.value })} isModalMaximized={isModalMaximized} />
+            <CustomSelect label="Vị trí kho" options={warehouses} value={currentEditingItem?.location || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, location: e.target.value })} isModalMaximized={isModalMaximized} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={handleCloseModal} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Hủy</button>
@@ -1169,18 +1337,18 @@ export const Material = () => {
       </Modal>
 
       {/* Modal Thêm/Sửa Danh mục */}
-      <Modal isOpen={isCategoryEditModalOpen} onClose={() => setIsCategoryEditModalOpen(false)} title={categoryModalMode === 'add' ? 'Thêm danh mục mới' : 'Chỉnh sửa danh mục'} maxWidth="max-w-sm">
+      <Modal
+        isOpen={isCategoryEditModalOpen}
+        onClose={() => setIsCategoryEditModalOpen(false)}
+        title={categoryModalMode === 'add' ? 'Thêm danh mục mới' : 'Chỉnh sửa danh mục'}
+        maxWidth={isCategoryEditMaximized ? "max-w-full" : "max-w-sm"}
+        isMaximized={isCategoryEditMaximized}
+        onMaximizeToggle={() => setIsCategoryEditMaximized(!isCategoryEditMaximized)}
+      >
         <form onSubmit={handleSaveCategory} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-700">Tên danh mục</label>
-            <input
-              type="text"
-              value={categoryForm.name || ''}
-              onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-              className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-              required
-              autoFocus
-            />
+            <label className={`font-medium text-gray-700 ${isCategoryEditMaximized ? 'text-sm' : 'text-xs'}`}>Tên danh mục</label>
+            <input type="text" value={categoryForm.name || ''} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isCategoryEditMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`} required autoFocus />
           </div>
           <CustomSelect
             label="Đơn vị tính"
@@ -1190,11 +1358,160 @@ export const Material = () => {
             onChange={(e) => setCategoryForm({ ...categoryForm, unit: e.target.value })}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setIsCategoryEditModalOpen(false)} className="bg-gray-500 text-white px-4 py-1.5 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>
-            <button type="submit" className="bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 transition-colors text-sm font-bold">Lưu</button>
+            <button type="button" onClick={() => setIsCategoryEditModalOpen(false)} className={`bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors ${isCategoryEditMaximized ? 'px-6 py-2 text-base' : 'px-4 py-1.5 text-sm'}`}>Hủy</button>
+            <button type="submit" className={`bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-bold ${isCategoryEditMaximized ? 'px-8 py-2 text-base' : 'px-4 py-1.5 text-sm'}`}>Lưu</button>
           </div>
         </form>
       </Modal>
+
+      {/* Modal Thêm/Sửa Nhà kho */}
+      <Modal
+        isOpen={isWarehouseEditModalOpen}
+        onClose={() => { setIsWarehouseEditModalOpen(false); setIsWarehouseEditMaximized(false); }}
+        title={warehouseModalMode === 'add' ? "Thêm nhà kho mới" : "Chỉnh sửa nhà kho"}
+        maxWidth={isWarehouseEditMaximized ? "max-w-full" : "max-w-xl"}
+        isMaximized={isWarehouseEditMaximized}
+        onMaximizeToggle={() => setIsWarehouseEditMaximized(!isWarehouseEditMaximized)}
+      >
+        <form onSubmit={handleWarehouseSubmit} className="space-y-4">
+          <div className="relative">
+            <CustomSelect
+              label="Loại kho"
+              options={warehouseTypes}
+              value={editingWarehouse.type || ''}
+              onChange={(e) => setEditingWarehouse({ ...editingWarehouse, type: e.target.value })}
+              isModalMaximized={isWarehouseEditMaximized}
+            />
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsLocMgmtOpen(true)}
+              className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 text-[11px] font-bold underline z-10"
+            >
+              hiệu chỉnh
+            </button>
+            <CustomSelect
+              label="Vị trí chi tiết"
+              options={warehouseLocations}
+              value={editingWarehouse.location || ''}
+              onChange={(e) => setEditingWarehouse({ ...editingWarehouse, location: e.target.value })}
+              isModalMaximized={isWarehouseEditMaximized}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-700">Số lượng tối đa</label>
+            <input
+              type="number"
+              min="0"
+              value={editingWarehouse.available || 0}
+              onChange={(e) => setEditingWarehouse({ ...editingWarehouse, available: e.target.value })}
+              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isWarehouseEditMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={() => { setIsWarehouseEditModalOpen(false); setIsWarehouseEditMaximized(false); }} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Hủy</button>
+            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">Lưu vị trí</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isTypeMgmtModalOpen}
+        onClose={() => { setIsTypeMgmtModalOpen(false); setIsTypeMgmtMaximized(false); }}
+        title="Danh sách loại kho"
+        maxWidth={isTypeMgmtMaximized ? "max-w-full" : "max-w-5xl"}
+        isMaximized={isTypeMgmtMaximized}
+        onMaximizeToggle={() => setIsTypeMgmtMaximized(!isTypeMgmtMaximized)}
+      >
+        <div className="space-y-4">
+          <div className="flex justify-between items-center gap-4">
+            <div className="relative max-w-[350px]">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><Search size={16} /></span>
+              <input
+                type="text"
+                placeholder="Tìm tên loại kho hoặc ID"
+                className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                value={typeSearch}
+                onChange={(e) => setTypeSearch(e.target.value)}
+              />
+            </div>
+            <button onClick={() => handleOpenTypeEdit('add')} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
+              <span className="hidden sm:inline">Thêm loại kho</span>
+              <span className="sm:hidden">Thêm</span>
+            </button>
+          </div>
+          <div className={`${isTypeMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[450px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm transition-all duration-300`}>
+            <CustomDatatable columns={typeColumns} data={filteredTypes} />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Quản lý danh sách Vị trí chi tiết */}
+      <Modal
+        isOpen={isLocMgmtOpen}
+        onClose={() => { setIsLocMgmtOpen(false); setIsLocMgmtMaximized(false); }}
+        title="Danh sách vị trí nhà kho"
+        maxWidth={isLocMgmtMaximized ? "max-w-full" : "max-w-5xl"}
+        isMaximized={isLocMgmtMaximized}
+        onMaximizeToggle={() => setIsLocMgmtMaximized(!isLocMgmtMaximized)}
+      >
+        <div className="space-y-4">
+          <div className="flex justify-between items-center gap-4">
+            <div className="relative max-w-[350px]">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><Search size={16} /></span>
+              <input
+                type="text"
+                placeholder="Tìm tên ô, kệ hoặc tầng..."
+                className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                value={locSearchTerm}
+                onChange={(e) => setLocSearchTerm(e.target.value)}
+              />
+            </div>
+            <button onClick={() => handleOpenLocEdit('add')} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors">
+              <span className="hidden sm:inline">Thêm vị trí</span>
+              <span className="sm:hidden">Thêm</span>
+            </button>
+          </div>
+          <div className={`${isLocMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[450px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm transition-all duration-300`}>
+            <CustomDatatable columns={locColumns} data={filteredLocs} />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Thêm/Sửa Vị trí kho */}
+      <Modal
+        isOpen={isLocEditModalOpen}
+        onClose={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); }}
+        title={locModalMode === 'add' ? 'Thêm vị trí mới' : 'Sửa vị trí'}
+        maxWidth={isLocEditMaximized ? "max-w-full" : "max-w-xl"}
+        isMaximized={isLocEditMaximized}
+        onMaximizeToggle={() => setIsLocEditMaximized(!isLocEditMaximized)}
+      >
+        <form onSubmit={handleLocSubmit} className="space-y-4">
+          <CustomSelect label="Ô (Bin)" options={warehouseBins.map(b => ({ value: b.id || b.ID, label: b.name || b.Name }))} value={currentEditingLoc.bin || ''} onChange={(e) => setCurrentEditingLoc({ ...currentEditingLoc, bin: e.target.value })} isModalMaximized={isLocEditMaximized} />
+          <CustomSelect label="Kệ (Rack)" options={warehouseRacks.map(r => ({ value: r.id || r.ID, label: r.name || r.Name }))} value={currentEditingLoc.racks || ''} onChange={(e) => setCurrentEditingLoc({ ...currentEditingLoc, racks: e.target.value })} isModalMaximized={isLocEditMaximized} />
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-700">Tầng (Level)</label>
+            <input
+              type="number"
+              value={currentEditingLoc.level || ''}
+              onChange={(e) => setCurrentEditingLoc({ ...currentEditingLoc, level: e.target.value })}
+              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none text-sm ${isLocEditMaximized ? 'p-2' : 'p-1.5'}`}
+              required
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); }} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>
+            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-bold">Lưu</button>
+          </div>
+        </form>
+      </Modal>
+
+      <CustomConfirm isOpen={locConfirmModal.isOpen} onClose={() => setLocConfirmModal({ isOpen: false, id: null })} onConfirm={handleLocDelete} title="Xác nhận xóa vị trí" message="Hành động này không thể hoàn tác nếu vị trí đang có hàng hóa liên quan." type="delete" />
 
       <CustomConfirm
         isOpen={confirmModal.isOpen}
