@@ -534,7 +534,7 @@ export const Warehouses = () => {
   const columns = [
     {
       header: '',
-      className: 'w-[20px] sm:w-[40px] !px-2 sm:!px-4 text-center',
+      className: 'w-[20px] sm:w-[40px] !px-2 sm:!px-4 text-center sm:hidden',
       render: (row, { isExpanded, toggleExpand }) => (
         <button
           onClick={(e) => { e.stopPropagation(); toggleExpand(); }}

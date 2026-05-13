@@ -44,6 +44,9 @@ export const Material = () => {
   const [isWarehousesModalOpen, setIsWarehousesModalOpen] = useState(false);
   const [isTypeMgmtModalOpen, setIsTypeMgmtModalOpen] = useState(false);
   const [isTypeMgmtMaximized, setIsTypeMgmtMaximized] = useState(false);
+  const [isTypeEditModalOpen, setIsTypeEditModalOpen] = useState(false);
+  const [isTypeEditMaximized, setIsTypeEditMaximized] = useState(false);
+  const [typeForm, setTypeForm] = useState({ id: null, name: '' });
   const [isLocMgmtOpen, setIsLocMgmtOpen] = useState(false);
   const [isLocMgmtMaximized, setIsLocMgmtMaximized] = useState(false);
   const [isWarehousesMgmtMaximized, setIsWarehousesMgmtMaximized] = useState(false);
@@ -324,6 +327,13 @@ export const Material = () => {
       );
     });
   }, [rawWarehouseLocations, locSearchTerm, warehouseRacks, warehouseBins]);
+
+  const filteredTypes = useMemo(() => {
+    return warehouseTypes.filter(t =>
+      t.label.toLowerCase().includes(typeSearch.toLowerCase()) ||
+      String(t.value).includes(typeSearch)
+    );
+  }, [warehouseTypes, typeSearch]);
 
   const locColumns = [
     {
@@ -835,7 +845,7 @@ export const Material = () => {
     {
       header: 'Tên nguyên liệu',
       headerCellClassName: 'text-[10px] sm:text-sm',
-      className: 'min-w-[120px] sm:min-w-[200px] !px-2 sm:!px-6 text-[11px] sm:text-sm',
+      className: 'min-w-[120px] sm:min-w-[150px] !px-2 sm:!px-6 text-[11px] sm:text-sm',
       accessor: 'name',
       render: (row) => categories.find(c => String(c.value) === String(row.name))?.label || 'N/A'
     },
@@ -843,7 +853,7 @@ export const Material = () => {
       header: 'Số lượng',
       accessor: 'quantity',
       headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
-      className: 'hidden sm:table-cell min-w-[200px] text-sm',
+      className: 'hidden sm:table-cell min-w-[150px] text-sm',
       render: (row) => (
         <div className="flex items-center gap-1">
           <span >{row.quantity?.toLocaleString()} {row.unit}</span>
@@ -929,7 +939,7 @@ export const Material = () => {
     },
     {
       header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>,
-      className: 'text-center whitespace-nowrap w-[100px] sm:w-[250px]', // Tăng chiều rộng để chứa nút mới
+      className: 'text-center whitespace-nowrap w-[100px] sm:w-[150px]', // Tăng chiều rộng để chứa nút mới
       render: (row) => (
         <div className="flex gap-2 justify-end items-center">
           {importingStates[row.id] !== undefined ? ( // Kiểm tra nếu dòng này đang ở chế độ nhập hàng
