@@ -243,7 +243,7 @@ export const AppNotification = ({ isOpen, message, type = 'success', onClose }) 
   );
 };
 
-export const CustomSelect = ({ label, options, value, onChange, name, isModalMaximized = false, wrapText = false, isMulti = false, placement = 'bottom' }) => {
+export const CustomSelect = ({ label, options, value, onChange, name, isModalMaximized = false, wrapText = false, isMulti = false, placement = 'bottom', className, error = false, errorMessage = '' }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -273,12 +273,12 @@ export const CustomSelect = ({ label, options, value, onChange, name, isModalMax
 
   return (
     <div className="flex flex-col gap-1 w-full relative">
-      {label && <label className="text-xs font-medium text-gray-700">{label}</label>}
+      {label && <label className={`text-xs font-medium ${error ? 'text-red-600' : 'text-gray-700'}`}>{label}</label>}
       <div className={`relative ${isModalMaximized ? 'text-base' : 'text-sm'}`}>
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-full pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-left appearance-none cursor-pointer flex items-center ${isModalMaximized ? 'p-2 min-h-[44px]' : 'p-1.5 min-h-[38px]'}`}
+          className={`w-full pr-10 border ${error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} ${className || ''} rounded-md focus:outline-none focus:ring-2 transition-all bg-white text-left appearance-none cursor-pointer flex items-center ${isModalMaximized ? 'p-2 min-h-[44px]' : 'p-1.5 min-h-[38px]'}`}
         >
           <span className={`block flex-1 ${wrapText ? 'whitespace-normal break-words leading-tight py-0.5' : 'truncate'}`}>
             {isMulti ? (
@@ -375,6 +375,7 @@ export const CustomSelect = ({ label, options, value, onChange, name, isModalMax
           </>
         )}
       </div>
+      {errorMessage && <p className="text-xs font-medium text-red-600">{errorMessage}</p>}
     </div>
   );
 };

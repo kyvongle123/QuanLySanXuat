@@ -915,7 +915,7 @@ export const MaterialReceipts = () => {
   const columns = [
     {
       header: '',
-      className: 'w-[40px] text-center',
+      className: 'w-[30px] text-center !px-1 sm:!px-6',
       render: (row, { isExpanded, toggleExpand }) => (
         <button
           onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
@@ -928,17 +928,26 @@ export const MaterialReceipts = () => {
         </button>
       ),
     },
-    { header: 'STT', render: (_, { index }) => index },
-    { header: 'Mã', accessor: 'materialReceiptCode', className: 'w-39' },
-    { header: 'Số vận đơn', accessor: 'deliveryNoteNumber' },
+    { header: 'STT', className: 'w-[25px] text-center !px-1', render: (_, { index }) => index },
+    {
+      header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Mã phiếu</div>
+      , accessor: 'materialReceiptCode', className: 'font-medium text-blue-600 !px-2 w-[40px]'
+    },
+    {
+      header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Ngày nhận</div>,
+      className: 'w-[35px] sm:w-40 !px-2', // Hiển thị trên mobile, điều chỉnh chiều rộng
+      render: (row) => <span>{row.receivingDate ? new Date(row.receivingDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
+    },
+    { header: 'Số vận đơn', accessor: 'deliveryNoteNumber', className: 'hidden sm:table-cell' },
     {
       header: 'Kho lưu trữ',
+      className: 'hidden lg:table-cell w-64',
       render: (row) => (
         <div className="relative w-full">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); handleOpenWarehousesModal(); }}
-            className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+            className="absolute right-1 top-[-10px] text-blue-600 hover:text-blue-800 text-[10px] font-bold underline z-20 leading-none bg-white px-1 rounded border border-blue-50 transition-colors"
           >
             hiệu chỉnh
           </button>
@@ -952,58 +961,53 @@ export const MaterialReceipts = () => {
       )
     },
     {
-      header: 'Ngày nhận',
-      className: 'w-40',
-      render: (row) => <span>{row.receivingDate ? new Date(row.receivingDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
-    },
-
-    {
-      header: 'Hành động',
-      className: 'text-right pr-4',
+      header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm" > Hành động</div>,
+      className: 'text-right pr-2 sm:pr-4 w-[60px] sm:w-[150px]',
       render: (row) => (
-        <div className="flex gap-2 justify-end">
-          <button onClick={() => handleOpenModal('edit', row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95">Sửa</button>
-          <button onClick={() => handleDeleteRequest(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95">Xóa</button>
+        <div className="flex gap-1.5 justify-end">
+          <button onClick={() => handleOpenModal('edit', row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
+          <button onClick={() => handleDeleteRequest(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95">Xóa</button>
         </div>
       ),
     }
   ];
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-50/50">
+    <div className="p-2 sm:p-6 bg-gray-50/50 min-h-screen">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Danh sách phiếu nhập nguyên liệu</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Quản lý Phiếu nhập nguyên liệu</h2>
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <div className="relative w-full max-w-[280px]">
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4">
+        <div className="relative w-full lg:max-w-[300px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
             <Search size={18} />
           </span>
           <input
             type="text"
-            placeholder="Tìm theo mã phiếu"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all sm:text-sm"
+            placeholder="Tìm theo mã phiếu..."
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-2 w-full md:w-auto">
-          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
-            <FileUp size={18} />
-            Nhập Excel
-          </button>
-          <button
-            onClick={handleRequestExportExcel}
-            className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 text-sm"
-          >
-            <FileDown size={18} /> Xuất Excel
-          </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-row gap-2 w-full sm:w-auto">
+            <button className="flex-1 sm:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
+              <FileUp size={16} /> Nhập Excel
+            </button>
+            <button
+              onClick={handleRequestExportExcel}
+              className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
+            >
+              <FileDown size={16} /> Xuất Excel
+            </button>
+          </div>
           <button
             onClick={() => handleOpenModal('add')}
-            className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 text-sm"
+            className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
-            Thêm phiếu mới
+            <Plus size={18} /> Thêm phiếu mới
           </button>
         </div>
       </div>
@@ -1018,46 +1022,45 @@ export const MaterialReceipts = () => {
           <CustomDatatable
             columns={columns}
             data={filteredData}
+            bodyCellClassName="!py-2 sm:!py-3"
             renderExpansion={(row) => (
-              <div className="py-4 pl-24 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-y-4 gap-x-8 text-sm">
-                  {/* Nhóm Nhà cung cấp và Người nhận hàng chiếm 2 cột (50% diện tích) */}
-                  <div className="flex flex-col gap-4 md:col-span-2">
+              <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-y-6 gap-x-8 text-sm">
+                  <div className="flex flex-col gap-5 lg:col-span-2">
+                    {/* Hiển thị trên Mobile: Các trường bị ẩn ở bảng chính */}
+                    <div className="grid grid-cols-2 gap-4 sm:hidden"> {/* Chỉ hiển thị trên mobile */}
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">Số vận đơn</span>
+                        <span className="text-gray-700 font-medium">{row.deliveryNoteNumber || 'N/A'}</span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">Người nhận hàng</span>
+                        <div className="relative w-full"> {/* Rút gọn chiều rộng */}
+                          <SearchableSelect value={row.receiver} options={users} onChange={(val) => handleReceiverChange(row, val)} placeholder="Chọn người nhận..." className="w-full flex items-center border border-gray-300 rounded-md px-2 bg-white text-xs min-h-[34px]" />
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <div className="flex flex-col gap-1 lg:hidden">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">Kho lưu trữ</span>
+                      <div className="relative w-full">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenWarehousesModal(); }} className="absolute right-1 top-[-10px] text-blue-600 text-[9px] font-bold underline z-20 leading-none bg-white/80 px-1 rounded">hiệu chỉnh</button>
+                        <SearchableSelect value={row.warehouse} options={warehouses} onChange={(val) => handleWarehouseChange(row, val)} className="w-full flex items-center border border-gray-300 rounded-md px-2 bg-white text-xs min-h-[34px]" />
+                      </div>
+                    </div>
+
                     <div className="flex flex-col gap-1">
                       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Nhà cung cấp</span>
-                      <div className="relative max-w-[380px]">
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleOpenSuppliersModal(); }}
-                          className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
-                        >
-                          hiệu chỉnh
-                        </button>
-                        <SearchableSelect
-                          value={row.supplier}
-                          options={suppliers}
-                          onChange={(val) => handleSupplierChange(row, val)}
-                          placeholder="Chọn nhà cung cấp..."
-                          className="w-full flex items-center border border-gray-300 rounded-md px-2 !bg-white !text-xs !min-h-[30px]"
-                        />
+                      <div className="relative w-full max-w-[400px]">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenSuppliersModal(); }} className="absolute right-1 top-[-10px] text-blue-600 text-[9px] font-bold underline z-20 leading-none bg-white/80 px-1 rounded">hiệu chỉnh</button>
+                        <SearchableSelect value={row.supplier} options={suppliers} onChange={(val) => handleSupplierChange(row, val)} placeholder="Chọn nhà cung cấp..." className="w-full flex items-center border border-gray-300 rounded-md px-2 bg-white text-xs min-h-[34px]" />
                       </div>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Người nhận hàng</span>
-                      <div className="relative max-w-[250px]">
-                        <SearchableSelect
-                          value={row.receiver}
-                          options={users}
-                          onChange={(val) => handleReceiverChange(row, val)}
-                          placeholder="Chọn người nhận..."
-                          className="w-full flex items-center border border-gray-300 rounded-md px-2 !bg-white !text-xs !min-h-[30px]"
-                        />
-                      </div>
-                    </div>
+
                   </div>
 
-                  {/* Thông tin nguyên liệu dịch chuyển sang phải và chiếm 2 cột còn lại */}
-                  <div className="flex flex-col gap-1 md:col-span-2">
+                  <div className="flex flex-col gap-1 lg:col-span-2">
                     <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Thông tin nguyên liệu</span>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {(row.materialReceiptBatchList || []).slice(0, 3).map((batch, idx) => {
@@ -1084,22 +1087,22 @@ export const MaterialReceipts = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title={modalMode === 'add' ? 'Tạo phiếu nhập mới' : modalMode === 'edit' ? 'Cập nhật phiếu nhập' : 'Chi tiết phiếu nhập'}
+        title={<span className="text-lg sm:text-xl">{modalMode === 'add' ? 'Tạo phiếu nhập mới' : modalMode === 'edit' ? 'Cập nhật phiếu nhập' : 'Chi tiết phiếu nhập'}</span>}
         maxWidth={isModalMaximized ? "max-w-full" : "max-w-5xl"}
         isMaximized={isModalMaximized}
         onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}
       >
         {/* Tab Headers */}
-        <div className="flex border-b border-gray-200 mb-6 bg-gray-50 rounded-t-lg">
+        <div className="flex border-b border-gray-200 mb-6 bg-gray-50 rounded-t-lg overflow-x-auto custom-scrollbar no-scrollbar">
           {[
-            { id: 1, label: 'Thông tin đối chiếu' },
-            { id: 2, label: 'Thông tin nguyên liệu' },
-            { id: 3, label: 'Kiểm soát chất lượng' }
+            { id: 1, label: 'Đối chiếu' },
+            { id: 2, label: 'Nguyên liệu' },
+            { id: 3, label: 'Chất lượng' }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-1.5 text-sm font-bold transition-all ${activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-gray-500 hover:text-blue-400'}`}
+              className={`px-6 py-2 text-sm font-bold transition-all flex-1 sm:flex-none whitespace-nowrap ${activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-gray-500 hover:text-blue-400'}`}
             >
               {tab.label}
             </button>
@@ -1107,11 +1110,11 @@ export const MaterialReceipts = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <div className={`min-h-[400px] ${isModalMaximized ? 'overflow-y-auto max-h-[70vh]' : ''} !overflow-visible`}>
+          <div className={`min-h-[400px] overflow-y-auto max-h-[calc(100vh-320px)] sm:max-h-none sm:overflow-visible ${isModalMaximized ? 'lg:max-h-[70vh] lg:overflow-y-auto' : ''}`}>
 
             {/* Tab 1: Thông tin đối chiếu */}
             {activeTab === 1 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in duration-300 !overflow-visible">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in duration-300">
                 {/* Dòng 1: Mã phiếu nhập chiếm 1/2 */}
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-semibold text-gray-700">Mã phiếu nhập <span className="text-red-500">*</span></label>
@@ -1126,7 +1129,7 @@ export const MaterialReceipts = () => {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); handleOpenSuppliersModal(); }}
-                      className="absolute right-1 top-[-16px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+                      className="absolute right-1 top-[-18px] text-blue-600 hover:text-blue-800 text-[10px] font-bold underline z-20 leading-none bg-white px-1 rounded"
                     >
                       hiệu chỉnh
                     </button>
@@ -1145,7 +1148,7 @@ export const MaterialReceipts = () => {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); handleOpenWarehousesModal(); }}
-                      className="absolute right-1 top-[-16px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+                      className="absolute right-1 top-[-18px] text-blue-600 hover:text-blue-800 text-[10px] font-bold underline z-20 leading-none bg-white px-1 rounded"
                     >
                       hiệu chỉnh
                     </button>
@@ -1157,8 +1160,8 @@ export const MaterialReceipts = () => {
             )}
 
             {/* Tab 2: Thông tin nguyên liệu */}
-            {activeTab === 2 && (
-              <div className="flex flex-col gap-5 animate-in fade-in duration-300 !overflow-visible">
+            {activeTab === 2 && ( /* This is the div for Tab 2 content */
+              <div className="flex flex-col gap-5 animate-in fade-in duration-300">
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-semibold text-gray-700">Nguyên liệu nhập</label>
                   <MultiSearchableSelect
@@ -1176,13 +1179,15 @@ export const MaterialReceipts = () => {
                 </div>
 
                 {/* CustomDatatable đã thay thế bảng thủ công */}
-                <CustomDatatable columns={itemColumns} data={currentReceipt?.items || []} paginationClassName="!py-1 !px-4" headerCellClassName="!py-1" bodyCellClassName="!py-2" />
+                <div className="overflow-x-auto overflow-y-auto max-h-[350px] sm:max-h-none sm:overflow-visible custom-scrollbar border border-gray-100 sm:border-none rounded-lg">
+                  <CustomDatatable columns={itemColumns} data={currentReceipt?.items || []} paginationClassName="!py-1 !px-4" headerCellClassName="!py-1" bodyCellClassName="!py-2" />
+                </div>
               </div>
             )}
 
             {/* Tab 3: Thông tin kiểm soát chất lượng */}
-            {activeTab === 3 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in duration-300 !overflow-visible">
+            {activeTab === 3 && ( /* This is the div for Tab 3 content */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in duration-300">
                 {/* Hàng 1: Người nhận hàng chiếm 1/2 màn hình, nằm riêng một hàng */}
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-semibold text-gray-700">Người nhận hàng</label>
@@ -1202,9 +1207,10 @@ export const MaterialReceipts = () => {
                   <p className="text-[10px] text-gray-500 italic mt-0.5">* Quy định: 1 Trưởng ban và tối đa 2 Ủy ban kiểm nghiệm</p>
                 </div>
 
-                {/* Hàng 2: Chứng nhận xuất xứ (CO) và Chứng nhận chất lượng (CQ) nằm cùng một hàng */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Chứng nhận xuất xứ (CO)</label>
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                    Chứng nhận xuất xứ (CO) <span className="text-[10px] text-gray-400 font-normal">(PDF)</span>
+                  </label>
                   <div className="flex items-center">
                     <div className="relative flex-1 group">
                       <input type="file" onChange={(e) => handleFileUpload(e, 'certificateOfOrigin')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf" />
@@ -1215,7 +1221,7 @@ export const MaterialReceipts = () => {
                         {(currentReceipt?.certificateOfOrigin instanceof File || (currentReceipt?.certificateOfOrigin && typeof currentReceipt.certificateOfOrigin === 'string')) ? (
                           <FileText size={16} className="text-blue-500" />
                         ) : (
-                          <Upload size={16} className="text-gray-400 group-hover:text-blue-500" />
+                          <Upload size={18} className="text-gray-400 group-hover:text-blue-500" />
                         )}
                         <span className="text-xs text-gray-500 truncate max-w-[200px]">
                           {currentReceipt?.certificateOfOrigin instanceof File
@@ -1230,7 +1236,7 @@ export const MaterialReceipts = () => {
                       <button
                         type="button"
                         onClick={() => handleRequestDownload(`https://quanlysanxuat-back-end.onrender.com${currentReceipt.certificateOfOrigin}`)}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-r-lg hover:bg-blue-100 transition-colors border border-blue-200 shadow-sm"
+                        className="p-2 bg-blue-50 text-blue-600 rounded-r-lg hover:bg-blue-100 transition-colors border border-blue-200 shadow-sm h-full flex items-center"
                         title="Tải file hiện tại"
                       >
                         <FileDown size={18} />
@@ -1240,7 +1246,9 @@ export const MaterialReceipts = () => {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Chứng nhận chất lượng (CQ)</label>
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                    Chứng nhận chất lượng (CQ) <span className="text-[10px] text-gray-400 font-normal">(PDF/IMG)</span>
+                  </label>
                   <div className="flex items-center">
                     <div className="relative flex-1 group"> {/* This is the div (lines 747-763) */}
                       <input type="file" onChange={(e) => handleFileUpload(e, 'certificateOfQuality')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,image/*" />
@@ -1251,7 +1259,7 @@ export const MaterialReceipts = () => {
                         {(currentReceipt?.certificateOfQuality instanceof File || (currentReceipt?.certificateOfQuality && typeof currentReceipt.certificateOfQuality === 'string')) ? (
                           <FileText size={16} className="text-blue-500" />
                         ) : (
-                          <Upload size={16} className="text-gray-400 group-hover:text-blue-500" />
+                          <Upload size={18} className="text-gray-400 group-hover:text-blue-500" />
                         )}
                         <span className="text-xs text-gray-500 truncate max-w-[200px]">
                           {currentReceipt?.certificateOfQuality instanceof File
@@ -1266,7 +1274,7 @@ export const MaterialReceipts = () => {
                       <button
                         type="button"
                         onClick={() => handleRequestDownload(`https://quanlysanxuat-back-end.onrender.com${currentReceipt.certificateOfQuality}`)}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-r-lg hover:bg-blue-100 transition-colors border border-blue-200 shadow-sm"
+                        className="p-2.5 bg-blue-50 text-blue-600 rounded-r-lg hover:bg-blue-100 transition-colors border border-blue-200 shadow-sm h-full flex items-center"
                         title="Tải file hiện tại"
                       >
                         <FileDown size={18} />
@@ -1275,20 +1283,19 @@ export const MaterialReceipts = () => {
                   </div>
                 </div>
 
-                {/* Hàng 3: Biên bản giám định nằm riêng một hàng, bên dưới CO và CQ */}
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-semibold text-gray-700">Biên bản giám định</label>
                   <div className="flex items-center"> {/* This is the div (lines 778-794) */}
                     <div className="relative flex-1 group">
                       <input type="file" onChange={(e) => handleFileUpload(e, 'inspectationReport')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,image/*" />
-                      <div className={`w-full border-2 border-dashed border-gray-300 rounded-l-lg p-2 flex items-center justify-center gap-2 bg-gray-50 group-hover:border-blue-400 transition-all ${currentReceipt?.inspectationReport && typeof currentReceipt.inspectationReport === 'string'
+                      <div className={`w-full border-2 border-dashed border-gray-300 rounded-l-lg p-2.5 flex items-center justify-center gap-2 bg-gray-50 group-hover:border-blue-400 transition-all ${currentReceipt?.inspectationReport && typeof currentReceipt.inspectationReport === 'string'
                         ? 'border-r-0'
                         : ''
                         }`}>
                         {(currentReceipt?.inspectationReport instanceof File || (currentReceipt?.inspectationReport && typeof currentReceipt.inspectationReport === 'string')) ? (
                           <FileText size={16} className="text-blue-500" />
                         ) : (
-                          <Upload size={16} className="text-gray-400 group-hover:text-blue-500" />
+                          <Upload size={18} className="text-gray-400 group-hover:text-blue-500" />
                         )}
                         <span className="text-xs text-gray-500 truncate max-w-[200px]">
                           {currentReceipt?.inspectationReport instanceof File
@@ -1303,7 +1310,7 @@ export const MaterialReceipts = () => {
                       <button
                         type="button"
                         onClick={() => handleRequestDownload(`https://quanlysanxuat-back-end.onrender.com${currentReceipt.inspectationReport}`)}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-r-lg hover:bg-blue-100 transition-colors border border-blue-200 shadow-sm"
+                        className="p-2.5 bg-blue-50 text-blue-600 rounded-r-lg hover:bg-blue-100 transition-colors border border-blue-200 shadow-sm h-full flex items-center"
                         title="Tải file hiện tại"
                       >
                         <FileDown size={18} />
@@ -1315,34 +1322,41 @@ export const MaterialReceipts = () => {
 
                 <div className="md:col-span-2 flex flex-col gap-1">
                   <label className="text-sm font-semibold text-gray-700">Điều kiện bảo quản đặc biệt</label>
-                  <textarea name="specialStorageCondition" value={currentReceipt?.specialStorageCondition || ''} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[80px]" ></textarea>
+                  <textarea name="specialStorageCondition" value={currentReceipt?.specialStorageCondition || ''} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[40px] sm:min-h-[40px]" ></textarea>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t">
-            <button type="button" onClick={handleCloseModal} className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-medium transition-colors">
-              {modalMode === 'view' ? 'Đóng' : 'Hủy bỏ'}
-            </button>
-            {modalMode !== 'view' && (
-              <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-2 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95">
-                Lưu thông tin
+          <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t sm:justify-end sm:items-center">
+            {activeTab === 3 && (
+              <button
+                type="button"
+                disabled={!canExportInspectionReport}
+                onClick={handleExportInspectionReport}
+                className={`w-full sm:w-auto order-1 sm:order-2 px-6 py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md text-sm ${canExportInspectionReport
+                  ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-100'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                  }`}
+                title={!canExportInspectionReport ? "Yêu cầu chọn ít nhất 1 Trưởng ban và 1 Ủy ban kiểm nghiệm" : ""}
+              >
+                <FileText size={18} /> Biên bản giám định
               </button>
             )}
-            <button
-              type="button"
-              disabled={!canExportInspectionReport}
-              onClick={handleExportInspectionReport}
-              className={`px-6 py-2 rounded-lg font-bold flex items-center gap-2 transition-all active:scale-95 shadow-md text-sm ${canExportInspectionReport
-                ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-100'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
-                }`}
-              title={!canExportInspectionReport ? "Yêu cầu chọn ít nhất 1 Trưởng ban và 1 Ủy ban kiểm nghiệm" : ""}
-            >
-              <FileText size={18} />
-              Xuất biên bản giám định
-            </button>
+            <div className="flex gap-3 w-full sm:w-auto order-2 sm:order-1">
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg font-medium transition-colors text-sm"
+              >
+                {modalMode === 'view' ? 'Đóng' : 'Hủy bỏ'}
+              </button>
+              {modalMode !== 'view' && (
+                <button type="submit" className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm">
+                  Lưu dữ liệu
+                </button>
+              )}
+            </div>
           </div>
         </form>
       </Modal>
@@ -1515,13 +1529,15 @@ export const MaterialReceipts = () => {
             </div>
 
             {/* Bảng danh sách nguyên liệu y hệt Tab 2 */}
-            <CustomDatatable
-              columns={itemColumns}
-              data={currentReceipt?.items || []}
-              paginationClassName="!py-1 !px-4"
-              headerCellClassName="!py-1"
-              bodyCellClassName="!py-2"
-            />
+            <div className="overflow-x-auto overflow-y-auto max-h-[400px] sm:max-h-none sm:overflow-visible custom-scrollbar border border-gray-100 sm:border-none rounded-lg">
+              <CustomDatatable
+                columns={itemColumns}
+                data={currentReceipt?.items || []}
+                paginationClassName="!py-1 !px-4"
+                headerCellClassName="!py-1"
+                bodyCellClassName="!py-1"
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">

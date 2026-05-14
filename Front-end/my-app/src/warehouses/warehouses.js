@@ -14,15 +14,16 @@ import { LuSquarePen } from "react-icons/lu";
 export const Warehouses = () => {
   const [warehouses, setWarehouses] = useState([]);
   const [types, setTypes] = useState([]);
+  const [selectedWarehouseIds, setSelectedWarehouseIds] = useState([]);
   const [sections, setSections] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedWarehouseIds, setSelectedWarehouseIds] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentEditingItem, setCurrentEditingItem] = useState({ type: '', available: 0, location: '' });
+  const [modalErrors, setModalErrors] = useState({});
   const [isModalMaximized, setIsModalMaximized] = useState(false);
 
   const [openLocationMenuId, setOpenLocationMenuId] = useState(null);
@@ -33,6 +34,7 @@ export const Warehouses = () => {
   const [isTypeMgmtModalOpen, setIsTypeMgmtModalOpen] = useState(false);
   const [typeSearch, setTypeSearch] = useState('');
   const [typeForm, setTypeForm] = useState({ id: null, name: '' });
+  const [typeErrors, setTypeErrors] = useState({});
   const [isTypeMgmtMaximized, setIsTypeMgmtMaximized] = useState(false);
   const [isTypeEditMaximized, setIsTypeEditMaximized] = useState(false);
   const [isTypeEditModalOpen, setIsTypeEditModalOpen] = useState(false);
@@ -44,6 +46,7 @@ export const Warehouses = () => {
   const [isLocEditMaximized, setIsLocEditMaximized] = useState(false);
   const [locModalMode, setLocModalMode] = useState('add');
   const [currentEditingLoc, setCurrentEditingLoc] = useState({ bin: '', racks: '', level: 1 });
+  const [locErrors, setLocErrors] = useState({});
   const [locConfirmModal, setLocConfirmModal] = useState({ isOpen: false, id: null });
   const [isLocMgmtMaximized, setIsLocMgmtMaximized] = useState(false);
   const [rawRacks, setRawRacks] = useState([]);
@@ -131,7 +134,8 @@ export const Warehouses = () => {
 
   const handleAddItem = () => {
     setModalMode('add');
-    setCurrentEditingItem({ type: '', available: 0, location: '' });
+    setCurrentEditingItem({ type: '', available: '', location: '' });
+    setModalErrors({});
     setIsModalOpen(true);
   };
 
@@ -143,6 +147,7 @@ export const Warehouses = () => {
       available: item.available || item.Available,
       location: item.location || item.Location
     });
+    setModalErrors({});
     setIsModalOpen(true);
   };
 
@@ -165,18 +170,32 @@ export const Warehouses = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setIsModalMaximized(false);
+    setModalErrors({});
   };
 
   const handleOpenTypeEdit = (mode, type = null) => {
     setTypeModalMode(mode);
     setTypeForm(type ? { id: type.value, name: type.label } : { id: null, name: '' });
+    setTypeErrors({});
     setIsTypeEditModalOpen(true);
     setIsTypeEditMaximized(false);
   };
 
   const handleSaveType = async (e) => {
     e.preventDefault();
-    if (!typeForm.name.trim()) return;
+    const errors = {};
+
+    if (!typeForm.name?.trim()) {
+      errors.name = "Bắt buộc nhập Tên loại kho";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setTypeErrors(errors);
+      return;
+    }
+
+    setTypeErrors({});
+
     try {
       if (typeModalMode === 'add') {
         await createWarehouseType({ Name: typeForm.name });
@@ -285,13 +304,35 @@ export const Warehouses = () => {
       bin: loc.bin || loc.Bin,
       racks: loc.racks || loc.Racks,
       level: loc.level || loc.Level
-    } : { bin: '', racks: '', level: 1 });
+    } : { bin: '', racks: '', level: '' });
+    setLocErrors({});
     setIsLocEditModalOpen(true);
     setIsLocEditMaximized(false);
   };
 
   const handleLocSubmit = async (e) => {
     e.preventDefault();
+    const errors = {};
+
+    if (currentEditingLoc.bin === '' || currentEditingLoc.bin === null || currentEditingLoc.bin === undefined) {
+      errors.bin = "Bắt buộc nhập Ô";
+    }
+
+    if (!currentEditingLoc.racks) {
+      errors.racks = "Bắt buộc nhập Kệ (Rack)";
+    }
+
+    if (currentEditingLoc.level === '' || currentEditingLoc.level === null || currentEditingLoc.level === undefined) {
+      errors.level = "Bắt buộc nhập Tầng (Level)";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setLocErrors(errors);
+      return;
+    }
+
+    setLocErrors({});
+
     const payload = {
       ID: currentEditingLoc.id || 0,
       Bin: parseInt(currentEditingLoc.bin),
@@ -337,6 +378,11 @@ export const Warehouses = () => {
   }, [rawLocations, locSearchTerm, rawRacks, rawBins]);
 
   const locColumns = [
+    {
+      header: 'STT',
+      className: '!px-2 sm:!px-6',
+      render: (_, { index }) => index
+    },
     {
       header: 'Ô (Bin)',
       className: '!px-2 sm:!px-6',
@@ -429,6 +475,27 @@ export const Warehouses = () => {
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
+    const errors = {};
+
+    if (!currentEditingItem?.type) {
+      errors.type = "Bắt buộc nhập Loại kho";
+    }
+
+    if (!currentEditingItem?.location) {
+      errors.location = "Bắt buộc nhập Vị trí chi tiết";
+    }
+
+    if (currentEditingItem?.available === '' || currentEditingItem?.available === null || currentEditingItem?.available === undefined) {
+      errors.available = "Bắt buộc nhập Số lượng tối đa";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setModalErrors(errors);
+      return;
+    }
+
+    setModalErrors({});
+
     const payload = {
       ID: currentEditingItem.id || 0,
       Type: parseInt(currentEditingItem.type),
@@ -842,7 +909,7 @@ export const Warehouses = () => {
             >
               hiệu chỉnh
             </button>
-            <CustomSelect label="Loại kho" options={types} value={currentEditingItem?.type || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, type: e.target.value })} isModalMaximized={isModalMaximized} />
+            <CustomSelect label="Loại kho" options={types} value={currentEditingItem?.type || ''} onChange={(e) => { setModalErrors(prev => ({ ...prev, type: '' })); setCurrentEditingItem({ ...currentEditingItem, type: e.target.value }); }} isModalMaximized={isModalMaximized} error={!!modalErrors.type} errorMessage={modalErrors.type} />
           </div>
 
           <div className="relative">
@@ -853,18 +920,19 @@ export const Warehouses = () => {
             >
               hiệu chỉnh
             </button>
-            <CustomSelect label="Vị trí chi tiết" options={sections} value={currentEditingItem?.location || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, location: e.target.value })} isModalMaximized={isModalMaximized} />
+            <CustomSelect label="Vị trí chi tiết" options={sections} value={currentEditingItem?.location || ''} onChange={(e) => { setModalErrors(prev => ({ ...prev, location: '' })); setCurrentEditingItem({ ...currentEditingItem, location: e.target.value }); }} isModalMaximized={isModalMaximized} error={!!modalErrors.location} errorMessage={modalErrors.location} />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-700">Số lượng tối đa</label>
+            <label className={`text-xs font-medium ${modalErrors.available ? 'text-red-600' : 'text-gray-700'}`}>Số lượng tối đa</label>
             <input
               type="number"
               min="0"
-              value={currentEditingItem?.available || 0}
-              onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, available: e.target.value })}
-              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+              value={currentEditingItem?.available ?? ''}
+              onChange={(e) => { setModalErrors(prev => ({ ...prev, available: '' })); setCurrentEditingItem({ ...currentEditingItem, available: e.target.value }); }}
+              className={`w-full border ${modalErrors.available ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
             />
+            {modalErrors.available && <p className="text-xs font-medium text-red-600">{modalErrors.available}</p>}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -991,7 +1059,7 @@ export const Warehouses = () => {
       {/* Modal Thêm/Sửa Loại kho */}
       <Modal
         isOpen={isTypeEditModalOpen}
-        onClose={() => { setIsTypeEditModalOpen(false); setIsTypeEditMaximized(false); }}
+        onClose={() => { setIsTypeEditModalOpen(false); setIsTypeEditMaximized(false); setTypeErrors({}); }}
         title={typeModalMode === 'add' ? 'Thêm loại kho mới' : 'Sửa loại kho'}
         maxWidth={isTypeEditMaximized ? "max-w-full" : "max-w-sm"}
         isMaximized={isTypeEditMaximized}
@@ -999,17 +1067,17 @@ export const Warehouses = () => {
       >
         <form onSubmit={handleSaveType} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-700">Tên loại kho</label>
+            <label className={`text-xs font-medium ${typeErrors.name ? 'text-red-600' : 'text-gray-700'}`}>Tên loại kho</label>
             <input
               type="text"
               value={typeForm.name || ''}
-              onChange={(e) => setTypeForm({ ...typeForm, name: e.target.value })}
-              className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-              required
+              onChange={(e) => { setTypeErrors(prev => ({ ...prev, name: '' })); setTypeForm({ ...typeForm, name: e.target.value }); }}
+              className={`w-full border ${typeErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 focus:ring-2 outline-none text-sm`}
             />
+            {typeErrors.name && <p className="text-xs font-medium text-red-600">{typeErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => { setIsTypeEditModalOpen(false); setIsTypeEditMaximized(false); }} className="bg-gray-500 text-white px-4 py-1.5 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>
+            <button type="button" onClick={() => { setIsTypeEditModalOpen(false); setIsTypeEditMaximized(false); setTypeErrors({}); }} className="bg-gray-500 text-white px-4 py-1.5 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>
             <button type="submit" className="bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 transition-colors text-sm font-bold">Lưu</button>
           </div>
         </form>
@@ -1018,39 +1086,44 @@ export const Warehouses = () => {
       {/* Modal Thêm/Sửa Vị trí kho */}
       <Modal
         isOpen={isLocEditModalOpen}
-        onClose={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); }}
+        onClose={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); setLocErrors({}); }}
         title={locModalMode === 'add' ? 'Thêm vị trí mới' : 'Sửa vị trí'}
         maxWidth={isLocEditMaximized ? "max-w-full" : "max-w-xl"}
         isMaximized={isLocEditMaximized}
         onMaximizeToggle={() => setIsLocEditMaximized(!isLocEditMaximized)}
       >
         <form onSubmit={handleLocSubmit} className="space-y-4">
-          <CustomSelect
-            label="Ô (Bin)"
-            options={rawBins}
-            value={currentEditingLoc.bin || ''}
-            onChange={(e) => setCurrentEditingLoc({ ...currentEditingLoc, bin: e.target.value })}
-            isModalMaximized={isLocEditMaximized}
-          />
+          <div className="relative">
+            <label className={`text-xs font-medium ${locErrors.bin ? 'text-red-600' : 'text-gray-700'}`}>Ô</label>
+            <input
+              type="number"
+              value={currentEditingLoc?.bin ?? ''}
+              onChange={(e) => { setLocErrors(prev => ({ ...prev, bin: '' })); setCurrentEditingLoc({ ...currentEditingLoc, bin: e.target.value }); }}
+              className={`w-full border ${locErrors.bin ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none ${isLocEditMaximized ? 'text-base' : 'text-sm'}`}
+            />
+            {locErrors.bin && <p className="text-xs font-medium text-red-600">{locErrors.bin}</p>}
+          </div>
           <CustomSelect
             label="Kệ (Rack)"
             options={rawRacks}
             value={currentEditingLoc.racks || ''}
-            onChange={(e) => setCurrentEditingLoc({ ...currentEditingLoc, racks: e.target.value })}
+            onChange={(e) => { setLocErrors(prev => ({ ...prev, racks: '' })); setCurrentEditingLoc({ ...currentEditingLoc, racks: e.target.value }); }}
             isModalMaximized={isLocEditMaximized}
+            error={!!locErrors.racks}
+            errorMessage={locErrors.racks}
           />
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-700">Tầng (Level)</label>
+            <label className={`text-xs font-medium ${locErrors.level ? 'text-red-600' : 'text-gray-700'}`}>Tầng (Level)</label>
             <input
               type="number"
-              value={currentEditingLoc.level || ''}
-              onChange={(e) => setCurrentEditingLoc({ ...currentEditingLoc, level: e.target.value })}
-              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none text-sm ${isLocEditMaximized ? 'p-2' : 'p-1.5'}`}
-              required
+              value={currentEditingLoc.level ?? ''}
+              onChange={(e) => { setLocErrors(prev => ({ ...prev, level: '' })); setCurrentEditingLoc({ ...currentEditingLoc, level: e.target.value }); }}
+              className={`w-full border ${locErrors.level ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none text-sm ${isLocEditMaximized ? 'p-2' : 'p-1.5'}`}
             />
+            {locErrors.level && <p className="text-xs font-medium text-red-600">{locErrors.level}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); }} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>
+            <button type="button" onClick={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); setLocErrors({}); }} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>
             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-bold">Lưu</button>
           </div>
         </form>

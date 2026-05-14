@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, UserRound, LogOut, Settings, Bell, User } from 'lucide-react';
+import { Menu, UserRound, LogOut, Settings, Bell, HelpCircle, X } from 'lucide-react';
 
 export const Navbar = ({ onToggleSidebar }) => {
   // Định nghĩa địa chỉ máy chủ Back-end để lấy tệp tĩnh từ wwwroot
@@ -8,6 +8,8 @@ export const Navbar = ({ onToggleSidebar }) => {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+  const [hasOpenedGuide, setHasOpenedGuide] = useState(false);
   const navigate = useNavigate();
   const menuRef = useRef(null);
 
@@ -31,6 +33,18 @@ export const Navbar = ({ onToggleSidebar }) => {
       setCurrentUser(null);
     }
   }, []);
+
+  useEffect(() => {
+    setHasOpenedGuide(localStorage.getItem('hasOpenedWebsiteGuide') === 'true');
+  }, []);
+
+  const handleOpenGuide = () => {
+    setIsGuideModalOpen(true);
+    if (!hasOpenedGuide) {
+      localStorage.setItem('hasOpenedWebsiteGuide', 'true');
+      setHasOpenedGuide(true);
+    }
+  };
 
   // Hàm xử lý lấy URL đầy đủ của ảnh đại diện
   const getAvatarUrl = () => {
@@ -61,6 +75,32 @@ export const Navbar = ({ onToggleSidebar }) => {
           <span className="font-bold text-lg text-gray-800 tracking-tight hidden sm:block">
             APP QUẢN LÝ SẢN XUẤT
           </span>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={handleOpenGuide}
+              aria-label="Huong dan su dung trang web"
+              className={`relative p-2 rounded-full transition-all focus:outline-none focus:ring-4 focus:ring-blue-100 ${
+                hasOpenedGuide
+                  ? 'text-gray-500 hover:text-blue-600 hover:bg-gray-100'
+                  : 'text-white bg-blue-600 shadow-lg shadow-blue-200 ring-4 ring-blue-100 hover:bg-blue-700 animate-pulse'
+              }`}
+            >
+              <HelpCircle size={20} />
+              {!hasOpenedGuide && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+              )}
+            </button>
+
+            {!hasOpenedGuide && (
+              <div className="absolute left-0 sm:left-1/2 top-full mt-3 w-40 sm:w-64 sm:-translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-center text-xs font-medium text-white shadow-xl pointer-events-none z-50 animate-pulse">
+                <span className="sm:hidden">Vui lòng đọc hướng dẫn</span>
+                <span className="hidden sm:inline">Vui lòng đọc hướng dẫn sử dụng trang web</span>
+                <span className="absolute left-4 sm:left-1/2 -top-1 h-2 w-2 sm:-translate-x-1/2 rotate-45 bg-gray-900"></span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -122,6 +162,36 @@ export const Navbar = ({ onToggleSidebar }) => {
           )}
         </div>
       </div>
+
+      {isGuideModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <h2 className="text-lg font-bold text-gray-800">Hướng dẫn sử dụng trang web</h2>
+              <button
+                type="button"
+                onClick={() => setIsGuideModalOpen(false)}
+                aria-label="Dong huong dan"
+                className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors focus:outline-none focus:ring-4 focus:ring-gray-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-5 py-6">
+              <p className="text-sm text-gray-600">Phần hướng dẫn sẽ được cập nhật sau</p>
+            </div>
+            <div className="flex justify-end border-t border-gray-100 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setIsGuideModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 transition-colors focus:outline-none focus:ring-4 focus:ring-blue-100"
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

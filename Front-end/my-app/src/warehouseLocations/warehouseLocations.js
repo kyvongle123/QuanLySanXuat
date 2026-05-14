@@ -19,6 +19,7 @@ export const WarehouseLocations = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentEditingItem, setCurrentEditingItem] = useState({ bin: '', racks: '', level: 1 });
+  const [modalErrors, setModalErrors] = useState({});
   const [isModalMaximized, setIsModalMaximized] = useState(false);
 
   const [openRackMenuId, setOpenRackMenuId] = useState(null);
@@ -41,6 +42,7 @@ export const WarehouseLocations = () => {
   const [isRackEditModalOpen, setIsRackEditModalOpen] = useState(false);
   const [rackModalMode, setRackModalMode] = useState('add');
   const [currentEditingRack, setCurrentEditingRack] = useState({ name: '' });
+  const [rackErrors, setRackErrors] = useState({});
   const [rackConfirmModal, setRackConfirmModal] = useState({ isOpen: false, id: null });
   const [isRackMgmtMaximized, setIsRackMgmtMaximized] = useState(false);
 
@@ -201,11 +203,25 @@ export const WarehouseLocations = () => {
   const handleOpenRackEdit = (mode, rack = null) => {
     setRackModalMode(mode);
     setCurrentEditingRack(rack || { name: '' });
+    setRackErrors({});
     setIsRackEditModalOpen(true);
   };
 
   const handleRackSubmit = async (e) => {
     e.preventDefault();
+    const errors = {};
+
+    if (!currentEditingRack?.name?.trim()) {
+      errors.name = "Bắt buộc nhập Tên kệ";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setRackErrors(errors);
+      return;
+    }
+
+    setRackErrors({});
+
     try {
       if (rackModalMode === 'add') {
         await createWarehouseRack({ Name: currentEditingRack.name });
@@ -267,7 +283,8 @@ export const WarehouseLocations = () => {
 
   const handleAddItem = () => {
     setModalMode('add');
-    setCurrentEditingItem({ bin: '', racks: '', level: 1 });
+    setCurrentEditingItem({ bin: '', racks: '', level: '' });
+    setModalErrors({});
     setIsModalOpen(true);
   };
 
@@ -279,16 +296,39 @@ export const WarehouseLocations = () => {
       racks: location.racks || location.Racks,
       level: location.level || location.Level
     });
+    setModalErrors({});
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setIsModalMaximized(false);
+    setModalErrors({});
   };
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
+    const errors = {};
+
+    if (currentEditingItem?.bin === '' || currentEditingItem?.bin === null || currentEditingItem?.bin === undefined) {
+      errors.bin = "Bắt buộc nhập Ô";
+    }
+
+    if (!currentEditingItem?.racks) {
+      errors.racks = "Bắt buộc nhập Kệ (Rack)";
+    }
+
+    if (currentEditingItem?.level === '' || currentEditingItem?.level === null || currentEditingItem?.level === undefined) {
+      errors.level = "Bắt buộc nhập Tầng (Level)";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setModalErrors(errors);
+      return;
+    }
+
+    setModalErrors({});
+
     const payload = {
       ID: currentEditingItem.id || 0,
       Bin: parseInt(currentEditingItem.bin),
@@ -536,14 +576,14 @@ export const WarehouseLocations = () => {
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalMode === 'add' ? 'Thêm vị trí kho mới' : 'Chỉnh sửa vị trí kho'} isMaximized={isModalMaximized} onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)} maxWidth="max-w-xl">
         <form onSubmit={handleModalSubmit} className="space-y-4">
           <div className="relative">
-            <label className="text-xs font-medium text-gray-700">Ô</label>
+            <label className={`text-xs font-medium ${modalErrors.bin ? 'text-red-600' : 'text-gray-700'}`}>Ô</label>
             <input
               type="number"
-              value={currentEditingItem?.bin || ''}
-              onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, bin: e.target.value })}
-              className={`w-full border border-gray-300 rounded-md shadow-sm p-1.5 focus:ring-2 focus:ring-blue-500 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`}
-              required
+              value={currentEditingItem?.bin ?? ''}
+              onChange={(e) => { setModalErrors(prev => ({ ...prev, bin: '' })); setCurrentEditingItem({ ...currentEditingItem, bin: e.target.value }); }}
+              className={`w-full border ${modalErrors.bin ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`}
             />
+            {modalErrors.bin && <p className="text-xs font-medium text-red-600">{modalErrors.bin}</p>}
           </div>
 
           {/* Nút hiệu chỉnh cho Kệ (Rack) */}
@@ -553,18 +593,18 @@ export const WarehouseLocations = () => {
                 hiệu chỉnh
               </button>
             </div>
-            <CustomSelect label="Kệ (Rack)" options={racks} value={currentEditingItem?.racks || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, racks: e.target.value })} isModalMaximized={isModalMaximized} />
+            <CustomSelect label="Kệ (Rack)" options={racks} value={currentEditingItem?.racks || ''} onChange={(e) => { setModalErrors(prev => ({ ...prev, racks: '' })); setCurrentEditingItem({ ...currentEditingItem, racks: e.target.value }); }} isModalMaximized={isModalMaximized} error={!!modalErrors.racks} errorMessage={modalErrors.racks} />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-700">Tầng (Level)</label>
+            <label className={`text-xs font-medium ${modalErrors.level ? 'text-red-600' : 'text-gray-700'}`}>Tầng (Level)</label>
             <input
               type="number"
-              value={currentEditingItem?.level || ''}
-              onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, level: e.target.value })}
-              className={`w-full border border-gray-300 rounded-md shadow-sm p-1.5 focus:ring-2 focus:ring-blue-500 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`}
-              required
+              value={currentEditingItem?.level ?? ''}
+              onChange={(e) => { setModalErrors(prev => ({ ...prev, level: '' })); setCurrentEditingItem({ ...currentEditingItem, level: e.target.value }); }}
+              className={`w-full border ${modalErrors.level ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`}
             />
+            {modalErrors.level && <p className="text-xs font-medium text-red-600">{modalErrors.level}</p>}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -662,21 +702,21 @@ export const WarehouseLocations = () => {
       </Modal>
 
       {/* Modal Thêm/Sửa Tên Kệ */}
-      <Modal isOpen={isRackEditModalOpen} onClose={() => setIsRackEditModalOpen(false)} title={rackModalMode === 'add' ? 'Thêm kệ mới' : 'Sửa tên kệ'} maxWidth="max-w-sm">
+      <Modal isOpen={isRackEditModalOpen} onClose={() => { setIsRackEditModalOpen(false); setRackErrors({}); }} title={rackModalMode === 'add' ? 'Thêm kệ mới' : 'Sửa tên kệ'} maxWidth="max-w-sm">
         <form onSubmit={handleRackSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-700">Tên Kệ</label>
+            <label className={`text-xs font-medium ${rackErrors.name ? 'text-red-600' : 'text-gray-700'}`}>Tên Kệ</label>
             <input
               type="text"
               value={currentEditingRack?.name || ''}
-              onChange={(e) => setCurrentEditingRack({ ...currentEditingRack, name: e.target.value })}
-              className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              required
+              onChange={(e) => { setRackErrors(prev => ({ ...prev, name: '' })); setCurrentEditingRack({ ...currentEditingRack, name: e.target.value }); }}
+              className={`w-full border ${rackErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-2 text-sm focus:ring-2 outline-none`}
               autoFocus
             />
+            {rackErrors.name && <p className="text-xs font-medium text-red-600">{rackErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setIsRackEditModalOpen(false)} className="bg-gray-100 text-gray-600 px-4 py-1.5 rounded text-sm hover:bg-gray-200">Hủy</button>
+            <button type="button" onClick={() => { setIsRackEditModalOpen(false); setRackErrors({}); }} className="bg-gray-100 text-gray-600 px-4 py-1.5 rounded text-sm hover:bg-gray-200">Hủy</button>
             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">Lưu</button>
           </div>
         </form>
