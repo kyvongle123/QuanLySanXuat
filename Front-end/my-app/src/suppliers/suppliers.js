@@ -18,6 +18,7 @@ export const Suppliers = () => {
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
+  const [supplierErrors, setSupplierErrors] = useState({});
 
   const showNotification = (message, type = 'success') => {
     setNotification({ isOpen: true, message, type });
@@ -118,15 +119,35 @@ export const Suppliers = () => {
     setIsModalOpen(false);
     setCurrentEditingSupplier(null);
     setIsModalMaximized(false);
+    setSupplierErrors({});
   };
 
   const handleModalInputChange = (e) => {
     const { name, value } = e.target;
     setCurrentEditingSupplier(prev => ({ ...prev, [name]: value }));
+    if (supplierErrors[name]) {
+      setSupplierErrors(prev => ({ ...prev, [name]: null }));
+    }
   };
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
+
+    const errors = {};
+    if (!currentEditingSupplier?.name?.trim()) errors.name = "Bắt buộc nhập Tên nhà cung cấp";
+    if (!currentEditingSupplier?.contactPerson?.trim()) errors.contactPerson = "Bắt buộc nhập Người liên hệ";
+    if (!currentEditingSupplier?.phone?.trim()) errors.phone = "Bắt buộc nhập Điện thoại";
+    if (!currentEditingSupplier?.email?.trim()) errors.email = "Bắt buộc nhập Email";
+    if (!currentEditingSupplier?.address?.trim()) errors.address = "Bắt buộc nhập Địa chỉ";
+    if (!currentEditingSupplier?.taxId?.trim()) errors.taxId = "Bắt buộc nhập Mã số thuế";
+    if (!currentEditingSupplier?.website?.trim()) errors.website = "Bắt buộc nhập Website";
+
+    if (Object.keys(errors).length > 0) {
+      setSupplierErrors(errors);
+      return;
+    }
+    setSupplierErrors({});
+
     try {
       if (modalMode === 'add') {
         const newSupplier = await createSupplier(currentEditingSupplier);
@@ -208,13 +229,13 @@ export const Suppliers = () => {
         </button>
       ),
     },
-    { header: 'STT', className: 'w-[60px] text-center', render: (row, { index }) => index },
-    { header: 'Tên nhà cung cấp', accessor: 'name', className: 'font-medium text-blue-600 w-64' },
-    { header: 'Người liên hệ', accessor: 'contactPerson', className: 'w-48' },
-    { header: 'Điện thoại', accessor: 'phone', className: 'w-full' },
+    { header: 'STT', className: 'w-[50px] text-center', render: (row, { index }) => index },
+    { header: 'Tên nhà cung cấp', accessor: 'name', className: 'font-bold text-blue-600 min-w-[150px]' },
+    { header: 'Người liên hệ', accessor: 'contactPerson', className: 'hidden md:table-cell w-48' },
+    { header: 'Điện thoại', accessor: 'phone', className: 'w-32 sm:w-40' },
     {
       header: 'Hành động',
-      className: 'text-right pr-5 w-[160px]',
+      className: 'text-right pr-2 sm:pr-5 w-[120px] sm:w-[160px]',
       render: (row) => (
         <div className="flex gap-2 justify-end items-center">
           <button
@@ -235,71 +256,79 @@ export const Suppliers = () => {
   ];
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Danh sách nhà cung cấp</h2>
+    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
+      <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Danh sách nhà cung cấp</h2>
 
-      <div className="flex justify-between items-center mb-4 gap-4">
-        <div className="relative w-full max-w-[280px]">
+      <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
+        <div className="relative w-full lg:max-w-[350px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <Search size={18} className="text-gray-400" />
           </span>
           <input
             type="text"
-            placeholder="Tìm theo tên, người liên hệ, email, SĐT"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:ring-2 focus:ring-blue-500 sm:text-sm outline-none transition-all"
+            placeholder="Tìm kiếm nhà cung cấp..."
+            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm outline-none transition-all sm:text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="flex gap-2">
-          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileUp size={18} />
-            Nhập Excel
+            <span>Nhập Excel</span>
           </button>
-          <button onClick={handleRequestExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
-            <FileDown size={18} /> Xuất Excel
+          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+            <FileDown size={18} /> <span>Xuất Excel</span>
           </button>
-          <button onClick={handleAddSupplier} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors">
-            Thêm nhà cung cấp mới
+          <button onClick={handleAddSupplier} className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+            Thêm mới
           </button>
         </div>
       </div>
 
-      {loading && <p className="text-gray-600 p-4 italic">Đang tải dữ liệu nhà cung cấp...</p>}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center p-20 text-gray-400">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-sm">Đang tải dữ liệu nhà cung cấp...</p>
+        </div>
+      ) : null}
+
       {!loading && !error && (
-        <CustomDatatable
-          columns={supplierColumns}
-          data={filteredSuppliers}
-          renderExpansion={(row) => (
-            <div className="py-4 pl-48 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-8 text-sm">
-                <div className="flex flex-col col-span-2 gap-1">
-                  <span className="text-xs font-semibold text-gray-400 uppercase">Địa chỉ</span>
-                  <span className="text-gray-900 font-medium">{row.address || '---'}</span>
-                </div>
-                <div className="flex flex-col col-span-2 gap-1">
-                  <span className="text-xs font-semibold text-gray-400 uppercase">Email</span>
-                  <span className="text-gray-900 font-medium">{row.email || '---'}</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-gray-400 uppercase">Mã số thuế</span>
-                  <span className="text-gray-900 font-medium">{row.taxId || '---'}</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-gray-400 uppercase">Website</span>
-                  <span className="text-blue-600 font-medium">
-                    {row.website ? <a href={row.website} target="_blank" rel="noopener noreferrer" className="hover:underline">{row.website}</a> : '---'}
-                  </span>
-                </div>
-                <div className="flex flex-col col-span-4 gap-1 mt-2">
-                  <span className="text-xs font-semibold text-gray-400 uppercase">Ghi chú</span>
-                  <p className="text-gray-600 italic">{row.notes || 'Không có ghi chú'}</p>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <CustomDatatable
+            columns={supplierColumns}
+            data={filteredSuppliers}
+            renderExpansion={(row) => (
+              <div className="py-4 pl-12 sm:pl-20 md:pl-48 pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-8 text-sm">
+                  <div className="flex flex-col sm:col-span-2 gap-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Địa chỉ</span>
+                    <span className="text-gray-900 font-medium leading-tight">{row.address || '---'}</span>
+                  </div>
+                  <div className="flex flex-col sm:col-span-2 gap-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
+                    <span className="text-gray-900 font-medium break-all">{row.email || '---'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mã số thuế</span>
+                    <span className="text-gray-900 font-medium">{row.taxId || '---'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Website</span>
+                    <span className="text-blue-600 font-medium">
+                      {row.website ? <a href={row.website} target="_blank" rel="noopener noreferrer" className="hover:underline break-all">{row.website}</a> : '---'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:col-span-4 gap-1 mt-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ghi chú</span>
+                    <p className="text-gray-600 italic leading-relaxed">{row.notes || 'Không có ghi chú'}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        />
+            )}
+          />
+        </div>
       )}
 
       <Modal
@@ -313,82 +342,88 @@ export const Suppliers = () => {
         <form onSubmit={handleModalSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-700">Tên nhà cung cấp</label>
+              <label className={`text-xs font-medium ${supplierErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên nhà cung cấp</label>
               <input
                 type="text"
                 name="name"
                 value={currentEditingSupplier?.name || ''}
                 onChange={handleModalInputChange}
-                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
-                required
+                className={`mt-1 block w-full border ${supplierErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
+              {supplierErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.name}</p>}
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700">Người liên hệ</label>
+              <label className={`text-xs font-medium ${supplierErrors.contactPerson ? 'text-red-500' : 'text-gray-700'}`}>Người liên hệ</label>
               <input
                 type="text"
                 name="contactPerson"
                 value={currentEditingSupplier?.contactPerson || ''}
                 onChange={handleModalInputChange}
-                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+                className={`mt-1 block w-full border ${supplierErrors.contactPerson ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
+              {supplierErrors.contactPerson && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.contactPerson}</p>}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-700">Điện thoại</label>
+              <label className={`text-xs font-medium ${supplierErrors.phone ? 'text-red-500' : 'text-gray-700'}`}>Điện thoại</label>
               <input
                 type="text"
                 name="phone"
                 value={currentEditingSupplier?.phone || ''}
                 onChange={handleModalInputChange}
-                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+                className={`mt-1 block w-full border ${supplierErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
+              {supplierErrors.phone && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.phone}</p>}
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700">Email</label>
+              <label className={`text-xs font-medium ${supplierErrors.email ? 'text-red-500' : 'text-gray-700'}`}>Email</label>
               <input
                 type="email"
                 name="email"
                 value={currentEditingSupplier?.email || ''}
                 onChange={handleModalInputChange}
-                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+                className={`mt-1 block w-full border ${supplierErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
+              {supplierErrors.email && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.email}</p>}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-700">Địa chỉ</label>
+            <label className={`text-xs font-medium ${supplierErrors.address ? 'text-red-500' : 'text-gray-700'}`}>Địa chỉ</label>
             <input
               type="text"
               name="address"
               value={currentEditingSupplier?.address || ''}
               onChange={handleModalInputChange}
-              className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+              className={`mt-1 block w-full border ${supplierErrors.address ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
             />
+            {supplierErrors.address && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.address}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-700">Mã số thuế</label>
+              <label className={`text-xs font-medium ${supplierErrors.taxId ? 'text-red-500' : 'text-gray-700'}`}>Mã số thuế</label>
               <input
                 type="text"
                 name="taxId"
                 value={currentEditingSupplier?.taxId || ''}
                 onChange={handleModalInputChange}
-                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+                className={`mt-1 block w-full border ${supplierErrors.taxId ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
+              {supplierErrors.taxId && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.taxId}</p>}
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700">Website</label>
+              <label className={`text-xs font-medium ${supplierErrors.website ? 'text-red-500' : 'text-gray-700'}`}>Website</label>
               <input
                 type="text"
                 name="website"
                 value={currentEditingSupplier?.website || ''}
                 onChange={handleModalInputChange}
-                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+                className={`mt-1 block w-full border ${supplierErrors.website ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
+              {supplierErrors.website && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.website}</p>}
             </div>
           </div>
 

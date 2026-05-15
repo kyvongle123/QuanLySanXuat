@@ -49,7 +49,8 @@ export const BOM = () => {
   const [isMaterialCategoryEditModalOpen, setIsMaterialCategoryEditModalOpen] = useState(false);
   const [materialCategoryModalMode, setMaterialCategoryModalMode] = useState('add');
   const [categoryModalMode, setCategoryModalMode] = useState('add');
-  const [materialCategoryForm, setMaterialCategoryForm] = useState({ id: null, name: '', unit: 0 });
+  const [materialCategoryForm, setMaterialCategoryForm] = useState({ id: null, name: '', unit: '' });
+  const [materialCategoryErrors, setMaterialCategoryErrors] = useState({});
   const [categoryForm, setCategoryForm] = useState({ id: null, name: '' });
   const [isMaterialCategoryEditMaximized, setIsMaterialCategoryEditMaximized] = useState(false);
   const [isCategoryEditMaximized, setIsCategoryEditMaximized] = useState(false);
@@ -63,6 +64,7 @@ export const BOM = () => {
   const [rackConfirmModal, setRackConfirmModal] = useState({ isOpen: false, id: null });
   const [isRackMgmtMaximized, setIsRackMgmtMaximized] = useState(false);
   const [openRackMenuId, setOpenRackMenuId] = useState(null);
+  const [rackErrors, setRackErrors] = useState({});
   const [racks, setRacks] = useState([]);
 
   // States cho quản lý Loại kho
@@ -79,6 +81,7 @@ export const BOM = () => {
   const [locConfirmModal, setLocConfirmModal] = useState({ isOpen: false, id: null });
   const [locModalMode, setLocModalMode] = useState('add');
   const [currentEditingLoc, setCurrentEditingLoc] = useState({ bin: '', racks: '', level: 1 });
+  const [locErrors, setLocErrors] = useState({}); // Re-declaration, will remove the first one
   const [rawWarehouseLocations, setRawWarehouseLocations] = useState([]);
   const [warehouseBins, setWarehouseBins] = useState([]);
   const [warehouseRacks, setWarehouseRacks] = useState([]);
@@ -102,6 +105,7 @@ export const BOM = () => {
   const [typeMenuSearchQuery, setTypeMenuSearchQuery] = useState('');
   const [isTypeMgmtModalOpen, setIsTypeMgmtModalOpen] = useState(false);
   const [warehouseStatuses, setWarehouseStatuses] = useState([]);
+  const [warehouseErrors, setWarehouseErrors] = useState({});
 
 
   const [isItemEditModalOpen, setIsItemEditModalOpen] = useState(false);
@@ -130,6 +134,9 @@ export const BOM = () => {
   const [openMaterialMenuId, setOpenMaterialMenuId] = useState(null);
   const [materialMenuSearchQuery, setMaterialMenuSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [materialFormErrors, setMaterialFormErrors] = useState({});
+  const [bomErrors, setBomErrors] = useState({});
+  const [itemErrors, setItemErrors] = useState({});
   const [modalMode, setModalMode] = useState('add');
   const [currentEditingItem, setCurrentEditingItem] = useState({ item: '', materialCategory: '', requiredQuantity: 0 });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
@@ -207,7 +214,6 @@ export const BOM = () => {
           return { value: l.id || l.ID, label: `Kệ ${rackName} - Tầng ${l.level || l.Level} - Ô ${binName}` };
         });
         setWarehouseLocations(locs);
-        console.log("warehouseData BOM la", warehouseData);
         const mappedWarehouses = warehouseData
           .filter(w => (w.type || w.Type) === 2)
           .map(w => {
@@ -264,14 +270,6 @@ export const BOM = () => {
   }, [boms, searchTerm, items, materials]);
 
   const filteredMaterialsForMgmt = useMemo(() => {
-    console.log("rawMtareialsList la", rawMaterialsList.filter(m => {
-      const catLabel = materialCategories.find(c => String(c.value) === String(m.name))?.label || '';
-      const warehouseLabel = warehouses.find(w => String(w.value) === String(m.location))?.label || '';
-      return (
-        catLabel.toLowerCase().includes(materialSearchTerm.toLowerCase()) ||
-        warehouseLabel.toLowerCase().includes(materialSearchTerm.toLowerCase())
-      );
-    }));
     return rawMaterialsList.filter(m => {
       const catLabel = materialCategories.find(c => String(c.value) === String(m.name))?.label || '';
       const warehouseLabel = warehouses.find(w => String(w.value) === String(m.location))?.label || '';
@@ -285,12 +283,29 @@ export const BOM = () => {
   const handleOpenMaterialEdit = (mode, material = null) => {
     setMaterialEditModalMode(mode);
     setMaterialForm(material ? { ...material } : { name: '', quantity: 0, unit: '', location: '' });
+    setMaterialForm(material ? { ...material } : { name: '', quantity: '', unit: '', location: '' });
+    setMaterialFormErrors({});
     setIsMaterialEditModalOpen(true);
     setIsMaterialEditMaximized(false);
   };
 
   const handleSaveMaterial = async (e) => {
     e.preventDefault();
+
+    // Logic kiểm tra tính hợp lệ của dữ liệu
+    const errors = {};
+    if (!materialForm?.name) errors.name = "Bắt buộc nhập Tên nguyên liệu";
+    if (materialForm?.quantity === '' || materialForm?.quantity === null || materialForm?.quantity === undefined || materialForm?.quantity === 0) {
+      errors.quantity = "Bắt buộc nhập Số lượng";
+    }
+    if (!materialForm?.location) errors.location = "Bắt buộc nhập Vị trí kho";
+
+    if (Object.keys(errors).length > 0) {
+      setMaterialFormErrors(errors);
+      return;
+    }
+    setMaterialFormErrors({});
+
     try {
       const payload = {
         ...materialForm,
@@ -327,6 +342,7 @@ export const BOM = () => {
   const handleOpenItemEdit = (mode, item = null) => {
     setItemEditModalMode(mode);
     setItemForm(item ? { ...item } : { name: '', price: '', description: '', category: '', inventory: 0, tax: 0, weight: 0, status: '', location: '' });
+    setItemErrors({});
     setIsItemEditModalOpen(true);
     setIsItemEditMaximized(false);
   };
@@ -343,6 +359,21 @@ export const BOM = () => {
 
   const handleWarehouseSubmit = async (e) => {
     e.preventDefault();
+
+    // Logic kiểm tra tính hợp lệ của dữ liệu
+    const errors = {};
+    if (!editingWarehouse.type) errors.type = "Bắt buộc nhập Loại kho";
+    if (!editingWarehouse.location) errors.location = "Bắt buộc nhập Vị trí chi tiết";
+    if (editingWarehouse.available === '' || editingWarehouse.available === null || editingWarehouse.available === undefined) {
+      errors.available = "Bắt buộc nhập Số lượng tối đa";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setWarehouseErrors(errors);
+      return;
+    }
+    setWarehouseErrors({});
+
     try {
       const payload = {
         ...editingWarehouse,
@@ -388,7 +419,8 @@ export const BOM = () => {
 
   const handleOpenMaterialCategoryEdit = (mode, category = null) => {
     setMaterialCategoryModalMode(mode);
-    setMaterialCategoryForm(category ? { id: category.value, name: category.label, unit: category.unit } : { id: null, name: '', unit: 0 });
+    setMaterialCategoryForm(category ? { id: category.value, name: category.label, unit: category.unit } : { id: null, name: '', unit: '' });
+    setMaterialCategoryErrors({});
     setIsMaterialCategoryEditModalOpen(true);
     setIsMaterialCategoryEditMaximized(false);
   };
@@ -413,7 +445,23 @@ export const BOM = () => {
   };
   const handleSaveMaterialCategory = async (e) => {
     e.preventDefault();
-    if (!materialCategoryForm.name.trim()) return;
+    const errors = {};
+
+    if (!materialCategoryForm.name?.trim()) {
+      errors.name = "Bắt buộc nhập Tên danh mục";
+    }
+
+    if (!materialCategoryForm.unit) {
+      errors.unit = "Bắt buộc nhập Đơn vị tính";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setMaterialCategoryErrors(errors);
+      return;
+    }
+
+    setMaterialCategoryErrors({});
+
     try {
       if (materialCategoryModalMode === 'add') {
         await createMaterialCategory({ Name: materialCategoryForm.name, Unit: materialCategoryForm.unit });
@@ -466,6 +514,22 @@ export const BOM = () => {
 
   const handleSaveItem = async (e) => {
     e.preventDefault();
+
+    // Logic kiểm tra tính hợp lệ của dữ liệu
+    const errors = {};
+    if (!itemForm?.name?.trim()) errors.name = "Bắt buộc nhập Tên sản phẩm";
+    if (itemForm?.price === '' || itemForm?.price === null || itemForm?.price === undefined) errors.price = "Bắt buộc nhập Giá bán";
+    if (!itemForm?.category) errors.category = "Bắt buộc nhập Danh mục";
+    if (itemForm?.tax === '' || itemForm?.tax === null || itemForm?.tax === undefined || itemForm?.tax === 0) errors.tax = "Bắt buộc nhập Thuế";
+    if (itemForm?.weight === '' || itemForm?.weight === null || itemForm?.weight === undefined || itemForm?.weight === 0) errors.weight = "Bắt buộc nhập Cân nặng";
+    if (!itemForm?.location) errors.location = "Bắt buộc nhập Vị trí kho";
+
+    if (Object.keys(errors).length > 0) {
+      setItemErrors(errors);
+      return;
+    }
+    setItemErrors({});
+
     try {
       const payload = {
         ...itemForm,
@@ -495,18 +559,21 @@ export const BOM = () => {
   const handleAddItem = () => {
     setModalMode('add');
     setCurrentEditingItem({ item: '', materialCategory: '', requiredQuantity: 0 });
+    setBomErrors({});
     setIsModalOpen(true);
   };
 
   const handleEditItem = (bom) => {
     setModalMode('edit');
     setCurrentEditingItem({ ...bom });
+    setBomErrors({});
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setCurrentEditingItem({ item: '', materialCategory: '', requiredQuantity: 0 });
+    setBomErrors({});
     setIsModalMaximized(false);
   };
 
@@ -577,6 +644,21 @@ export const BOM = () => {
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
+
+    // Logic kiểm tra tính hợp lệ của dữ liệu
+    const errors = {};
+    if (!currentEditingItem?.item) errors.item = "Bắt buộc nhập Sản phẩm áp dụng";
+    if (!currentEditingItem?.materialCategory) errors.materialCategory = "Bắt buộc nhập Nguyên vật liệu";
+    if (currentEditingItem?.requiredQuantity === '' || currentEditingItem?.requiredQuantity === undefined || currentEditingItem?.requiredQuantity === null || parseFloat(currentEditingItem.requiredQuantity) <= 0) {
+      errors.requiredQuantity = "Bắt buộc nhập Số lượng (định mức)";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setBomErrors(errors);
+      return;
+    }
+    setBomErrors({});
+
     const payload = {
       ...currentEditingItem,
       item: currentEditingItem.item ? parseInt(currentEditingItem.item) : null,
@@ -793,6 +875,7 @@ export const BOM = () => {
 
   const handleOpenLocEdit = (mode, loc = null) => {
     setLocModalMode(mode);
+    setLocErrors({}); // Reset errors when opening modal
     setCurrentEditingLoc(loc ? {
       id: loc.id,
       bin: loc.bin || loc.Bin,
@@ -858,6 +941,18 @@ export const BOM = () => {
 
   const handleRackSubmit = async (e) => {
     e.preventDefault();
+    // Logic kiểm tra tính hợp lệ của dữ liệu
+    const errors = {};
+    if (!currentEditingRack?.name?.trim()) {
+      errors.name = "Bắt buộc nhập Tên Kệ";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setRackErrors(errors);
+      return;
+    }
+    setRackErrors({});
+
     try {
       if (rackModalMode === 'add') {
         await createWarehouseRack({ Name: currentEditingRack.name });
@@ -893,6 +988,7 @@ export const BOM = () => {
   const handleOpenRackEdit = (mode, rack = null) => {
     setRackModalMode(mode);
     setCurrentEditingRack(rack || { name: '' });
+    setRackErrors({});
     setIsRackEditModalOpen(true);
   };
 
@@ -915,6 +1011,24 @@ export const BOM = () => {
 
   const handleLocSubmit = async (e) => {
     e.preventDefault();
+
+    const errors = {};
+    if (currentEditingLoc.bin === '' || currentEditingLoc.bin === null || currentEditingLoc.bin === undefined) {
+      errors.bin = "Bắt buộc nhập Ô";
+    }
+    if (!currentEditingLoc.racks) {
+      errors.racks = "Bắt buộc nhập Kệ (Rack)";
+    }
+    if (currentEditingLoc.level === '' || currentEditingLoc.level === null || currentEditingLoc.level === undefined) {
+      errors.level = "Bắt buộc nhập Tầng (Level)";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setLocErrors(errors);
+      return;
+    }
+    setLocErrors({}); // Clear errors if validation passes
+
     const payload = {
       ID: currentEditingLoc.id || 0,
       Bin: parseInt(currentEditingLoc.bin),
@@ -1188,7 +1302,7 @@ export const BOM = () => {
         render: (row) => (
           <div className="flex gap-2 justify-end">
             <button
-              onClick={() => { setEditingWarehouse(row); setWarehouseModalMode('edit'); setIsWarehouseEditModalOpen(true); }}
+              onClick={() => { setWarehouseErrors({}); setEditingWarehouse(row); setWarehouseModalMode('edit'); setIsWarehouseEditModalOpen(true); }}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95"
             >Sửa</button>
             <button
@@ -1887,11 +2001,41 @@ export const BOM = () => {
         onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}
       >
         <form onSubmit={handleModalSubmit} className="space-y-4">
-          <CustomSelect label="Sản phẩm áp dụng (Thành phẩm)" options={items} value={currentEditingItem?.item || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, item: e.target.value })} />
-          <CustomSelect label="Nguyên vật liệu" options={materials} value={currentEditingItem?.materialCategory || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, materialCategory: e.target.value })} />
+          <CustomSelect
+            label="Sản phẩm áp dụng (Thành phẩm)"
+            options={items}
+            value={currentEditingItem?.item || ''}
+            onChange={(e) => {
+              setCurrentEditingItem({ ...currentEditingItem, item: e.target.value });
+              if (bomErrors.item) setBomErrors(prev => ({ ...prev, item: null }));
+            }}
+            error={!!bomErrors.item}
+            errorMessage={bomErrors.item}
+          />
+          <CustomSelect
+            label="Nguyên vật liệu"
+            options={materials}
+            value={currentEditingItem?.materialCategory || ''}
+            onChange={(e) => {
+              setCurrentEditingItem({ ...currentEditingItem, materialCategory: e.target.value });
+              if (bomErrors.materialCategory) setBomErrors(prev => ({ ...prev, materialCategory: null }));
+            }}
+            error={!!bomErrors.materialCategory}
+            errorMessage={bomErrors.materialCategory}
+          />
           <div>
-            <label className="block text-sm font-medium text-gray-700">Số lượng (Định mức)</label>
-            <input type="number" step="0.01" value={currentEditingItem?.requiredQuantity || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, requiredQuantity: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 outline-none focus:ring-2 focus:ring-blue-500" required />
+            <label className={`block text-sm font-medium ${bomErrors.requiredQuantity ? 'text-red-600' : 'text-gray-700'}`}>Số lượng (Định mức)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={currentEditingItem?.requiredQuantity ?? ''}
+              onChange={(e) => {
+                setCurrentEditingItem({ ...currentEditingItem, requiredQuantity: e.target.value });
+                if (bomErrors.requiredQuantity) setBomErrors(prev => ({ ...prev, requiredQuantity: null }));
+              }}
+              className={`mt-1 block w-full border ${bomErrors.requiredQuantity ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 outline-none focus:ring-2`}
+            />
+            {bomErrors.requiredQuantity && <p className="mt-1 text-xs font-medium text-red-600">{bomErrors.requiredQuantity}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={handleCloseModal} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Hủy</button>
@@ -2097,7 +2241,7 @@ export const BOM = () => {
       {/* Modal Thêm/Sửa Hàng hóa */}
       <Modal
         isOpen={isItemEditModalOpen}
-        onClose={() => setIsItemEditModalOpen(false)}
+        onClose={() => { setIsItemEditModalOpen(false); setItemErrors({}); }}
         title={itemEditModalMode === 'add' ? 'Thêm hàng hóa mới' : 'Chỉnh sửa hàng hóa'}
         maxWidth={isItemEditMaximized ? "max-w-full" : "max-w-2xl"}
         isMaximized={isItemEditMaximized}
@@ -2106,16 +2250,44 @@ export const BOM = () => {
         <form onSubmit={handleSaveItem} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-700">Tên sản phẩm</label>
-              <input type="text" value={itemForm.name} onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })} className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500 text-sm" required />
+              <label className={`text-xs ${itemErrors.name ? 'text-red-600' : 'text-gray-700'}`}>Tên sản phẩm</label>
+              <input
+                type="text"
+                value={itemForm.name}
+                onChange={(e) => {
+                  setItemForm({ ...itemForm, name: e.target.value });
+                  if (itemErrors.name) setItemErrors(prev => ({ ...prev, name: null }));
+                }}
+                className={`w-full border ${itemErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
+              />
+              {itemErrors.name && <p className="text-xs font-medium text-red-600 mt-0.5">{itemErrors.name}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-700">Giá bán (VNĐ)</label>
-              <input type="number" value={itemForm.price} onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })} className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500 text-sm" required />
+              <label className={`text-xs ${itemErrors.price ? 'text-red-600' : 'text-gray-700'}`}>Giá bán (VNĐ)</label>
+              <input
+                type="number"
+                value={itemForm.price}
+                onChange={(e) => {
+                  setItemForm({ ...itemForm, price: e.target.value });
+                  if (itemErrors.price) setItemErrors(prev => ({ ...prev, price: null }));
+                }}
+                className={`w-full border ${itemErrors.price ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
+              />
+              {itemErrors.price && <p className="text-xs font-medium text-red-600 mt-0.5">{itemErrors.price}</p>}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <CustomSelect label="Danh mục" options={itemCategories} value={itemForm.category} onChange={(e) => setItemForm({ ...itemForm, category: e.target.value })} />
+            <CustomSelect
+              label="Danh mục"
+              options={itemCategories}
+              value={itemForm.category}
+              onChange={(e) => {
+                setItemForm({ ...itemForm, category: e.target.value });
+                if (itemErrors.category) setItemErrors(prev => ({ ...prev, category: null }));
+              }}
+              error={!!itemErrors.category}
+              errorMessage={itemErrors.category}
+            />
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-700">Số lượng tồn</label>
               <input type="number" value={itemForm.inventory} onChange={(e) => setItemForm({ ...itemForm, inventory: e.target.value })} className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
@@ -2127,12 +2299,31 @@ export const BOM = () => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-700">Thuế (%)</label>
-              <input type="number" value={itemForm.tax} onChange={(e) => setItemForm({ ...itemForm, tax: e.target.value })} className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+              <label className={`text-xs font-bold ${itemErrors.tax ? 'text-red-600' : 'text-gray-700'}`}>Thuế (%)</label>
+              <input
+                type="number"
+                value={itemForm.tax}
+                onChange={(e) => {
+                  setItemForm({ ...itemForm, tax: e.target.value });
+                  if (itemErrors.tax) setItemErrors(prev => ({ ...prev, tax: null }));
+                }}
+                className={`w-full border ${itemErrors.tax ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
+              />
+              {itemErrors.tax && <p className="text-xs font-medium text-red-600 mt-0.5">{itemErrors.tax}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-700">Cân nặng (kg)</label>
-              <input type="number" step="0.01" value={itemForm.weight} onChange={(e) => setItemForm({ ...itemForm, weight: e.target.value })} className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+              <label className={`text-xs font-bold ${itemErrors.weight ? 'text-red-600' : 'text-gray-700'}`}>Cân nặng (kg)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={itemForm.weight}
+                onChange={(e) => {
+                  setItemForm({ ...itemForm, weight: e.target.value });
+                  if (itemErrors.weight) setItemErrors(prev => ({ ...prev, weight: null }));
+                }}
+                className={`w-full border ${itemErrors.weight ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
+              />
+              {itemErrors.weight && <p className="text-xs font-medium text-red-600 mt-0.5">{itemErrors.weight}</p>}
             </div>
           </div>
           <div className="relative">
@@ -2143,10 +2334,21 @@ export const BOM = () => {
             >
               hiệu chỉnh
             </button>
-            <CustomSelect placement="top" label="Vị trí kho" options={warehouses} value={itemForm.location} onChange={(e) => setItemForm({ ...itemForm, location: e.target.value })} />
+            <CustomSelect
+              placement="top"
+              label="Vị trí kho"
+              options={warehouses}
+              value={itemForm.location}
+              onChange={(e) => {
+                setItemForm({ ...itemForm, location: e.target.value });
+                if (itemErrors.location) setItemErrors(prev => ({ ...prev, location: null }));
+              }}
+              error={!!itemErrors.location}
+              errorMessage={itemErrors.location}
+            />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <button type="button" onClick={() => setIsItemEditModalOpen(false)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm">Hủy</button>
+            <button type="button" onClick={() => { setIsItemEditModalOpen(false); setItemErrors({}); }} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm">Hủy</button>
             <button type="submit" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg transition-all active:scale-95 text-sm">Lưu thông tin</button>
           </div>
         </form>
@@ -2267,7 +2469,7 @@ export const BOM = () => {
       {/* Modal Thêm/Sửa Nguyên liệu */}
       <Modal
         isOpen={isMaterialEditModalOpen}
-        onClose={() => setIsMaterialEditModalOpen(false)}
+        onClose={() => { setIsMaterialEditModalOpen(false); setMaterialFormErrors({}); }}
         title={materialEditModalMode === 'add' ? 'Thêm nguyên liệu mới' : 'Chỉnh sửa nguyên liệu'}
         maxWidth={isMaterialEditMaximized ? "max-w-full" : "max-w-xl"}
         isMaximized={isMaterialEditMaximized}
@@ -2289,18 +2491,30 @@ export const BOM = () => {
               onChange={(e) => {
                 const categoryId = e.target.value;
                 const selectedCat = materialCategories.find(c => String(c.value) === String(categoryId));
+                if (materialFormErrors.name) setMaterialFormErrors(prev => ({ ...prev, name: null }));
                 setMaterialForm({
                   ...materialForm,
                   name: categoryId,
                   unit: selectedCat ? selectedCat.unit : ''
                 });
               }}
+              error={!!materialFormErrors.name}
+              errorMessage={materialFormErrors.name}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-700">Số lượng</label>
-              <input type="number" value={materialForm.quantity} onChange={(e) => setMaterialForm({ ...materialForm, quantity: e.target.value })} className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500 text-sm" required />
+              <label className={`text-xs font-bold ${materialFormErrors.quantity ? 'text-red-600' : 'text-gray-700'}`}>Số lượng</label>
+              <input
+                type="number"
+                value={materialForm.quantity}
+                onChange={(e) => {
+                  setMaterialForm({ ...materialForm, quantity: e.target.value });
+                  if (materialFormErrors.quantity) setMaterialFormErrors(prev => ({ ...prev, quantity: null }));
+                }}
+                className={`w-full border ${materialFormErrors.quantity ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
+              />
+              {materialFormErrors.quantity && <p className="text-red-500 text-[10px] mt-1 font-medium">{materialFormErrors.quantity}</p>}
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-700">Đơn vị tính</label>
@@ -2315,10 +2529,20 @@ export const BOM = () => {
             >
               hiệu chỉnh
             </button>
-            <CustomSelect label="Vị trí kho" options={warehouses} value={materialForm.location} onChange={(e) => setMaterialForm({ ...materialForm, location: e.target.value })} />
+            <CustomSelect
+              label="Vị trí kho"
+              options={warehouses}
+              value={materialForm.location}
+              onChange={(e) => {
+                setMaterialForm({ ...materialForm, location: e.target.value });
+                if (materialFormErrors.location) setMaterialFormErrors(prev => ({ ...prev, location: null }));
+              }}
+              error={!!materialFormErrors.location}
+              errorMessage={materialFormErrors.location}
+            />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <button type="button" onClick={() => setIsMaterialEditModalOpen(false)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm">Hủy</button>
+            <button type="button" onClick={() => { setIsMaterialEditModalOpen(false); setMaterialFormErrors({}); }} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm">Hủy</button>
             <button type="submit" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg transition-all active:scale-95 text-sm">Lưu thông tin</button>
           </div>
         </form>
@@ -2411,7 +2635,7 @@ export const BOM = () => {
                 onChange={(e) => setWarehouseSearchTerm(e.target.value)}
               />
             </div>
-            <button onClick={() => { setEditingWarehouse({ name: '', code: '', type: '', available: 0, location: '' }); setWarehouseModalMode('add'); setIsWarehouseEditModalOpen(true); }} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
+            <button onClick={() => { setWarehouseErrors({}); setEditingWarehouse({ name: '', code: '', type: '', available: '', location: '' }); setWarehouseModalMode('add'); setIsWarehouseEditModalOpen(true); }} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
               Thêm
             </button>
           </div>
@@ -2500,7 +2724,7 @@ export const BOM = () => {
       {/* Modal Thêm/Sửa Nhà kho */}
       <Modal
         isOpen={isWarehouseEditModalOpen}
-        onClose={() => { setIsWarehouseEditModalOpen(false); setIsWarehouseEditMaximized(false); }}
+        onClose={() => { setIsWarehouseEditModalOpen(false); setIsWarehouseEditMaximized(false); setWarehouseErrors({}); }}
         title={warehouseModalMode === 'add' ? "Thêm nhà kho mới" : "Chỉnh sửa nhà kho"}
         maxWidth={isWarehouseEditMaximized ? "max-w-full" : "max-w-xl"}
         isMaximized={isWarehouseEditMaximized}
@@ -2513,8 +2737,13 @@ export const BOM = () => {
               label="Loại kho"
               options={warehouseTypes}
               value={editingWarehouse.type || ''}
-              onChange={(e) => setEditingWarehouse({ ...editingWarehouse, type: e.target.value })}
+              onChange={(e) => {
+                setEditingWarehouse({ ...editingWarehouse, type: e.target.value });
+                if (warehouseErrors.type) setWarehouseErrors(prev => ({ ...prev, type: null }));
+              }}
               isModalMaximized={isWarehouseEditMaximized}
+              error={!!warehouseErrors.type}
+              errorMessage={warehouseErrors.type}
             />
           </div>
           <div className="relative">
@@ -2523,22 +2752,31 @@ export const BOM = () => {
               label="Vị trí chi tiết"
               options={warehouseLocations}
               value={editingWarehouse.location || ''}
-              onChange={(e) => setEditingWarehouse({ ...editingWarehouse, location: e.target.value })}
+              onChange={(e) => {
+                setEditingWarehouse({ ...editingWarehouse, location: e.target.value });
+                if (warehouseErrors.location) setWarehouseErrors(prev => ({ ...prev, location: null }));
+              }}
               isModalMaximized={isWarehouseEditMaximized}
+              error={!!warehouseErrors.location}
+              errorMessage={warehouseErrors.location}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-700">Số lượng tối đa</label>
+            <label className={`text-xs font-medium ${warehouseErrors.available ? 'text-red-600' : 'text-gray-700'}`}>Số lượng tối đa</label>
             <input
               type="number"
               min="0"
-              value={editingWarehouse.available || 0}
-              onChange={(e) => setEditingWarehouse({ ...editingWarehouse, available: e.target.value })}
-              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isWarehouseEditMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+              value={editingWarehouse.available ?? ''}
+              onChange={(e) => {
+                setEditingWarehouse({ ...editingWarehouse, available: e.target.value });
+                if (warehouseErrors.available) setWarehouseErrors(prev => ({ ...prev, available: null }));
+              }}
+              className={`w-full border ${warehouseErrors.available ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isWarehouseEditMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
             />
+            {warehouseErrors.available && <p className="text-xs font-medium text-red-600 italic">{warehouseErrors.available}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => { setIsWarehouseEditModalOpen(false); setIsWarehouseEditMaximized(false); }} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Hủy</button>
+            <button type="button" onClick={() => { setIsWarehouseEditModalOpen(false); setIsWarehouseEditMaximized(false); setWarehouseErrors({}); }} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Hủy</button>
             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">Lưu vị trí</button>
           </div>
         </form>
@@ -2646,27 +2884,31 @@ export const BOM = () => {
       {/* Modal Thêm/Sửa Danh mục nguyên liệu*/}
       <Modal
         isOpen={isMaterialCategoryEditModalOpen}
-        onClose={() => setIsMaterialCategoryEditModalOpen(false)}
+        onClose={() => { setIsMaterialCategoryEditModalOpen(false); setIsMaterialCategoryEditMaximized(false); setMaterialCategoryErrors({}); }}
         title={materialCategoryModalMode === 'add' ? 'Thêm danh mục mới' : 'Chỉnh sửa danh mục'}
         maxWidth={isMaterialCategoryEditMaximized ? "max-w-full" : "max-w-sm"}
         isMaximized={isMaterialCategoryEditMaximized}
-        onMaximizeToggle={() => setIsCategoryEditMaximized(!isCategoryEditMaximized)}
+        onMaximizeToggle={() => setIsMaterialCategoryEditMaximized(!isMaterialCategoryEditMaximized)}
       >
         <form onSubmit={handleSaveMaterialCategory} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className={`font-medium text-gray-700 ${isCategoryEditMaximized ? 'text-sm' : 'text-xs'}`}>Tên danh mục</label>
-            <input type="text" value={materialCategoryForm.name || ''} onChange={(e) => setMaterialCategoryForm({ ...materialCategoryForm, name: e.target.value })} className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isCategoryEditMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`} required autoFocus />
+            <label className={`font-medium ${materialCategoryErrors.name ? 'text-red-600' : 'text-gray-700'} ${isMaterialCategoryEditMaximized ? 'text-sm' : 'text-xs'}`}>Tên danh mục</label>
+            <input type="text" value={materialCategoryForm.name || ''} onChange={(e) => { setMaterialCategoryErrors(prev => ({ ...prev, name: '' })); setMaterialCategoryForm({ ...materialCategoryForm, name: e.target.value }); }} className={`w-full border ${materialCategoryErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isMaterialCategoryEditMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`} autoFocus />
+            {materialCategoryErrors.name && <p className="text-xs font-medium text-red-600">{materialCategoryErrors.name}</p>}
           </div>
           <CustomSelect
             label="Đơn vị tính"
             name="unit"
             options={units}
             value={materialCategoryForm.unit || ''}
-            onChange={(e) => setMaterialCategoryForm({ ...materialCategoryForm, unit: e.target.value })}
+            onChange={(e) => { setMaterialCategoryErrors(prev => ({ ...prev, unit: '' })); setMaterialCategoryForm({ ...materialCategoryForm, unit: e.target.value }); }}
+            isModalMaximized={isMaterialCategoryEditMaximized}
+            error={!!materialCategoryErrors.unit}
+            errorMessage={materialCategoryErrors.unit}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setIsCategoryEditModalOpen(false)} className={`bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors ${isCategoryEditMaximized ? 'px-6 py-2 text-base' : 'px-4 py-1.5 text-sm'}`}>Hủy</button>
-            <button type="submit" className={`bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-bold ${isCategoryEditMaximized ? 'px-8 py-2 text-base' : 'px-4 py-1.5 text-sm'}`}>Lưu</button>
+            <button type="button" onClick={() => { setIsMaterialCategoryEditModalOpen(false); setIsMaterialCategoryEditMaximized(false); setMaterialCategoryErrors({}); }} className={`bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors ${isMaterialCategoryEditMaximized ? 'px-6 py-2 text-base' : 'px-4 py-1.5 text-sm'}`}>Hủy</button>
+            <button type="submit" className={`bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-bold ${isMaterialCategoryEditMaximized ? 'px-8 py-2 text-base' : 'px-4 py-1.5 text-sm'}`}>Lưu</button>
           </div>
         </form>
       </Modal>
@@ -2766,22 +3008,25 @@ export const BOM = () => {
       {/* Modal Thêm/Sửa Vị trí kho */}
       <Modal
         isOpen={isLocEditModalOpen}
-        onClose={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); }}
+        onClose={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); setLocErrors({}); }} // Reset errors on close
         title={locModalMode === 'add' ? 'Thêm vị trí mới' : 'Chỉnh sửa vị trí'}
         maxWidth={isLocEditMaximized ? "max-w-full" : "max-w-xl"}
         isMaximized={isLocEditMaximized}
         onMaximizeToggle={() => setIsLocEditMaximized(!isLocEditMaximized)}
       >
         <form onSubmit={handleLocSubmit} className="space-y-4">
-          <div className="relative">
-            <label className="text-xs font-medium text-gray-700">Ô</label>
+          <div className="flex flex-col gap-1">
+            <label className={`text-xs font-medium ${locErrors.bin ? 'text-red-600' : 'text-gray-700'}`}>Ô</label>
             <input
               type="number"
               value={currentEditingLoc?.bin || ''}
-              onChange={(e) => setCurrentEditingLoc({ ...currentEditingLoc, bin: e.target.value })}
-              className={`w-full border border-gray-300 rounded-md shadow-sm p-1.5 focus:ring-2 focus:ring-blue-500 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`}
-              required
+              onChange={(e) => {
+                setCurrentEditingLoc({ ...currentEditingLoc, bin: e.target.value });
+                if (locErrors.bin) setLocErrors(prev => ({ ...prev, bin: null })); // Clear error on change
+              }}
+              className={`w-full border ${locErrors.bin ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none transition-all ${isModalMaximized ? 'text-base' : 'text-sm'}`}
             />
+            {locErrors.bin && <p className="text-red-500 text-[10px] mt-1 font-medium italic">{locErrors.bin}</p>}
           </div>
 
           <div className="relative">
@@ -2790,21 +3035,36 @@ export const BOM = () => {
                 hiệu chỉnh
               </button>
             </div>
-            <CustomSelect label="Kệ (Rack)" options={warehouseRacks.map(r => ({ value: r.id || r.ID, label: r.name || r.Name }))} value={currentEditingLoc.racks || ''} onChange={(e) => setCurrentEditingLoc({ ...currentEditingLoc, racks: e.target.value })} isModalMaximized={isLocEditMaximized} />
+            <CustomSelect
+              label="Kệ (Rack)"
+              options={warehouseRacks.map(r => ({ value: r.id || r.ID, label: r.name || r.Name }))}
+              value={currentEditingLoc.racks || ''}
+              onChange={(e) => {
+                setCurrentEditingLoc({ ...currentEditingLoc, racks: e.target.value });
+                if (locErrors.racks) setLocErrors(prev => ({ ...prev, racks: null })); // Clear error on change
+              }}
+              isModalMaximized={isLocEditMaximized}
+              error={!!locErrors.racks}
+              errorMessage={locErrors.racks}
+            />
+            {locErrors.racks && <p className="text-red-500 text-[10px] mt-1 font-medium italic">{locErrors.racks}</p>}
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-700">Tầng (Level)</label>
+            <label className={`text-xs font-medium ${locErrors.level ? 'text-red-600' : 'text-gray-700'}`}>Tầng (Level)</label>
             <input
               type="number"
               value={currentEditingLoc.level || ''}
-              onChange={(e) => setCurrentEditingLoc({ ...currentEditingLoc, level: e.target.value })}
-              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none text-sm ${isLocEditMaximized ? 'p-2' : 'p-1.5'}`}
-              required
+              onChange={(e) => {
+                setCurrentEditingLoc({ ...currentEditingLoc, level: e.target.value });
+                if (locErrors.level) setLocErrors(prev => ({ ...prev, level: null })); // Clear error on change
+              }}
+              className={`w-full border ${locErrors.level ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none text-sm transition-all ${isLocEditMaximized ? 'p-2' : 'p-1.5'}`}
             />
+            {locErrors.level && <p className="text-red-500 text-[10px] mt-1 font-medium italic">{locErrors.level}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); }} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>
+            <button type="button" onClick={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); setLocErrors({}); }} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>
             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-bold">Lưu</button>
           </div>
         </form>
@@ -2843,21 +3103,24 @@ export const BOM = () => {
       </Modal>
 
       {/* Modal Thêm/Sửa Tên Kệ */}
-      <Modal isOpen={isRackEditModalOpen} onClose={() => setIsRackEditModalOpen(false)} title={rackModalMode === 'add' ? 'Thêm kệ mới' : 'Sửa tên kệ'} maxWidth="max-w-sm">
+      <Modal isOpen={isRackEditModalOpen} onClose={() => { setIsRackEditModalOpen(false); setRackErrors({}); }} title={rackModalMode === 'add' ? 'Thêm kệ mới' : 'Sửa tên kệ'} maxWidth="max-w-sm">
         <form onSubmit={handleRackSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-700">Tên Kệ</label>
+            <label className={`text-xs font-medium ${rackErrors.name ? 'text-red-600' : 'text-gray-700'}`}>Tên Kệ</label>
             <input
               type="text"
               value={currentEditingRack?.name || ''}
-              onChange={(e) => setCurrentEditingRack({ ...currentEditingRack, name: e.target.value })}
-              className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              required
+              onChange={(e) => {
+                setCurrentEditingRack({ ...currentEditingRack, name: e.target.value });
+                if (rackErrors.name) setRackErrors(prev => ({ ...prev, name: null }));
+              }}
+              className={`w-full border ${rackErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-2 text-sm focus:ring-2 outline-none`}
               autoFocus
             />
+            {rackErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{rackErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setIsRackEditModalOpen(false)} className="bg-gray-100 text-gray-600 px-4 py-1.5 rounded text-sm hover:bg-gray-200">Hủy</button>
+            <button type="button" onClick={() => { setIsRackEditModalOpen(false); setRackErrors({}); }} className="bg-gray-100 text-gray-600 px-4 py-1.5 rounded text-sm hover:bg-gray-200">Hủy</button>
             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">Lưu</button>
           </div>
         </form>

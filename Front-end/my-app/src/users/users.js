@@ -28,6 +28,7 @@ export const Users = () => {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [errors, setErrors] = useState({});
 
   // States cho quản lý Chức vụ (Roles)
   const [isRolesModalOpen, setIsRolesModalOpen] = useState(false);
@@ -251,11 +252,15 @@ export const Users = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setCurrentEditingUser(null);
+    setErrors({});
   };
 
   const handleModalInputChange = (e) => {
     const { name, value } = e.target;
     setCurrentEditingUser(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleStatusChange = async (user, newStatusId) => {
@@ -321,7 +326,22 @@ export const Users = () => {
   };
 
   const handleModalSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Đảm bảo gọi preventDefault() đầu tiên
+    // Validation logic
+    const newErrors = {};
+    if (!currentEditingUser?.name?.trim()) newErrors.name = 'Bắt buộc nhập Tên người dùng';
+    if (!currentEditingUser?.userCode?.trim()) newErrors.userCode = 'Bắt buộc nhập Mã nhân viên';
+    if (!currentEditingUser?.username?.trim()) newErrors.username = 'Bắt buộc nhập Username';
+    if (!currentEditingUser?.password?.trim()) newErrors.password = 'Bắt buộc nhập Password';
+    if (!currentEditingUser?.phone?.trim()) newErrors.phone = 'Bắt buộc nhập Số điện thoại';
+    if (!currentEditingUser?.email?.trim()) newErrors.email = 'Bắt buộc nhập Email';
+    if (!currentEditingUser?.role) newErrors.role = 'Bắt buộc nhập Chức vụ';
+    if (!currentEditingUser?.status) newErrors.status = 'Bắt buộc nhập Trạng thái';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
 
     // Chuẩn hóa dữ liệu: Chuyển chuỗi sang số hoặc null để khớp với SQL kiểu INT
     const payload = {
@@ -351,38 +371,46 @@ export const Users = () => {
 
   // Form cho Modal
   const userForm = (
-    <form onSubmit={handleModalSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="name" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Tên người dùng</label>
-          <input type="text" id="name" name="name" value={currentEditingUser?.name || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} required />
-        </div>
-        <div>
-          <label htmlFor="userCode" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Mã nhân viên</label>
-          <input type="text" id="userCode" name="userCode" value={currentEditingUser?.userCode || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} required />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="username" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Username</label>
-          <input type="text" id="username" name="username" value={currentEditingUser?.username || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} required />
-        </div>
-        <div>
-          <label htmlFor="password" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Password</label>
-          <input type="password" id="password" name="password" value={currentEditingUser?.password || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} required />
+    <form onSubmit={handleModalSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <div className="grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={`block font-medium ${errors.name ? 'text-red-500' : 'text-gray-700'} ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Tên người dùng</label>
+            <input type="text" name="name" value={currentEditingUser?.name || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+            {errors.name && <p className="text-[10px] font-medium text-red-500 mt-1">{errors.name}</p>}
+          </div>
+          <div>
+            <label className={`block font-medium ${errors.userCode ? 'text-red-500' : 'text-gray-700'} ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Mã nhân viên</label>
+            <input type="text" name="userCode" value={currentEditingUser?.userCode || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.userCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+            {errors.userCode && <p className="text-[10px] font-medium text-red-500 mt-1">{errors.userCode}</p>}
+          </div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="phone" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Số điện thoại</label>
-          <input type="text" id="phone" name="phone" value={currentEditingUser?.phone || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} required />
+          <label className={`block font-medium ${errors.username ? 'text-red-500' : 'text-gray-700'} ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Username</label>
+          <input type="text" name="username" value={currentEditingUser?.username || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.username ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+          {errors.username && <p className="text-[10px] font-medium text-red-500 mt-1">{errors.username}</p>}
         </div>
         <div>
-          <label htmlFor="email" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Email</label>
-          <input type="email" id="email" name="email" value={currentEditingUser?.email || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} required />
+          <label className={`block font-medium ${errors.password ? 'text-red-500' : 'text-gray-700'} ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Password</label>
+          <input type="password" name="password" value={currentEditingUser?.password || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.password ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+          {errors.password && <p className="text-[10px] font-medium text-red-500 mt-1">{errors.password}</p>}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className={`block font-medium ${errors.phone ? 'text-red-500' : 'text-gray-700'} ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Số điện thoại</label>
+          <input type="text" name="phone" value={currentEditingUser?.phone || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+          {errors.phone && <p className="text-[10px] font-medium text-red-500 mt-1">{errors.phone}</p>}
+        </div>
+        <div>
+          <label className={`block font-medium ${errors.email ? 'text-red-500' : 'text-gray-700'} ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Email</label>
+          <input type="email" name="email" value={currentEditingUser?.email || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+          {errors.email && <p className="text-[10px] font-medium text-red-500 mt-1">{errors.email}</p>}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
           <div className="flex justify-between items-center px-1">
             <label htmlFor="role-select" className={`font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Chức vụ</label>
@@ -401,6 +429,8 @@ export const Users = () => {
             onChange={handleModalInputChange}
             options={roles}
             isModalMaximized={isModalMaximized}
+            error={!!errors.role}
+            errorMessage={errors.role}
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -415,13 +445,15 @@ export const Users = () => {
             onChange={handleModalInputChange}
             options={statuses}
             isModalMaximized={isModalMaximized}
+            error={!!errors.status}
+            errorMessage={errors.status}
           />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="address" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Địa chỉ</label>
-          <input type="text" id="address" name="address" value={currentEditingUser?.address || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+          <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Địa chỉ</label>
+          <input type="text" name="address" value={currentEditingUser?.address || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
         </div>
       </div>
       <div className="flex justify-end gap-3 pt-2">
@@ -434,6 +466,7 @@ export const Users = () => {
   const userColumns = [
     {
       header: '',
+      className: '!px-1 sm:!px-4',
       render: (row, { isExpanded, toggleExpand }) => (
         <button
           onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
@@ -446,12 +479,13 @@ export const Users = () => {
         </button>
       ),
     },
-    { header: 'STT', render: (row, { index }) => index },
-    { header: 'Tên', accessor: 'name' }, // Assuming 'name' is a property of User
-    { header: 'Email', accessor: 'email' }, // Assuming 'email' is a property of User
+    { header: 'STT', className: 'sm:table-cell w-[50px] text-center !px-1 sm:px-4', render: (row, { index }) => index },
+    { header: 'Tên', accessor: 'name', className: 'font-bold text-blue-600 min-w-[140px] !px-1 sm:!px-4' },
+    { header: 'Email', accessor: 'email', className: 'hidden md:table-cell' },
     {
       header: 'Chức vụ',
       accessor: 'role',
+      className: 'hidden lg:table-cell w-48',
       render: (row) => {
         const roleObj = roles.find(r => String(r.value) === String(row.role));
         const label = roleObj ? roleObj.label : '-- Chọn --';
@@ -534,7 +568,7 @@ export const Users = () => {
           )}
         </div>
       ),
-      className: 'text-center w-[180px]',
+      className: 'text-center w-[100px] sm:w-[180px]',
       render: (row) => {
         const isSelected = selectedUserIds.includes(row.id);
         return (
@@ -633,138 +667,146 @@ export const Users = () => {
   ], [handleDeleteStatus]);
 
   return (
-    <div className="p-6"> {/* Removed container-fluid, d-flex, card, etc. from here */}
-      <h2 className="text-2xl font-bold mb-4">Danh sách người dùng</h2>
+    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
+      <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Danh sách người dùng</h2>
 
-      <div className="flex justify-between items-center mb-4 gap-4">
+
+      <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
         {/* Thanh tìm kiếm */}
-        <div className="relative w-full max-w-[280px]">
+        <div className="relative w-full lg:max-w-[350px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <Search size={18} className="text-gray-400" />
           </span>
           <input
             type="text"
             placeholder="Tìm theo tên hoặc email"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
+            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm outline-none transition-all sm:text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="flex gap-2">
-          {selectedUserIds.length >= 2 && (
-            <button
-              onClick={() => { /* Logic xóa nhiều dòng */ }}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all shadow-md active:scale-95 animate-in zoom-in duration-200"
-            >
-              Xóa nhiều dòng ({selectedUserIds.length})
-            </button>
-          )}
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          {
+            selectedUserIds.length >= 2 && (
+              <button
+                onClick={() => { /* Logic xóa nhiều dòng */ }}
+                className="flex-1 lg:flex-none bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all shadow-md active:scale-95 animate-in zoom-in duration-200 text-sm"
+              >
+                Xóa nhiều dòng ({selectedUserIds.length})
+              </button>
+            )
+          }
 
-          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
-            <FileDown size={18} />
-            Xuất Excel
+          <button className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+            <FileDown size={18} /> <span>Xuất Excel</span>
           </button>
-          <button onClick={handleAddUser} className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors">
-            Thêm người dùng mới
+          <button onClick={handleAddUser} className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+            Thêm mới
           </button>
         </div>
       </div>
 
       {loading && <p className="text-gray-600 p-4">Đang tải dữ liệu người dùng...</p>}
       {error && <p className="text-red-600 p-4">Lỗi: {error}</p>}
-      {!loading && !error && (
-        <CustomDatatable
-          columns={userColumns}
-          data={filteredUsers}
-          renderExpansion={(row) => (
-            <div className="py-4 pl-24 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-8 text-sm">
-                <div className="flex flex-col gap-1 md:col-span-1">
-                  {(() => {
-                    const statusObj = statuses.find(s => String(s.value) === String(row.status));
-                    const displayLabel = statusObj ? statusObj.label : '---';
-                    return (
-                      <>
-                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Trạng thái</span>
-                        <div className="relative max-w-[150px]">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); handleOpenStatusesModal(); }}
-                            className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
-                          >
-                            hiệu chỉnh
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (openStatusMenuId !== row.id) setMenuSearchQuery('');
-                              setOpenStatusMenuId(openStatusMenuId === row.id ? null : row.id);
-                              setOpenDepartmentMenuId(null);
-                              setOpenBranchMenuId(null);
-                              setOpenRoleMenuId(null);
-                            }}
-                            className="bg-white border border-gray-300 text-gray-900 text-xs rounded-lg p-1 pr-8 appearance-none cursor-pointer outline-none font-medium text-left relative min-h-[30px] w-full block hover:border-blue-400 transition-colors"
-                          >
-                            <span className="truncate block">{displayLabel}</span>
-                            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
-                              <ChevronDown size={14} />
-                            </div>
-                          </button>
-
-                          {openStatusMenuId === row.id && (
-                            <div className="absolute inset-x-0 top-full mt-1 bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal overflow-y-auto max-h-48">
-                              <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
-                                <div className="relative">
-                                  <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-                                  <input
-                                    type="text"
-                                    className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
-                                    placeholder="Lọc trạng thái..."
-                                    value={menuSearchQuery}
-                                    onChange={(e) => setMenuSearchQuery(e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    autoFocus
-                                  />
+      {
+        !loading && !error && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <CustomDatatable
+              columns={userColumns}
+              data={filteredUsers}
+              renderExpansion={(row) => (
+                <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8 text-sm">
+                    <div className="flex flex-col gap-1 md:col-span-1">
+                      {(() => {
+                        const statusObj = statuses.find(s => String(s.value) === String(row.status));
+                        const displayLabel = statusObj ? statusObj.label : '---';
+                        return (
+                          <>
+                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Trạng thái</span>
+                            <div className="relative max-w-[150px]">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleOpenStatusesModal(); }}
+                                className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+                              >
+                                hiệu chỉnh
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (openStatusMenuId !== row.id) setMenuSearchQuery('');
+                                  setOpenStatusMenuId(openStatusMenuId === row.id ? null : row.id);
+                                  setOpenDepartmentMenuId(null);
+                                  setOpenBranchMenuId(null);
+                                  setOpenRoleMenuId(null);
+                                }}
+                                className="bg-white border border-gray-300 text-gray-900 text-xs rounded-lg p-1 pr-8 appearance-none cursor-pointer outline-none font-medium text-left relative min-h-[30px] w-full block hover:border-blue-400 transition-colors shadow-sm"
+                              >
+                                <span className="truncate block">{displayLabel}</span>
+                                <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                                  <ChevronDown size={14} />
                                 </div>
-                              </div>
-                              <div className="flex flex-col gap-0.5">
-                                {statuses.filter(s => s.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((s) => (
-                                  <button
-                                    key={s.value}
-                                    onClick={() => handleStatusChange(row, s.value)}
-                                    className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.status) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
-                                  >
-                                    <span className="block w-full !whitespace-normal break-words leading-tight">{s.label}</span>
-                                  </button>
-                                ))}
-                              </div>
+                              </button>
+
+                              {openStatusMenuId === row.id && (
+                                <div className="absolute inset-x-0 top-full mt-1 bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal overflow-y-auto max-h-48">
+                                  <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                                    <div className="relative">
+                                      <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                                      <input
+                                        type="text"
+                                        className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
+                                        placeholder="Lọc trạng thái..."
+                                        value={menuSearchQuery}
+                                        onChange={(e) => setMenuSearchQuery(e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        autoFocus
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col gap-0.5">
+                                    {statuses.filter(s => s.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((s) => (
+                                      <button
+                                        key={s.value}
+                                        onClick={() => handleStatusChange(row, s.value)}
+                                        className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.status) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                                      >
+                                        <span className="block w-full !whitespace-normal break-words leading-tight">{s.label}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
-                  <span className="text-gray-900 font-medium">{row.phone || '---'}</span>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
+                      <span className="text-gray-900 font-medium">{row.phone || '---'}</span>
 
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Địa chỉ</span>
+                      <span className="text-gray-900 font-medium">{row.address || '---'}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Địa chỉ</span>
-                  <span className="text-gray-900 font-medium">{row.address || '---'}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        />
-      )}
+              )}
+            />
+          </div>
 
+        )
+      }
+
+      {/* Modal Thêm/Sửa Người dùng */}
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
@@ -884,6 +926,7 @@ export const Users = () => {
         message="Bạn có chắc chắn muốn xóa người dùng này? Hành động này không thể hoàn tác."
       />
 
+      {/* App Notification */}
       <AppNotification
         isOpen={notification.isOpen}
         message={notification.message}
@@ -899,6 +942,6 @@ export const Users = () => {
         className="z-50 px-0 py-0 text-[9px] font-medium rounded-md shadow-lg bg-gray-800 text-white opacity-95 transition-opacity duration-300"
         delayShow={300} // Độ trễ trước khi hiển thị tooltip (ms)
       />
-    </div>
+    </div >
   )
 }

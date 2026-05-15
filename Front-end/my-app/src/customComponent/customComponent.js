@@ -76,7 +76,7 @@ export const CustomDatatable = ({ columns, data, renderExpansion, paginationClas
 
   return (
     <div className="bg-white rounded-lg shadow-md">
-      <div className="relative z-10">
+      <div className="relative z-10 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

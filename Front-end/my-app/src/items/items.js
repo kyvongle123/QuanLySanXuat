@@ -44,6 +44,7 @@ export const Items = () => {
   const [categoryErrors, setCategoryErrors] = useState({});
   const [typeErrors, setTypeErrors] = useState({});
   const [locErrors, setLocErrors] = useState({});
+  const [rackErrors, setRackErrors] = useState({});
 
   // States cho quản lý Vị trí kho (Locations)
   const [rawWarehouseLocations, setRawWarehouseLocations] = useState([]);
@@ -363,11 +364,23 @@ export const Items = () => {
   const handleOpenRackEdit = (mode, rack = null) => {
     setRackModalMode(mode);
     setCurrentEditingRack(rack || { name: '' });
+    setRackErrors({})
     setIsRackEditModalOpen(true);
   };
 
   const handleRackSubmit = async (e) => {
     e.preventDefault();
+    // Logic kiểm tra tính hợp lệ của dữ liệu
+    const errors = {};
+    if (!currentEditingRack?.name?.trim()) {
+      errors.name = "Bắt buộc nhập Tên Kệ";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setRackErrors(errors);
+      return;
+    }
+    setRackErrors({});
     try {
       if (rackModalMode === 'add') {
         await createWarehouseRack({ Name: currentEditingRack.name });
@@ -1986,21 +1999,24 @@ export const Items = () => {
       </Modal>
 
       {/* Modal Thêm/Sửa Tên Kệ */}
-      <Modal isOpen={isRackEditModalOpen} onClose={() => setIsRackEditModalOpen(false)} title={rackModalMode === 'add' ? 'Thêm kệ mới' : 'Sửa tên kệ'} maxWidth="max-w-sm">
+      <Modal isOpen={isRackEditModalOpen} onClose={() => { setIsRackEditModalOpen(false); setRackErrors({}); }} title={rackModalMode === 'add' ? 'Thêm kệ mới' : 'Sửa tên kệ'} maxWidth="max-w-sm">
         <form onSubmit={handleRackSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-700">Tên Kệ</label>
+            <label className={`text-xs font-medium ${rackErrors.name ? 'text-red-600' : 'text-gray-700'}`}>Tên Kệ</label>
             <input
               type="text"
               value={currentEditingRack?.name || ''}
-              onChange={(e) => setCurrentEditingRack({ ...currentEditingRack, name: e.target.value })}
-              className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              required
+              onChange={(e) => {
+                setCurrentEditingRack({ ...currentEditingRack, name: e.target.value });
+                if (rackErrors.name) setRackErrors(prev => ({ ...prev, name: null }));
+              }}
+              className={`w-full border ${rackErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-2 text-sm focus:ring-2 outline-none`}
               autoFocus
             />
+            {rackErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{rackErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setIsRackEditModalOpen(false)} className="bg-gray-100 text-gray-600 px-4 py-1.5 rounded text-sm hover:bg-gray-200">Hủy</button>
+            <button type="button" onClick={() => { setIsRackEditModalOpen(false); setRackErrors({}); }} className="bg-gray-100 text-gray-600 px-4 py-1.5 rounded text-sm hover:bg-gray-200">Hủy</button>
             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">Lưu</button>
           </div>
         </form>
