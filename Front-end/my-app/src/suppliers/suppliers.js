@@ -82,7 +82,8 @@ export const Suppliers = () => {
     try {
       if (type === 'delete') {
         await deleteSupplier(id);
-        setSuppliers(suppliers.filter(s => s.id !== id));
+        await fetchData();
+        showNotification("Xóa nhà cung cấp thành công", "success");
         setSelectedSupplierIds(prev => prev.filter(supplierId => supplierId !== id));
       } else if (type === 'export') {
         await handleExportExcel();
@@ -151,11 +152,15 @@ export const Suppliers = () => {
     try {
       if (modalMode === 'add') {
         const newSupplier = await createSupplier(currentEditingSupplier);
-        setSuppliers(prev => [...prev, newSupplier]);
+        if (!newSupplier)
+          throw new Error("Có lỗi xảy ra khi tạo nhà cung cấp");
+        await fetchData();
         showNotification("Thêm nhà cung cấp thành công!");
       } else {
         const updated = await updateSupplier(currentEditingSupplier.id, currentEditingSupplier);
-        setSuppliers(prev => prev.map(s => s.id === updated.id ? updated : s));
+        if (!updated)
+          throw new Error("Có lỗi xảy ra khi cập nhật nhà cung cấp");
+        await fetchData();
         showNotification("Cập nhật nhà cung cấp thành công!");
       }
       handleCloseModal();
@@ -171,7 +176,7 @@ export const Suppliers = () => {
       const worksheet = workbook.addWorksheet('Danh sách nhà cung cấp');
       worksheet.columns = [
         { header: 'STT', key: 'stt', width: 8 },
-        { header: 'Tên nhà cung cấp', key: 'name', width: 30 },
+        { header: 'Tên nhà cung cấp', key: 'name', width: 40 }, // 40 đơn vị ~ 280px
         { header: 'Người liên hệ', key: 'contactPerson', width: 25 },
         { header: 'Điện thoại', key: 'phone', width: 15 },
         { header: 'Email', key: 'email', width: 30 },
@@ -195,6 +200,45 @@ export const Suppliers = () => {
         });
       });
 
+      // Định dạng chung cho tất cả các ô: Times New Roman, cỡ chữ 12
+      worksheet.eachRow((row, rowNumber) => {
+        row.font = { name: 'Times New Roman', size: 12 };
+        // vertical: 'middle' giúp nội dung luôn nằm giữa ô khi chiều cao hàng tăng lên
+        row.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+
+        // Thêm viền cho tất cả các ô và xử lý căn lề riêng cho cột STT
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+
+          // Căn giữa nội dung cho cột STT (Cột số 1)
+          if (colNumber === 1) {
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+          }
+        });
+
+        if (rowNumber === 1) {
+          // Định dạng Header: Cao 30px, In đậm, Căn giữa
+          row.height = 30;
+          row.font = { name: 'Times New Roman', size: 12, bold: true };
+          row.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        } else {
+          // Lấy giá trị của cột "Tên nhà cung cấp" (key: 'name')
+          const nameValue = row.getCell('name').value ? String(row.getCell('name').value) : "";
+
+          // Với width = 40 và font size 12, ước tính khoảng 35 ký tự (bao gồm dấu) sẽ xuống dòng.
+          // Chúng ta tính số dòng dự kiến.
+          const estimatedLines = Math.ceil(nameValue.length / 35) || 1;
+
+          // Chiều cao cơ bản là 25px. Mỗi dòng tiếp theo cộng thêm 18px để hiển thị rõ ràng và ổn định.
+          row.height = 25 + (estimatedLines - 1) * 18;
+        }
+      });
+
       const buffer = await workbook.xlsx.writeBuffer();
       saveAs(new Blob([buffer]), `Danh sách nhà cung cấp.xlsx`);
       showNotification("Xuất file Excel thành công!");
@@ -216,7 +260,7 @@ export const Suppliers = () => {
   const supplierColumns = [
     {
       header: '',
-      className: 'w-[40px] text-center',
+      className: 'w-[40px] text-center !px-1 sm:!px-2',
       render: (row, { isExpanded, toggleExpand }) => (
         <button
           onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
@@ -229,10 +273,10 @@ export const Suppliers = () => {
         </button>
       ),
     },
-    { header: 'STT', className: 'w-[50px] text-center', render: (row, { index }) => index },
+    { header: 'STT', className: 'w-[50px] text-center !px-1 sm:!px-2', render: (row, { index }) => index },
     { header: 'Tên nhà cung cấp', accessor: 'name', className: 'font-bold text-blue-600 min-w-[150px]' },
-    { header: 'Người liên hệ', accessor: 'contactPerson', className: 'hidden md:table-cell w-48' },
-    { header: 'Điện thoại', accessor: 'phone', className: 'w-32 sm:w-40' },
+    { header: 'Người liên hệ', accessor: 'contactPerson', className: 'hidden md:table-cell w-48 !px-1 sm:!px-2' },
+    { header: 'Điện thoại', accessor: 'phone', className: 'hidden sm:table-cell w-32 sm:w-40' },
     {
       header: 'Hành động',
       className: 'text-right pr-2 sm:pr-5 w-[120px] sm:w-[160px]',
@@ -240,13 +284,13 @@ export const Suppliers = () => {
         <div className="flex gap-2 justify-end items-center">
           <button
             onClick={() => handleEditSupplier(row)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
           >
             Sửa
           </button>
           <button
             onClick={() => handleDeleteSupplier(row.id)}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
           >
             Xóa
           </button>
@@ -300,27 +344,42 @@ export const Suppliers = () => {
             columns={supplierColumns}
             data={filteredSuppliers}
             renderExpansion={(row) => (
-              <div className="py-4 pl-12 sm:pl-20 md:pl-48 pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-8 text-sm">
-                  <div className="flex flex-col sm:col-span-2 gap-1">
+              <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
+                <div className="grid grid-cols-2 w-4/5 md:grid-cols-4 gap-y-6 gap-x-4 md:gap-x-8 text-sm">
+                  {/* Hàng 1: cột Người liên hệ với cột Số điện thoại */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Người liên hệ</span>
+                    <span className="text-gray-900 font-medium">{row.contactPerson || '---'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
+                    <span className="text-gray-900 font-medium">{row.phone || '---'}</span>
+                  </div>
+
+                  {/* Hàng 2: cột Email với cột Địa chỉ */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
+                    <span className="text-gray-900 font-medium break-all">{row.email || '---'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Địa chỉ</span>
                     <span className="text-gray-900 font-medium leading-tight">{row.address || '---'}</span>
                   </div>
-                  <div className="flex flex-col sm:col-span-2 gap-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
-                    <span className="text-gray-900 font-medium break-all">{row.email || '---'}</span>
+
+                  {/* Hàng 3: cột Website với cột Mã số thuế */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Website</span>
+                    <span className="text-blue-600 font-medium break-all">
+                      {row.website ? <a href={row.website} target="_blank" rel="noopener noreferrer" className="hover:underline">{row.website}</a> : '---'}
+                    </span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mã số thuế</span>
                     <span className="text-gray-900 font-medium">{row.taxCode || '---'}</span>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Website</span>
-                    <span className="text-blue-600 font-medium">
-                      {row.website ? <a href={row.website} target="_blank" rel="noopener noreferrer" className="hover:underline break-all">{row.website}</a> : '---'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col sm:col-span-4 gap-1 mt-2">
+
+                  {/* Hàng 4: cột Ghi chú */}
+                  <div className="col-span-2 md:col-span-4 flex flex-col gap-1 mt-2">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ghi chú</span>
                     <p className="text-gray-600 italic leading-relaxed">{row.notes || 'Không có ghi chú'}</p>
                   </div>

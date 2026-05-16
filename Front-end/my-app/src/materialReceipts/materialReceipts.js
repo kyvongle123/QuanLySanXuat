@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { Search, Plus, ChevronDown, FileText, Eye, Edit2, Trash2, FileDown, X, Upload, Maximize, Minimize, ChevronRight, FileUp } from 'lucide-react';
+import { Search, Plus, ChevronDown, FileText, Eye, Edit2, Trash2, FileDown, X, Upload, Maximize, Minimize, ChevronRight, FileUp, Calendar } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import {
@@ -28,8 +28,81 @@ import { getWarehouseStatuses, getWarehouseStatus, createWarehouseStatus, update
 import { getWarehouseBins, getWarehouseBin, createWarehouseBin, updateWarehouseBin, deleteWarehouseBin } from '../controller/warehouseBinsController';
 import { getRoles } from '../controller/rolesController';
 
+// Component Lịch hiển thị trực tiếp (Inline Calendar) dành cho Mobile
+const InlineCalendar = ({ value, onChange }) => {
+  const [viewDate, setViewDate] = useState(() => {
+    const initial = value ? new Date(value) : new Date();
+    return isNaN(initial.getTime()) ? new Date() : initial;
+  });
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+
+  const days = [];
+  for (let i = 0; i < firstDayOfMonth; i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+
+  const isSelected = (date) => {
+    if (!date || !value) return false;
+    const d = new Date(value);
+    return date.getDate() === d.getDate() && date.getMonth() === d.getMonth() && date.getFullYear() === d.getFullYear();
+  };
+
+  const isToday = (date) => {
+    if (!date) return false;
+    const today = new Date();
+    return date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+  };
+
+  const handleDateClick = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    onChange(`${y}-${m}-${day}`);
+  };
+
+  return (
+    <div className="w-full bg-white select-none">
+      <div className="flex items-center justify-between mb-4 bg-blue-50/50 p-2 rounded-xl">
+        <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-2 hover:bg-white rounded-lg transition-colors"><ChevronRight className="rotate-180 text-blue-600" size={20} /></button>
+        <span className="font-bold text-gray-800">Tháng {month + 1}, {year}</span>
+        <button type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-2 hover:bg-white rounded-lg transition-colors"><ChevronRight className="text-blue-600" size={20} /></button>
+      </div>
+
+      <div className="grid grid-cols-7 mb-2">
+        {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(day => (
+          <div key={day} className="text-[10px] font-bold text-gray-400 text-center py-1 uppercase">{day}</div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((date, idx) => (
+          <div key={idx} className="aspect-square flex items-center justify-center">
+            {date ? (
+              <button
+                type="button"
+                onClick={() => handleDateClick(date)}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs transition-all font-bold
+                  ${isSelected(date)
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 scale-110'
+                    : isToday(date)
+                      ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                      : 'hover:bg-gray-100 text-gray-700'}
+                `}
+              >{date.getDate()}</button>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // Component Searchable Select tùy chỉnh (Tương tự machines.js)
-const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", className, disabled = false }) => {
+const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", className, disabled = false, placement = "bottom" }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const selectRef = useRef(null);
@@ -67,7 +140,10 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
       </div>
 
       {isOpen && (
-        <div className="absolute z-[100] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-2xl overflow-hidden min-w-[200px] left-0 animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className={`absolute z-[100] w-full bg-white border border-gray-300 rounded-lg shadow-2xl overflow-hidden min-w-[200px] left-0 animate-in fade-in duration-200 ${placement === 'top'
+          ? 'bottom-full mb-1 slide-in-from-bottom-1'
+          : 'mt-1 slide-in-from-top-1'
+          }`}>
           <div className="p-2 border-b bg-gray-50 sticky top-0 z-10">
             <div className="relative group">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
@@ -204,6 +280,7 @@ export const MaterialReceipts = () => {
 
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
+  const [mobileDateModal, setMobileDateModal] = useState({ isOpen: false, value: '', label: '', field: '', materialId: null });
 
   const qualityOptions = [
     { value: 1, label: 'Đạt chất lượng (Passed)' },
@@ -755,12 +832,26 @@ export const MaterialReceipts = () => {
           )}
         </div>
       ),
-      className: 'w-32' // Điều chỉnh chiều rộng cột
+      className: 'min-w-[120px]' // Ép chiều rộng tối thiểu 180px để thấy rõ số lượng và đơn vị
     },
     {
       header: 'Ngày sản xuất',
       render: (item, { rowIndex }) => {
-        // Hiển thị lịch lên trên nếu là dòng thứ 4 trở đi (rowIndex 3, 4...) trên trang hiện tại
+        const isMobile = window.innerWidth < 768;
+        if (isMobile) {
+          return (
+            <div className="relative group">
+              <input
+                readOnly
+                value={item.mfgDate ? new Date(item.mfgDate).toLocaleDateString('vi-VN') : ''}
+                onClick={() => setMobileDateModal({ isOpen: true, value: item.mfgDate || '', label: 'Ngày sản xuất', field: 'mfgDate', materialId: item.materialId })}
+                placeholder="Chọn..."
+                className="w-full border border-gray-300 rounded-md px-2 py-1 text-[11px] bg-white h-[30px] pr-8 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500 font-medium"
+              />
+              <Calendar size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none" />
+            </div>
+          );
+        }
         const isNearBottom = rowIndex >= 3;
         return (
           <DateInput
@@ -772,11 +863,26 @@ export const MaterialReceipts = () => {
           />
         );
       },
-      className: 'w-40', // Điều chỉnh chiều rộng cột
+      className: 'min-w-[150px]', // Ép chiều rộng tối thiểu 220px để hiển thị ngày và icon lịch
     },
     {
       header: 'Ngày hết hạn',
       render: (item, { rowIndex }) => {
+        const isMobile = window.innerWidth < 768;
+        if (isMobile) {
+          return (
+            <div className="relative group">
+              <input
+                readOnly
+                value={item.expiredDate ? new Date(item.expiredDate).toLocaleDateString('vi-VN') : ''}
+                onClick={() => setMobileDateModal({ isOpen: true, value: item.expiredDate || '', label: 'Ngày hết hạn', field: 'expiredDate', materialId: item.materialId })}
+                placeholder="Chọn..."
+                className="w-full border border-gray-300 rounded-md px-2 py-1 text-[11px] bg-white h-[30px] pr-8 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500 font-medium"
+              />
+              <Calendar size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none" />
+            </div>
+          );
+        }
         const isNearBottom = rowIndex >= 3; // Tương tự như trên
         return (
           <DateInput
@@ -788,7 +894,7 @@ export const MaterialReceipts = () => {
           />
         );
       },
-      className: 'w-40', // Điều chỉnh chiều rộng cột
+      className: 'min-w-[150px]', // Ép chiều rộng tối thiểu 220px để hiển thị ngày và icon lịch
     },
     {
       header: 'Xóa',
@@ -1152,10 +1258,22 @@ export const MaterialReceipts = () => {
                     >
                       hiệu chỉnh
                     </button>
-                    <SearchableSelect value={currentReceipt?.warehouse || ''} options={warehouses} onChange={(val) => handleInputChange(val, 'warehouse')} placeholder="Chọn kho..." /> {/* This is the select at line 764 */}
+                    <SearchableSelect
+                      value={currentReceipt?.warehouse || ''}
+                      options={warehouses}
+                      onChange={(val) => handleInputChange(val, 'warehouse')}
+                      placeholder="Chọn kho..."
+                      placement={window.innerWidth < 768 ? "top" : "bottom"}
+                    />
                   </div>
                 </div>
-                <DateInput label="Ngày nhận hàng" name="receivingDate" value={currentReceipt?.receivingDate || ''} onChange={handleInputChange} />
+                <DateInput
+                  label="Ngày nhận hàng"
+                  name="receivingDate"
+                  value={currentReceipt?.receivingDate || ''}
+                  onChange={handleInputChange}
+                  placement={window.innerWidth < 768 ? "top" : "bottom"}
+                />
               </div>
             )}
 
@@ -1549,6 +1667,24 @@ export const MaterialReceipts = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal chọn ngày dành riêng cho Mobile Picker */}
+      <Modal
+        isOpen={mobileDateModal.isOpen}
+        onClose={() => setMobileDateModal(prev => ({ ...prev, isOpen: false }))}
+        title={`Chọn ${mobileDateModal.label}`}
+        maxWidth="max-w-xs"
+      >
+        <div className="p-4">
+          <InlineCalendar
+            value={mobileDateModal.value}
+            onChange={(newVal) => {
+              handleItemFieldChange(mobileDateModal.materialId, mobileDateModal.field, newVal);
+              setMobileDateModal(prev => ({ ...prev, value: newVal, isOpen: false }));
+            }}
+          />
+        </div>
       </Modal>
 
       <CustomConfirm
