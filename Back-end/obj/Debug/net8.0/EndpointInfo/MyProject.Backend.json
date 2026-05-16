@@ -1516,6 +1516,18 @@
         }
       }
     },
+    "/api/Logos/hanghoa": {
+      "get": {
+        "tags": [
+          "Logos"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
     "/api/Machines": {
       "get": {
         "tags": [
@@ -8321,6 +8333,18 @@
             "nullable": true
           },
           "contactPerson": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
             "type": "string",
             "nullable": true
           },

@@ -888,6 +888,16 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "MyProject.Backend.Controller.LogosController",
+    "Method": "GetHangHoaLogo",
+    "RelativePath": "api/Logos/hanghoa",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "MyProject.Backend.Controller.MachinesController",
     "Method": "GetMachines",
     "RelativePath": "api/Machines",
