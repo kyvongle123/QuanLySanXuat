@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, FileDown, Calendar, Package, ClipboardList } from 'lucide-react';
+import { Search, Plus, FileDown, Calendar, Package, ClipboardList, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, AppNotification, CustomConfirm, Modal, CustomSelect, DateInput } from '../customComponent/customComponent';
@@ -21,7 +21,7 @@ export const ProductionPlans = () => {
   const [materialCategories, setMaterialCategories] = useState([]); // Danh mục nguyên liệu
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentEditingItem, setCurrentEditingItem] = useState({ planCode: '', startDate: '', endDate: '', status: '', warehouse: '', note: '' });
@@ -53,31 +53,31 @@ export const ProductionPlans = () => {
         getMaterialCategories(),
         getMaterials()
       ]);
-      
+
       // Chuẩn hóa dữ liệu plans (Hỗ trợ Id/id và $values)
       const rawPlans = planData?.$values || planData || [];
       setPlans(rawPlans.map(p => ({ ...p, id: p.id || p.Id })));
 
-      
+
       // Xử lý an toàn: Kiểm tra nếu data nằm trong $values hoặc trả về trực tiếp, hỗ trợ cả PascalCase (Id/Name)
-      
+
       // Xử lý an toàn: Kiểm tra nếu data nằm trong $values hoặc trả về trực tiếp, hỗ trợ cả PascalCase (Id/Name)
       const rawItems = itemData?.data || itemData || [];
       setItems(rawItems.map(i => ({ value: i.id || i.Id, label: i.name || i.Name })));
-      
+
       // Cập nhật state chi tiết sản phẩm
       const rawPlanItems = planItemsData?.$values || planItemsData || [];
       setPlanItems(rawPlanItems);
-      
+
       const rawBoms = bomData?.$values || bomData || [];
       setBoms(rawBoms);
 
       const rawCats = catData?.$values || catData || [];
       setMaterialCategories(rawCats);
-      
+
       const rawMaterials = materialData?.$values || materialData || [];
       setMaterials(rawMaterials);
-      
+
     } catch (err) {
       showNotification("Lỗi khi tải dữ liệu kế hoạch", "error");
     } finally {
@@ -91,7 +91,7 @@ export const ProductionPlans = () => {
 
   const filteredData = useMemo(() => {
     return plans
-      .filter(p => 
+      .filter(p =>
         p.planCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.note?.toLowerCase().includes(searchTerm.toLowerCase())
       )
@@ -115,12 +115,12 @@ export const ProductionPlans = () => {
       .map(pi => {
         const item = items.find(i => String(i.value) === String(pi.item || pi.Item));
         const itemBoms = boms.filter(b => String(b.item || b.Item) === String(pi.item || pi.Item));
-        
+
         const compositionMaterials = itemBoms.map(bom => {
           const catId = String(bom.materialCategory || bom.MaterialCategory);
           const cat = materialCategories.find(c => String(c.id || c.Id) === catId);
           const totalNeeded = (pi.quantity || pi.Quantity || 0) * (bom.requiredQuantity || bom.RequiredQuantity || 0);
-          
+
           // Trừ dần tồn kho hiện tại
           const stockBefore = currentStocks[catId] || 0;
           currentStocks[catId] = stockBefore - totalNeeded;
@@ -154,12 +154,12 @@ export const ProductionPlans = () => {
   const handleEditItem = async (plan) => {
     setModalMode('edit');
     // Chuyển đổi định dạng ngày để hiển thị trong input date
-    setCurrentEditingItem({ 
-      ...plan, 
-      startDate: plan.startDate ? plan.startDate.split('T')[0] : '', 
-      endDate: plan.endDate ? plan.endDate.split('T')[0] : '' 
+    setCurrentEditingItem({
+      ...plan,
+      startDate: plan.startDate ? plan.startDate.split('T')[0] : '',
+      endDate: plan.endDate ? plan.endDate.split('T')[0] : ''
     });
-    
+
     try {
       // Lấy danh sách sản phẩm chi tiết của kế hoạch
       const details = await getProductionPlanItems(plan.id);
@@ -234,7 +234,7 @@ export const ProductionPlans = () => {
       if (modalMode === 'add') {
         const response = await createProductionPlan(payload);
         const newItem = response?.value || response; // Xử lý nếu bị bọc trong { value: ... }
-        const planId = newItem.id || newItem.Id; 
+        const planId = newItem.id || newItem.Id;
         setPlans(prev => [...prev, { ...newItem, id: planId }]);
       } else {
         const response = await updateProductionPlan(currentEditingItem.id, payload);
@@ -335,41 +335,57 @@ export const ProductionPlans = () => {
   };
 
   const columns = [
-    { header: 'STT', render: (row, { index }) => index }, // STT nên bắt đầu từ 1
-    { 
-      header: 'Mã kế hoạch', 
-      accessor: 'planCode', 
-      className: 'font-bold text-blue-600 max-w-[120px] truncate' // Làm cột ngắn lại
+    {
+      header: '',
+      className: 'w-[40px] text-center !px-1',
+      render: (row, { isExpanded, toggleExpand }) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
+          className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
+        >
+          <ChevronRight
+            size={18}
+            className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`}
+          />
+        </button>
+      ),
     },
-    { 
-      header: 'Thành phẩm', 
+    { header: 'STT', className: 'hidden sm:table-cell w-[50px] text-center', render: (row, { index }) => index },
+    {
+      header: 'Mã kế hoạch',
+      accessor: 'planCode',
+      className: 'font-bold text-blue-600 min-w-[100px] truncate'
+    },
+    {
+      header: 'Thành phẩm',
       render: (row) => {
         const currentItems = planItems.filter(pi => String(pi.productionPlan || pi.ProductionPlan) === String(row.id));
         return (
-          <div className="relative group min-h-[30px]">
-            <div className="text-[11px] flex flex-wrap gap-1.5 max-w-[200px] pr-8">
+          <div className="relative group min-h-[24px]">
+            <div className="text-[10px] sm:text-[11px] flex flex-wrap gap-1 max-w-[180px] sm:max-w-[200px] pr-6">
               {currentItems.map((pi, idx) => {
-              const itemName = items.find(i => String(i.value) === String(pi.item || pi.Item))?.label || 'N/A';
-              return (
-                <span key={pi.id || pi.Id || idx} className="bg-gray-100 px-2 py-0.5 rounded-md text-gray-700 font-medium whitespace-nowrap border border-gray-200">
-                  {pi.quantity || pi.Quantity} x {itemName}
-                </span>
-              );
-            })}
+                const itemName = items.find(i => String(i.value) === String(pi.item || pi.Item))?.label || 'N/A';
+                return (
+                  <span key={pi.id || pi.Id || idx} className="bg-gray-50 px-1.5 py-0.5 rounded text-gray-600 font-medium whitespace-nowrap border border-gray-200">
+                    {pi.quantity || pi.Quantity} x {itemName}
+                  </span>
+                );
+              })}
             </div>
-            <button 
+            <button
               onClick={() => { setViewingPlan(row); setIsDetailModalOpen(true); }}
-              className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 text-blue-600 opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-50 rounded-full shadow-sm bg-white border border-blue-100"
+              className="absolute right-0 top-0 p-1 text-blue-600 sm:opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-50 rounded shadow-sm bg-white/80 border border-blue-100"
               title="Xem chi tiết nguyên liệu cấu thành"
             >
-              <Search size={14} />
+              <Search size={12} />
             </button>
           </div>
         );
       }
     },
-    { 
-      header: 'Thời gian', 
+    {
+      header: 'Thời gian',
+      className: 'hidden md:table-cell',
       render: (row) => (
         <div className="text-xs">
           <div>Bắt đầu: {row.startDate ? new Date(row.startDate).toLocaleDateString('vi-VN') : 'N/A'}</div>
@@ -379,19 +395,19 @@ export const ProductionPlans = () => {
     },
     {
       header: 'Hành động',
-      className: 'text-left',
+      className: 'text-right pr-2 sm:pr-4 w-[100px] sm:w-[250px]',
       render: (row) => (
-        <div className="flex gap-2 justify-start">
-          <button onClick={() => handleEditItem(row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm transition-colors">Sửa</button>
-          <button 
-            onClick={() => setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa kế hoạch này?' })} 
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-sm transition-colors"
+        <div className="flex gap-1.5 justify-end items-center">
+          <button onClick={() => handleEditItem(row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
+          <button
+            onClick={() => setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa kế hoạch này?' })}
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-[11px] sm:text-xs transition-all active:scale-95"
           >
             Xóa
           </button>
-          <button 
-            onClick={() => handleCreateOrder(row)} 
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-2 rounded text-sm transition-colors whitespace-nowrap"
+          <button
+            onClick={() => handleCreateOrder(row)}
+            className="hidden sm:inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95 whitespace-nowrap shadow-sm"
           >
             Tạo lệnh sản xuất
           </button>
@@ -401,35 +417,72 @@ export const ProductionPlans = () => {
   ];
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Kế hoạch sản xuất</h2>
-      
-      <div className="flex justify-between items-center mb-4 gap-4">
-        <div className="relative w-full max-w-[280px]">
+    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
+      <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Kế hoạch sản xuất</h2>
+
+      <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
+        <div className="relative w-full lg:max-w-[350px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
             <Search size={18} />
           </span>
           <input
             type="text"
             placeholder="Tìm theo mã hoặc ghi chú"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 sm:text-sm outline-none transition-all"
+            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm outline-none transition-all sm:text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="flex gap-2">
-          <button onClick={handleRequestExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 text-sm">
             <FileDown size={18} />
-            Xuất Excel
+            <span className="hidden sm:inline">Xuất Excel</span>
           </button>
-          <button onClick={handleAddItem} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors">
-            Thêm kế hoạch mới
+          <button onClick={handleAddItem} className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+            + Thêm mới
           </button>
         </div>
       </div>
 
-      {loading ? <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p> : <CustomDatatable columns={columns} data={filteredData} />}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center p-20 text-gray-400">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+          <p className="italic text-sm">Đang tải dữ liệu kế hoạch...</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <CustomDatatable
+            columns={columns}
+            data={filteredData}
+            renderExpansion={(row) => (
+              <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-8 text-sm">
+                  <div className="flex flex-col gap-1 md:hidden">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Thời gian dự kiến</span>
+                    <div className="text-gray-900 font-medium">
+                      {row.startDate ? new Date(row.startDate).toLocaleDateString('vi-VN') : '---'} → {row.endDate ? new Date(row.endDate).toLocaleDateString('vi-VN') : '---'}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 sm:col-span-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ghi chú kế hoạch</span>
+                    <span className="text-gray-900 font-medium italic leading-relaxed">{row.note || '---'}</span>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:hidden">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tác vụ nhanh</span>
+                    <button
+                      onClick={() => handleCreateOrder(row)}
+                      className="w-full bg-green-600 text-white font-bold py-2 rounded-lg text-[11px] shadow-sm active:scale-95"
+                    >
+                      Tạo lệnh sản xuất
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          />
+        </div>
+      )}
 
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalMode === 'add' ? 'Thêm kế hoạch mới' : 'Chỉnh sửa kế hoạch'} isMaximized={isModalMaximized} onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}>
         {/* Tab Headers */}
@@ -438,31 +491,31 @@ export const ProductionPlans = () => {
           <button type="button" onClick={() => setActiveTab('details')} className={`py-2 px-4 transition-all ${activeTab === 'details' ? 'border-b-2 border-blue-500 font-bold text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Thông tin chi tiết</button>
         </div>
 
-        <form onSubmit={handleModalSubmit} className="space-y-4">
+        <form onSubmit={handleModalSubmit} className="space-y-5 max-h-[70vh] overflow-y-auto px-1">
           {/* Tab: Thông tin chung */}
           {activeTab === 'general' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-700">Mã kế hoạch</label>
-                  <input 
-                    type="text" 
-                    value={currentEditingItem?.planCode || ''} 
-                    onChange={(e) => setCurrentEditingItem({...currentEditingItem, planCode: e.target.value})} 
-                    className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`} 
-                    required 
+                  <label className="text-xs font-bold text-gray-500 uppercase ml-1">Mã kế hoạch <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={currentEditingItem?.planCode || ''}
+                    onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, planCode: e.target.value })}
+                    className={`w-full border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-3 text-base' : 'p-2.5 text-sm'}`}
+                    required
                   />
                 </div>
-                <CustomSelect label="Kho/Xưởng nhận" options={[]} value={currentEditingItem?.warehouse || ''} onChange={(e) => setCurrentEditingItem({...currentEditingItem, warehouse: e.target.value})} isModalMaximized={isModalMaximized} />
+                <CustomSelect label="Kho/Xưởng nhận" options={[]} value={currentEditingItem?.warehouse || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, warehouse: e.target.value })} isModalMaximized={isModalMaximized} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <DateInput label="Ngày bắt đầu" value={currentEditingItem?.startDate || ''} onChange={(e) => setCurrentEditingItem({...currentEditingItem, startDate: e.target.value})} isModalMaximized={isModalMaximized} />
-                <DateInput label="Ngày kết thúc" value={currentEditingItem?.endDate || ''} onChange={(e) => setCurrentEditingItem({...currentEditingItem, endDate: e.target.value})} isModalMaximized={isModalMaximized} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <DateInput label="Ngày bắt đầu" value={currentEditingItem?.startDate || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, startDate: e.target.value })} isModalMaximized={isModalMaximized} />
+                <DateInput label="Ngày kết thúc" value={currentEditingItem?.endDate || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, endDate: e.target.value })} isModalMaximized={isModalMaximized} />
               </div>
               {/* <CustomSelect label="Trạng thái kế hoạch" options={statuses} value={currentEditingItem?.status || ''} onChange={(e) => setCurrentEditingItem({...currentEditingItem, status: e.target.value})} /> */}
               <div>
-                <label className="block text-sm font-medium text-gray-700">Ghi chú</label>
-                <textarea value={currentEditingItem?.note || ''} onChange={(e) => setCurrentEditingItem({...currentEditingItem, note: e.target.value})} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-2 focus:ring-blue-500 outline-none" rows="3"></textarea>
+                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Ghi chú</label>
+                <textarea value={currentEditingItem?.note || ''} onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, note: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-2 focus:ring-blue-500 outline-none text-sm" rows="3"></textarea>
               </div>
             </div>
           )}
@@ -470,9 +523,9 @@ export const ProductionPlans = () => {
           {/* Tab: Thông tin chi tiết */}
           {activeTab === 'details' && (
             <div className="space-y-4">
-              <CustomSelect 
-                label="Sản phẩm cần sản xuất" 
-                options={items} 
+              <CustomSelect
+                label="Sản phẩm cần sản xuất"
+                options={items}
                 isMulti={true}
                 isModalMaximized={isModalMaximized}
                 value={items.filter(item => selectedPlanItems.some(sp => String(sp.itemId) === String(item.value)))}
@@ -487,7 +540,7 @@ export const ProductionPlans = () => {
                   });
                 }}
               />
-              
+
               <div className="mt-4">
                 <h4 className="font-bold text-sm text-gray-700 mb-2">Sản phẩm được chọn</h4>
                 {/* Thay đổi overflow-hidden thành overflow-visible để không bị cắt menu absolute */}
@@ -506,14 +559,14 @@ export const ProductionPlans = () => {
                             {items.find(i => String(i.value) === String(item.itemId))?.label || 'N/A'}
                           </td>
                           <td className="px-4 py-2 relative">
-                            <input 
-                              type="number" 
+                            <input
+                              type="number"
                               min="1"
-                              value={item.quantity} 
+                              value={item.quantity}
                               onFocus={() => setActiveBOMItemId(item.itemId)}
                               onChange={(e) => {
                                 const val = parseInt(e.target.value) || 0;
-                                setSelectedPlanItems(prev => prev.map(p => p.itemId === item.itemId ? {...p, quantity: val} : p));
+                                setSelectedPlanItems(prev => prev.map(p => p.itemId === item.itemId ? { ...p, quantity: val } : p));
                               }}
                               className="w-full border border-gray-300 rounded p-1 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                             />
@@ -550,17 +603,17 @@ export const ProductionPlans = () => {
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={handleCloseModal} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Hủy</button>
-            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">Lưu kế hoạch</button>
+          <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
+            <button type="button" onClick={handleCloseModal} className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-medium transition-colors text-sm">Hủy</button>
+            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm">Lưu thông tin</button>
           </div>
         </form>
       </Modal>
 
       {/* Modal chi tiết định mức nguyên liệu */}
-      <Modal 
-        isOpen={isDetailModalOpen} 
-        onClose={handleCloseDetailModal} 
+      <Modal
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
         title={`Chi tiết nguyên liệu cần thiết - ${viewingPlan?.planCode}`}
         maxWidth="max-w-7xl"
         isMaximized={isDetailModalMaximized}
@@ -600,8 +653,8 @@ export const ProductionPlans = () => {
                     <div className="flex flex-wrap gap-2">
                       {detail.materials.length > 0 ? (
                         detail.materials.map((m, mIdx) => (
-                          <span 
-                            key={mIdx} 
+                          <span
+                            key={mIdx}
                             className={`px-2 py-1 rounded-md text-xs font-medium border ${m.remainingStock < 0 ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-200 text-gray-700 border-gray-300'}`}
                           >
                             {m.remainingStock.toLocaleString()} x {m.name}
@@ -631,7 +684,7 @@ export const ProductionPlans = () => {
           </table>
         </div>
         <div className="mt-6 flex justify-end">
-          <button 
+          <button
             onClick={handleCloseDetailModal}
             className="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition-colors text-sm font-medium"
           >
@@ -641,9 +694,9 @@ export const ProductionPlans = () => {
       </Modal>
 
       {/* Modal Xác nhận Tạo lệnh sản xuất */}
-      <Modal 
-        isOpen={isCreateOrderModalOpen} 
-        onClose={handleCloseCreateOrderModal} 
+      <Modal
+        isOpen={isCreateOrderModalOpen}
+        onClose={handleCloseCreateOrderModal}
         title={`Tạo Lệnh sản xuất từ - ${viewingPlan?.planCode}`}
         maxWidth="max-w-7xl"
         isMaximized={isCreateOrderModalMaximized}

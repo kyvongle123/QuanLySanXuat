@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { Search, FileUp, FileDown, Plus } from 'lucide-react'; // Đã thêm FileDown cho nút xuất Excel
+import { Search, FileUp, FileDown, Plus, ChevronRight } from 'lucide-react'; // Đã thêm ChevronRight cho expansion
 import { CustomDatatable, Modal, CustomSelect, AppNotification, CustomConfirm } from '../customComponent/customComponent';
 import { getTransportVehicles, createTransportVehicle, updateTransportVehicle, deleteTransportVehicle } from '../controller/transportVehiclesController';
 
@@ -16,6 +16,7 @@ export const TransportVehicles = () => {
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const showNotification = (message, type = 'success') => {
     setNotification({ isOpen: true, message, type });
@@ -42,7 +43,7 @@ export const TransportVehicles = () => {
   }, []);
 
   const filteredVehicles = useMemo(() => {
-    return vehicles.filter(v => 
+    return vehicles.filter(v =>
       v.vehicleCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       v.licensePlate?.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -67,15 +68,16 @@ export const TransportVehicles = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setIsModalMaximized(false);
+    setErrors({});
   };
 
   const handleDelete = async (id) => {
-    setConfirmModal({ 
-      isOpen: true, 
-      id, 
+    setConfirmModal({
+      isOpen: true,
+      id,
       type: 'delete',
       title: 'Xác nhận xóa xe hàng',
-      message: `Bạn có chắc chắn muốn xóa xe có ID: ${id} không?` 
+      message: `Bạn có chắc chắn muốn xóa xe có ID: ${id} không?`
     });
   };
 
@@ -152,10 +154,25 @@ export const TransportVehicles = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCurrentVehicle(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Logic xác thực dữ liệu
+    const newErrors = {};
+    if (!currentVehicle.vehicleCode?.trim()) newErrors.vehicleCode = 'Bắt buộc nhập Mã số xe';
+    if (!currentVehicle.licensePlate?.trim()) newErrors.licensePlate = 'Bắt buộc nhập Biển số xe';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
+
     const payload = {
       ...currentVehicle
     };
@@ -177,100 +194,146 @@ export const TransportVehicles = () => {
   };
 
   const columns = [
-    { header: 'STT', render: (row, { index }) => index },
-    { 
+    {
+      header: '',
+      className: 'w-[40px] text-center !px-1',
+      render: (row, { isExpanded, toggleExpand }) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
+          className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
+        >
+          <ChevronRight
+            size={18}
+            className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`}
+          />
+        </button>
+      ),
+    },
+    { header: 'STT', className: 'w-[50px] text-center hidden sm:table-cell', render: (_, { index }) => index + 1 },
+    {
       header: 'Mã số xe', // Đã sửa lại tên cột cho rõ ràng
       accessor: 'vehicleCode',
-      className: 'min-w-[120px]'
+      className: 'font-bold text-blue-700 min-w-[100px]'
     },
-    { header: 'Biển số xe', accessor: 'licensePlate', className: 'w-full' },
+    { header: 'Biển số xe', accessor: 'licensePlate', className: 'min-w-[120px] sm:w-full' },
     {
       header: 'Hành động',
-      className: 'text-right',
+      className: 'text-right pr-2 sm:pr-4 w-[100px] sm:w-[150px]',
       render: (row) => (
-        <div className="flex gap-2 justify-end whitespace-nowrap">
-          <button onClick={() => handleOpenEditModal(row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm transition-colors focus:outline-none">Sửa</button>
-          <button onClick={() => handleDelete(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-sm transition-colors focus:outline-none">Xóa</button>
+        <div className="flex gap-1.5 justify-end whitespace-nowrap">
+          <button onClick={() => handleOpenEditModal(row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95 shadow-sm">Sửa</button>
+          <button onClick={() => handleDelete(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95 shadow-sm">Xóa</button>
         </div>
       ),
     },
   ];
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Quản lý xe hàng</h2>
+    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
+      <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Quản lý xe hàng</h2>
 
-      <div className="flex justify-between items-center mb-4 gap-4">
-        <div className="relative w-full max-w-[280px]">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search size={18} className="text-gray-400" />
+      <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
+        <div className="relative w-full lg:max-w-[350px]">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+            <Search size={18} />
           </span>
           <input
             type="text"
             placeholder="Tìm theo tên xe"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
+            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm outline-none transition-all sm:text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
-          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
-            <FileDown size={18} />
-            Xuất Excel
+          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+            <FileDown size={18} /> Xuất Excel
           </button>
-          <button onClick={handleOpenAddModal} className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors">
-            Thêm xe mới
+          <button onClick={handleOpenAddModal} className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+            + Thêm mới
           </button>
         </div>
       </div>
 
-      {loading && <p className="text-gray-600 p-4">Đang tải dữ liệu...</p>}
+      {
+        loading && (
+          <div className="flex flex-col items-center justify-center p-20 text-gray-400">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+            <p className="italic text-sm">Đang tải dữ liệu xe hàng...</p>
+          </div>
+        )
+      }
       {error && <p className="text-red-600 p-4">Lỗi: {error}</p>}
-      {!loading && !error && <CustomDatatable columns={columns} data={filteredVehicles} />}
+      {
+        !loading && !error && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <CustomDatatable
+              columns={columns}
+              data={filteredVehicles}
+              renderExpansion={(row) => (
+                <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-sm">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mã số xe</span>
+                      <span className="text-gray-900 font-medium">{row.vehicleCode || '---'}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Biển số xe</span>
+                      <span className="text-gray-900 font-medium">{row.licensePlate || '---'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            />
+          </div>
+        )
+      }
 
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         title={modalMode === 'add' ? 'Thêm xe hàng mới' : 'Chỉnh sửa xe hàng'}
-        maxWidth={isModalMaximized ? 'max-w-full' : 'max-w-md'}
+        maxWidth={isModalMaximized ? 'max-w-full' : 'max-w-2xl'}
         isMaximized={isModalMaximized}
         onMaximizeToggle={toggleModalMaximize}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Mã số xe</label>
-              <input 
-                name="vehicleCode" 
-                type="text" 
-                value={currentVehicle.vehicleCode || ''} 
-                onChange={handleInputChange} 
-                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} 
+        <form onSubmit={handleSubmit} className={`space-y-5 ${isModalMaximized ? '' : 'max-h-[70vh] overflow-y-auto px-1'}`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="flex flex-col gap-1">
+              <label className={`text-xs font-bold ${errors.vehicleCode ? 'text-red-500' : 'text-gray-500'} uppercase ml-1`}>Mã số xe</label>
+              <input
+                name="vehicleCode"
+                type="text"
+                value={currentVehicle.vehicleCode || ''}
+                onChange={handleInputChange}
+                className={`mt-1 block w-full border ${errors.vehicleCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-3 text-base' : 'p-2.5 text-sm'} bg-white`}
               />
+              {errors.vehicleCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.vehicleCode}</p>}
             </div>
-            <div>
-              <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Biển số xe</label>
-              <input 
-                name="licensePlate" 
-                type="text" 
-                value={currentVehicle.licensePlate || ''} 
-                onChange={handleInputChange} 
-                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} 
+            <div className="flex flex-col gap-1">
+              <label className={`text-xs font-bold ${errors.licensePlate ? 'text-red-500' : 'text-gray-500'} uppercase ml-1`}>Biển số xe</label>
+              <input
+                name="licensePlate"
+                type="text"
+                value={currentVehicle.licensePlate || ''}
+                onChange={handleInputChange}
+                className={`mt-1 block w-full border ${errors.licensePlate ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-3 text-base' : 'p-2.5 text-sm'} bg-white`}
               />
+              {errors.licensePlate && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.licensePlate}</p>}
             </div>
           </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={handleCloseModal} className={`bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors ${isModalMaximized ? 'py-2 px-6 text-base' : 'py-1.5 px-4 text-sm'}`}>Hủy</button>
-            <button type="submit" className={`bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ${isModalMaximized ? 'py-2 px-6 text-base' : 'py-1.5 px-4 text-sm'}`}>Lưu</button>
+          <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
+            <button type="button" onClick={handleCloseModal} className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-medium transition-colors text-sm">Hủy bỏ</button>
+            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm">Lưu thông tin</button>
           </div>
         </form>
       </Modal>
 
-      <CustomConfirm 
+      <CustomConfirm
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' })}
         onConfirm={handleConfirmAction}
@@ -280,6 +343,6 @@ export const TransportVehicles = () => {
       />
 
       <AppNotification isOpen={notification.isOpen} message={notification.message} type={notification.type} onClose={closeNotification} />
-    </div>
+    </div >
   );
 };

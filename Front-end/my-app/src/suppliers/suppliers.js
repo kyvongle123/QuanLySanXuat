@@ -108,7 +108,7 @@ export const Suppliers = () => {
       phone: '',
       email: '',
       address: '',
-      taxId: '',
+      taxCode: '',
       website: '',
       notes: ''
     });
@@ -139,7 +139,7 @@ export const Suppliers = () => {
     if (!currentEditingSupplier?.phone?.trim()) errors.phone = "Bắt buộc nhập Điện thoại";
     if (!currentEditingSupplier?.email?.trim()) errors.email = "Bắt buộc nhập Email";
     if (!currentEditingSupplier?.address?.trim()) errors.address = "Bắt buộc nhập Địa chỉ";
-    if (!currentEditingSupplier?.taxId?.trim()) errors.taxId = "Bắt buộc nhập Mã số thuế";
+    if (!currentEditingSupplier?.taxCode?.trim()) errors.taxCode = "Bắt buộc nhập Mã số thuế";
     if (!currentEditingSupplier?.website?.trim()) errors.website = "Bắt buộc nhập Website";
 
     if (Object.keys(errors).length > 0) {
@@ -176,7 +176,7 @@ export const Suppliers = () => {
         { header: 'Điện thoại', key: 'phone', width: 15 },
         { header: 'Email', key: 'email', width: 30 },
         { header: 'Địa chỉ', key: 'address', width: 40 },
-        { header: 'Mã số thuế', key: 'taxId', width: 20 },
+        { header: 'Mã số thuế', key: 'taxCode', width: 20 },
         { header: 'Website', key: 'website', width: 25 },
         { header: 'Ghi chú', key: 'notes', width: 50 },
       ];
@@ -189,7 +189,7 @@ export const Suppliers = () => {
           phone: supplier.phone,
           email: supplier.email,
           address: supplier.address,
-          taxId: supplier.taxId,
+          taxCode: supplier.taxCode,
           website: supplier.website,
           notes: supplier.notes,
         });
@@ -312,7 +312,7 @@ export const Suppliers = () => {
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mã số thuế</span>
-                    <span className="text-gray-900 font-medium">{row.taxId || '---'}</span>
+                    <span className="text-gray-900 font-medium">{row.taxCode || '---'}</span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Website</span>
@@ -404,15 +404,15 @@ export const Suppliers = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={`text-xs font-medium ${supplierErrors.taxId ? 'text-red-500' : 'text-gray-700'}`}>Mã số thuế</label>
+              <label className={`text-xs font-medium ${supplierErrors.taxCode ? 'text-red-500' : 'text-gray-700'}`}>Mã số thuế</label>
               <input
                 type="text"
-                name="taxId"
-                value={currentEditingSupplier?.taxId || ''}
+                name="taxCode"
+                value={currentEditingSupplier?.taxCode || ''}
                 onChange={handleModalInputChange}
-                className={`mt-1 block w-full border ${supplierErrors.taxId ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+                className={`mt-1 block w-full border ${supplierErrors.taxCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
-              {supplierErrors.taxId && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.taxId}</p>}
+              {supplierErrors.taxCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.taxCode}</p>}
             </div>
             <div>
               <label className={`text-xs font-medium ${supplierErrors.website ? 'text-red-500' : 'text-gray-700'}`}>Website</label>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Search, Plus, FileDown, FileUp } from 'lucide-react';
+import { Search, Plus, FileDown, FileUp, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, Modal, AppNotification, CustomConfirm } from '../customComponent/customComponent';
@@ -142,7 +142,7 @@ export const Customers = () => {
           row.font = { name: 'Times New Roman', size: 12, bold: true };
           row.alignment = { vertical: 'middle', horizontal: 'center' };
         } else {
-          row.height = 25;
+          // ExcelJS sẽ tự động điều chỉnh chiều cao dòng nếu wrapText là true và không đặt chiều cao cố định
         }
 
         row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
@@ -223,10 +223,25 @@ export const Customers = () => {
 
   // Cấu hình các cột cho bảng dữ liệu
   const columns = [
-    { header: 'STT', className: 'w-[50px] text-center hidden sm:table-cell', render: (row, { index }) => index + 1 },
-    { header: 'Họ tên', accessor: 'name', className: 'font-bold text-blue-600 min-w-[150px]' },
+    {
+      header: '',
+      className: 'w-[40px] text-center !px-1',
+      render: (row, { isExpanded, toggleExpand }) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
+          className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
+        >
+          <ChevronRight
+            size={18}
+            className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`}
+          />
+        </button>
+      ),
+    },
+    { header: 'STT', className: 'w-[50px] text-center !px-1 sm:!px-4', render: (row, { index }) => index },
+    { header: 'Họ tên', accessor: 'name', className: 'font-bold text-blue-600 min-w-[140px] !px-1 sm:!px-4' },
     { header: 'Email', accessor: 'email', className: 'hidden md:table-cell' },
-    { header: 'Số điện thoại', accessor: 'phone', className: 'w-32 sm:w-40' },
+    { header: 'Số điện thoại', accessor: 'phone', className: 'hidden sm:table-cell w-32 sm:w-40' },
     { header: 'Địa chỉ', accessor: 'address', className: 'hidden lg:table-cell' },
     {
       header: 'Hành động',
@@ -301,7 +316,28 @@ export const Customers = () => {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <CustomDatatable columns={columns} data={filteredCustomers} />
+          <CustomDatatable
+            columns={columns}
+            data={filteredCustomers}
+            renderExpansion={(row) => (
+              <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-4 sm:gap-x-8 text-sm">
+                  <div className="flex flex-col gap-1 md:hidden">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
+                    <span className="text-gray-900 font-medium break-all">{row.email || '---'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 sm:hidden">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
+                    <span className="text-gray-900 font-medium">{row.phone || '---'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 col-span-2 sm:col-span-1 lg:hidden">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Địa chỉ</span>
+                    <span className="text-gray-900 font-medium">{row.address || '---'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          />
         </div>
       )}
 
@@ -314,7 +350,7 @@ export const Customers = () => {
         <form onSubmit={handleSubmit} className="space-y-5 max-h-[70vh] overflow-y-auto px-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-500 uppercase ml-1">Tên khách hàng</label>
+              <label className="text-xs text-gray-500 ml-1">Tên khách hàng</label>
               <input
                 name="name"
                 value={currentCustomer.name}
@@ -324,7 +360,7 @@ export const Customers = () => {
               {errors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.name}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-500 uppercase ml-1">Email</label>
+              <label className="text-xs text-gray-500 ml-1">Email</label>
               <input
                 type="email"
                 name="email"
@@ -335,7 +371,7 @@ export const Customers = () => {
               {errors.email && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.email}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-500 uppercase ml-1">Số điện thoại</label>
+              <label className="text-xs text-gray-500 ml-1">Số điện thoại</label>
               <input
                 name="phone"
                 value={currentCustomer.phone}
@@ -345,7 +381,7 @@ export const Customers = () => {
               {errors.phone && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.phone}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-500 uppercase ml-1">Địa chỉ</label>
+              <label className="text-xs text-gray-500 ml-1">Địa chỉ</label>
               <input
                 name="address"
                 value={currentCustomer.address}

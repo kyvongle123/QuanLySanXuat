@@ -19,6 +19,7 @@ export const Stages = () => {
   const [sectionSearch, setSectionSearch] = useState('');
   const [sectionForm, setSectionForm] = useState({ id: null, name: '' });
   const [isSectionMgmtMaximized, setIsSectionMgmtMaximized] = useState(false);
+  const [sectionErrors, setSectionErrors] = useState({});
   const [isSectionEditModalOpen, setIsSectionEditModalOpen] = useState(false);
   const [sectionConfirmModal, setSectionConfirmModal] = useState({ isOpen: false, id: null });
   const [loading, setLoading] = useState(true);
@@ -33,6 +34,7 @@ export const Stages = () => {
     productionSection: ''
   });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
@@ -90,7 +92,12 @@ export const Stages = () => {
   };
 
   const handleSaveSection = async () => {
-    if (!sectionForm.name.trim()) return;
+    if (!sectionForm.name?.trim()) {
+      setSectionErrors({ name: "Bắt buộc nhập Tên tổ sản xuất" });
+      return;
+    }
+    setSectionErrors({});
+
     try {
       if (sectionForm.id) {
         await updateProductionSection(sectionForm.id, { ID: sectionForm.id, Name: sectionForm.name });
@@ -101,7 +108,7 @@ export const Stages = () => {
       }
       setSectionForm({ id: null, name: '' });
       fetchSections(); // Tải lại danh sách
-      setIsSectionEditModalOpen(false);
+      handleCloseSectionEditModal();
     } catch (err) {
       showNotification("Lỗi khi lưu dữ liệu tổ sản xuất.", "error");
     }
@@ -114,12 +121,18 @@ export const Stages = () => {
   }, [productionSections, sectionSearch]);
 
   const handleOpenSectionEdit = (mode, section = null) => {
+    setSectionErrors({});
     if (mode === 'add') {
       setSectionForm({ id: null, name: '' });
     } else {
       setSectionForm({ id: section.value, name: section.label });
     }
     setIsSectionEditModalOpen(true);
+  };
+
+  const handleCloseSectionEditModal = () => {
+    setIsSectionEditModalOpen(false);
+    setSectionErrors({});
   };
 
   const sectionColumns = [
@@ -179,7 +192,7 @@ export const Stages = () => {
   const handleAddItem = () => {
     setModalMode('add');
     setCurrentEditingItem({
-      stageCode: '', name: '', sequence: stages.length + 1, productionSection: ''
+      stageCode: '', name: '', sequence: 0, productionSection: ''
     });
     setIsModalOpen(true);
   };
@@ -218,10 +231,27 @@ export const Stages = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setIsModalMaximized(false);
+    setErrors({});
   };
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
+
+    // Logic xác thực dữ liệu
+    const newErrors = {};
+    if (!currentEditingItem?.stageCode?.trim()) newErrors.stageCode = "Bắt buộc nhập Mã công đoạn";
+    if (!currentEditingItem?.name?.trim()) newErrors.name = "Bắt buộc nhập Tên công đoạn";
+    if (currentEditingItem?.sequence === '' || currentEditingItem?.sequence === null || currentEditingItem?.sequence === undefined || currentEditingItem?.sequence <= 0) {
+      newErrors.sequence = "Bắt buộc nhập Thứ tự";
+    }
+    if (!currentEditingItem?.productionSection) newErrors.productionSection = "Bắt buộc nhập Tổ sản xuất";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
+
     const payload = {
       ID: currentEditingItem.id || 0,
       StageCode: currentEditingItem.stageCode,
@@ -566,36 +596,45 @@ export const Stages = () => {
         <form onSubmit={handleModalSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-700">Mã công đoạn</label>
+              <label className={`text-xs font-medium ${errors.stageCode ? 'text-red-500' : 'text-gray-700'}`}>Mã công đoạn</label>
               <input
                 type="text"
                 value={currentEditingItem?.stageCode || ''}
-                onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, stageCode: e.target.value })}
-                className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
-                required
+                onChange={(e) => {
+                  setCurrentEditingItem({ ...currentEditingItem, stageCode: e.target.value });
+                  if (errors.stageCode) setErrors(prev => ({ ...prev, stageCode: null }));
+                }}
+                className={`w-full border ${errors.stageCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
               />
+              {errors.stageCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.stageCode}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-700">Thứ tự</label>
+              <label className={`text-xs font-medium ${errors.sequence ? 'text-red-500' : 'text-gray-700'}`}>Thứ tự</label>
               <input
                 type="number"
                 value={currentEditingItem?.sequence || 0}
-                onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, sequence: e.target.value })}
-                className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
-                required
+                onChange={(e) => {
+                  setCurrentEditingItem({ ...currentEditingItem, sequence: e.target.value });
+                  if (errors.sequence) setErrors(prev => ({ ...prev, sequence: null }));
+                }}
+                className={`w-full border ${errors.sequence ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
               />
+              {errors.sequence && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.sequence}</p>}
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-700">Tên công đoạn</label>
+            <label className={`text-xs font-medium ${errors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên công đoạn</label>
             <input
               type="text"
               value={currentEditingItem?.name || ''}
-              onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, name: e.target.value })}
-              className={`w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
-              required
+              onChange={(e) => {
+                setCurrentEditingItem({ ...currentEditingItem, name: e.target.value });
+                if (errors.name) setErrors(prev => ({ ...prev, name: null }));
+              }}
+              className={`w-full border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
             />
+            {errors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.name}</p>}
           </div>
 
           <div className="relative">
@@ -610,9 +649,14 @@ export const Stages = () => {
               label="Tổ sản xuất"
               name="productionSection"
               value={currentEditingItem?.productionSection || ''}
-              onChange={(e) => setCurrentEditingItem({ ...currentEditingItem, productionSection: e.target.value })}
+              onChange={(e) => {
+                setCurrentEditingItem({ ...currentEditingItem, productionSection: e.target.value });
+                if (errors.productionSection) setErrors(prev => ({ ...prev, productionSection: null }));
+              }}
               options={productionSections}
               isModalMaximized={isModalMaximized}
+              error={!!errors.productionSection}
+              errorMessage={errors.productionSection}
             />
           </div>
 
@@ -665,21 +709,24 @@ export const Stages = () => {
       </Modal>
 
       {/* Modal Thêm/Sửa Tổ sản xuất */}
-      <Modal isOpen={isSectionEditModalOpen} onClose={() => setIsSectionEditModalOpen(false)} title={sectionForm.id ? 'Sửa tổ sản xuất' : 'Thêm tổ sản xuất mới'} maxWidth="max-w-md">
+      <Modal isOpen={isSectionEditModalOpen} onClose={handleCloseSectionEditModal} title={sectionForm.id ? 'Sửa tổ sản xuất' : 'Thêm tổ sản xuất mới'} maxWidth="max-w-md">
         <div className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-700">Tên Tổ sản xuất</label>
+            <label className={`text-xs font-medium ${sectionErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên Tổ sản xuất</label>
             <input
               type="text"
               value={sectionForm.name}
-              onChange={(e) => setSectionForm({ ...sectionForm, name: e.target.value })}
-              className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              onChange={(e) => {
+                setSectionForm({ ...sectionForm, name: e.target.value });
+                if (sectionErrors.name) setSectionErrors(prev => ({ ...prev, name: null }));
+              }}
+              className={`w-full border ${sectionErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 outline-none text-sm transition-all`}
               placeholder="Nhập tên tổ sản xuất..."
-              required
             />
+            {sectionErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{sectionErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setIsSectionEditModalOpen(false)} className="bg-gray-500 text-white px-4 py-1.5 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>
+            <button type="button" onClick={handleCloseSectionEditModal} className="bg-gray-500 text-white px-4 py-1.5 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>
             <button type="button" onClick={handleSaveSection} className="bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 transition-colors text-sm font-bold">Lưu</button>
           </div>
         </div>

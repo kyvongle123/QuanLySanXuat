@@ -62,7 +62,7 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        className={className || `bg-gray-50 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} text-gray-900 text-xs rounded-lg p-1 pr-7 cursor-pointer font-medium flex justify-between items-center min-h-[26px] hover:border-blue-400 transition-all shadow-sm`}
+        className={`${className || `bg-gray-50 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} text-gray-900 text-xs rounded-lg p-1 pr-7 cursor-pointer font-medium flex justify-between items-center min-h-[26px] hover:border-blue-400 transition-all shadow-sm`} relative`}
       >
         <span className="truncate">{selectedOption ? selectedOption.label : '-- Chọn --'}</span>
         <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
@@ -71,7 +71,7 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
       </div>
 
       {isOpen && (
-        <div className="absolute z-[70] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-2xl overflow-hidden min-w-[180px] left-0 animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="absolute z-[70] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-2xl overflow-hidden min-w-[180px] left-0 top-full origin-top animate-in fade-in slide-in-from-top-1 duration-200">
           <div className="p-1.5 border-b bg-gray-50 sticky top-0 z-10">
             <div className="relative group">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
@@ -451,7 +451,7 @@ export const Machines = () => {
     if (!currentMachine?.productionDate) newErrors.productionDate = "Bắt buộc nhập Ngày sản xuất";
     if (!currentMachine?.commissioningDate) newErrors.commissioningDate = "Bắt buộc nhập Ngày đưa vào sử dụng";
     if (!currentMachine?.lastMaintainance) newErrors.lastMaintainance = "Bắt buộc nhập Ngày bảo trì gần nhất";
-    if (!currentMachine?.totalRunningHours || !currentMachine?.totalRunningHours <= 0) newErrors.totalRunningHours = "Bắt buộc nhập Tổng số giờ đã chạy";
+    if (!currentMachine?.totalRunningHours || currentMachine?.totalRunningHours <= 0) newErrors.totalRunningHours = "Bắt buộc nhập Tổng số giờ đã chạy";
     if (!currentMachine?.status) newErrors.status = "Bắt buộc nhập Trạng thái";
     if (currentMachine?.oeeTarget === '' || currentMachine?.oeeTarget === undefined || currentMachine?.oeeTarget === null || currentMachine?.oeeTarget <= 0) {
       newErrors.oeeTarget = "Bắt buộc nhập Mục tiêu hiệu suất";
@@ -823,7 +823,7 @@ export const Machines = () => {
                     options={machineTypes}
                     onChange={(val) => handleInputChange({ target: { name: 'machineType', value: val } })}
                     disabled={modalMode === 'view'}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 text-sm bg-white flex items-center justify-between cursor-pointer shadow-sm"
+                    className={`w-full border ${errors.machineType ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white flex items-center justify-between cursor-pointer shadow-sm`}
                     placeholder="Tìm loại máy..."
                     error={!!errors.machineType}
                     errorMessage={errors.machineType}
@@ -857,7 +857,7 @@ export const Machines = () => {
                     options={machineStatuses}
                     onChange={(val) => handleInputChange({ target: { name: 'status', value: val } })}
                     disabled={modalMode === 'view'}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 text-sm bg-white flex items-center justify-between cursor-pointer shadow-sm"
+                    className={`w-full border ${errors.status ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white flex items-center justify-between cursor-pointer shadow-sm`}
                     placeholder="Tìm trạng thái..."
                     error={!!errors.status}
                     errorMessage={errors.status}

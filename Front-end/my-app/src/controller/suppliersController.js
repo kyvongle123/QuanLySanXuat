@@ -12,7 +12,7 @@ const normalizeSupplierData = (data) => {
             phone: item.phone || item.Phone,
             email: item.email || item.Email,
             address: item.address || item.Address,
-            taxId: item.taxId || item.TaxId,
+            taxCode: item.taxCode || item.TaxCode,
             website: item.website || item.Website,
             notes: item.notes || item.Notes,
         }));
@@ -24,7 +24,7 @@ const normalizeSupplierData = (data) => {
         phone: data.phone || data.Phone,
         email: data.email || data.Email,
         address: data.address || data.Address,
-        taxId: data.taxId || data.TaxId,
+        taxCode: data.taxCode || data.TaxCode,
         website: data.website || data.Website,
         notes: data.notes || data.Notes,
     };
