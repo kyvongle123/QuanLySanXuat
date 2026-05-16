@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Search, Plus, ChevronDown, FileDown, FileUp } from 'lucide-react';
+import { Search, Plus, ChevronDown, FileDown, FileUp, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import {
@@ -29,7 +29,7 @@ import {
 } from '../controller/machineStatusesController';
 
 // Component Searchable Select tùy chỉnh dành riêng cho các ô trong bảng
-const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", className, disabled = false }) => {
+const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", className, disabled = false, error = false, errorMessage = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const selectRef = useRef(null);
@@ -54,7 +54,7 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
   );
 
   return (
-    <div className="relative w-full" ref={selectRef}>
+    <div className="flex flex-col gap-1 w-full" ref={selectRef}>
       {/* Ô hiển thị giá trị hiện tại */}
       <div
         onClick={(e) => {
@@ -62,7 +62,7 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        className={className || "bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg p-1 pr-7 cursor-pointer font-medium flex justify-between items-center min-h-[26px] hover:border-blue-400 transition-all shadow-sm"}
+        className={className || `bg-gray-50 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} text-gray-900 text-xs rounded-lg p-1 pr-7 cursor-pointer font-medium flex justify-between items-center min-h-[26px] hover:border-blue-400 transition-all shadow-sm`}
       >
         <span className="truncate">{selectedOption ? selectedOption.label : '-- Chọn --'}</span>
         <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
@@ -95,6 +95,7 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
           </div>
         </div>
       )}
+      {errorMessage && <p className="text-red-500 text-[10px] mt-1 font-medium">{errorMessage}</p>}
     </div>
   );
 };
@@ -106,6 +107,7 @@ export const Machines = () => {
   const [machineStatuses, setMachineStatuses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [errors, setErrors] = useState({});
 
   // State quản lý Modal và Chế độ (Thêm/Sửa/Xem)
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -129,6 +131,7 @@ export const Machines = () => {
   const [statusModalMode, setStatusModalMode] = useState('list'); // 'list', 'add', 'edit'
   const [currentStatus, setCurrentStatus] = useState({ name: '' });
   const [isStatusFormModalOpen, setIsStatusFormModalOpen] = useState(false);
+  const [statusErrors, setStatusErrors] = useState({});
 
   // State thông báo và xác nhận xóa
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
@@ -142,6 +145,7 @@ export const Machines = () => {
   const [isTypeFormModalOpen, setIsTypeFormModalOpen] = useState(false);
   const [typeModalMode, setTypeModalMode] = useState('add'); // 'add' hoặc 'edit'
   const [currentType, setCurrentType] = useState({ name: '' });
+  const [typeErrors, setTypeErrors] = useState({});
 
   // Hàm mở Modal thêm mới
   const handleOpenAddType = () => {
@@ -161,6 +165,7 @@ export const Machines = () => {
   const handleOpenAddStatus = () => {
     setCurrentStatus({ name: '' });
     setStatusModalMode('add');
+    setStatusErrors({});
     setIsStatusFormModalOpen(true);
   };
 
@@ -168,6 +173,7 @@ export const Machines = () => {
   const handleOpenEditStatus = (status) => {
     setCurrentStatus(status);
     setStatusModalMode('edit');
+    setStatusErrors({});
     setIsStatusFormModalOpen(true);
   };
 
@@ -245,6 +251,12 @@ export const Machines = () => {
   // Hàm lưu (Submit Form)
   const handleSaveType = async (e) => {
     e.preventDefault();
+    if (!currentType?.name?.trim()) {
+      setTypeErrors({ name: "Bắt buộc nhập Tên loại máy" });
+      return;
+    }
+    setTypeErrors({});
+
     try {
       if (typeModalMode === 'add') {
         await createMachineType({ name: currentType.name });
@@ -284,10 +296,10 @@ export const Machines = () => {
   }, [rawMachineTypes, typeSearchTerm]);
 
   const typeColumns = [
-    { header: 'STT', render: (_, { index }) => index },
-    { header: 'Tên loại máy', accessor: 'name', className: 'font-bold text-blue-600' },
+    { header: 'STT', render: (_, { index }) => index, className: '!px-1 sm:!px-4' },
+    { header: 'Tên loại máy', accessor: 'name', className: 'font-bold text-blue-600 !px-1 sm:!px-4' },
     {
-      header: 'Hành động', className: 'text-right pr-4', render: (row) => (
+      header: 'Hành động', className: 'text-right pr-4 !px-2 sm:!px-4', render: (row) => (
         <div className="flex gap-2 justify-end">
           <button
             type="button"
@@ -317,10 +329,17 @@ export const Machines = () => {
 
   const handleStatusInputChangeSub = (e) => {
     setCurrentStatus({ ...currentStatus, name: e.target.value });
+    if (statusErrors.name) setStatusErrors({});
   };
 
   const handleSaveStatus = async (e) => {
     e.preventDefault();
+    if (!currentStatus?.name?.trim()) {
+      setStatusErrors({ name: "Bắt buộc nhập Tên trạng thái" });
+      return;
+    }
+    setStatusErrors({});
+
     try {
       if (statusModalMode === 'add') {
         await createMachineStatus({ name: currentStatus.name });
@@ -358,7 +377,10 @@ export const Machines = () => {
 
   const statusColumns = [
     { header: 'STT', render: (_, { index }) => index },
-    { header: 'Tên trạng thái', accessor: 'name', className: 'font-bold text-blue-600' },
+    {
+      header: <><span className="hidden sm:inline">Tên trạng thái</span><span className="sm:hidden">Tên</span></>
+      , accessor: 'name', className: 'font-bold text-blue-600'
+    },
     {
       header: 'Hành động', className: 'text-right pr-4', render: (row) => (
         <div className="flex gap-2 justify-end">
@@ -406,16 +428,41 @@ export const Machines = () => {
     setStatusModalMode('list');
     setIsTypeFormModalOpen(false);
     setIsStatusFormModalOpen(false);
+    setErrors({});
+    setTypeErrors({});
+    setStatusErrors({});
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCurrentMachine(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   // Xử lý Lưu hoặc Cập nhật
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const newErrors = {};
+    if (!currentMachine?.machineCode?.trim()) newErrors.machineCode = "Bắt buộc nhập Mã máy";
+    if (!currentMachine?.machineType) newErrors.machineType = "Bắt buộc nhập Loại máy";
+    if (!currentMachine?.productionDate) newErrors.productionDate = "Bắt buộc nhập Ngày sản xuất";
+    if (!currentMachine?.commissioningDate) newErrors.commissioningDate = "Bắt buộc nhập Ngày đưa vào sử dụng";
+    if (!currentMachine?.lastMaintainance) newErrors.lastMaintainance = "Bắt buộc nhập Ngày bảo trì gần nhất";
+    if (!currentMachine?.totalRunningHours || !currentMachine?.totalRunningHours <= 0) newErrors.totalRunningHours = "Bắt buộc nhập Tổng số giờ đã chạy";
+    if (!currentMachine?.status) newErrors.status = "Bắt buộc nhập Trạng thái";
+    if (currentMachine?.oeeTarget === '' || currentMachine?.oeeTarget === undefined || currentMachine?.oeeTarget === null || currentMachine?.oeeTarget <= 0) {
+      newErrors.oeeTarget = "Bắt buộc nhập Mục tiêu hiệu suất";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
+
     try {
       if (modalMode === 'add') {
         await createMachine(currentMachine);
@@ -554,10 +601,26 @@ export const Machines = () => {
 
   // Cấu hình các cột cho bảng
   const columns = [
-    { header: 'STT', render: (_, { index }) => index },
-    { header: 'Mã máy', accessor: 'machineCode', className: 'font-bold text-blue-700' },
+    {
+      header: '',
+      className: 'w-[40px] text-center !px-1',
+      render: (row, { isExpanded, toggleExpand }) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
+          className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
+        >
+          <ChevronRight
+            size={18}
+            className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`}
+          />
+        </button>
+      ),
+    },
+    { header: 'STT', className: 'w-[50px] text-center hidden sm:table-cell', render: (_, { index }) => index + 1 },
+    { header: 'Mã máy', accessor: 'machineCode', className: 'font-bold text-blue-700 min-w-[120px] !px-2' },
     {
       header: 'Loại máy',
+      className: 'hidden md:table-cell min-w-[150px]',
       render: (row) => (
         <div className="relative min-w-[150px]" onClick={(e) => e.stopPropagation()}>
           <button
@@ -581,6 +644,7 @@ export const Machines = () => {
     },
     {
       header: 'Trạng thái',
+      className: 'hidden md:table-cell min-w-[150px]',
       render: (row) => (
         <div className="relative min-w-[150px]" onClick={(e) => e.stopPropagation()}>
           <button
@@ -602,68 +666,129 @@ export const Machines = () => {
         </div>
       )
     },
-    { header: 'OEE Target', render: (row) => <span className="font-bold text-orange-600">{row.oeeTarget}%</span> },
+    { header: 'OEE Target', className: 'hidden lg:table-cell text-center', render: (row) => <span className="font-bold text-orange-600">{row.oeeTarget}%</span> },
     {
       header: 'Giờ chạy',
+      className: 'hidden lg:table-cell text-center',
       render: (row) => <span>{row.totalRunningHours?.toLocaleString()} h</span>
     },
     {
       header: 'Hành động',
-      className: 'text-right pr-4',
+      className: 'text-right pr-2 sm:pr-4 w-[100px] sm:w-[150px]',
       render: (row) => (
-        <div className="flex gap-2 justify-end whitespace-nowrap">
-          <button onClick={() => handleOpenModal('edit', row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95">Sửa</button>
-          <button onClick={() => handleDeleteRequest(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95">Xóa</button>
+        <div className="flex gap-1.5 justify-end whitespace-nowrap">
+          <button onClick={() => handleOpenModal('edit', row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
+          <button onClick={() => handleDeleteRequest(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Xóa</button>
         </div>
       ),
     }
   ];
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Danh sách máy</h2>
+    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
+      <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Danh sách máy</h2>
 
-      <div className="flex justify-between items-center mb-4 gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
         {/* Thanh Tìm kiếm */}
-        <div className="relative w-full max-w-[280px]">
+        <div className="relative w-full lg:max-w-[350px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
             <Search size={18} />
           </span>
           <input
             type="text"
             placeholder="Tìm theo mã máy"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 sm:text-sm outline-none transition-all"
+            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm outline-none transition-all sm:text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="flex gap-2">
-          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
           <button
             onClick={handleRequestExportExcel}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors"
+            className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap flex items-center justify-center gap-2 shadow-sm text-sm"
           >
-            <FileDown size={18} />
-            Xuất Excel
+            <FileDown size={18} />Xuất Excel
           </button>
           <button
             onClick={() => handleOpenModal('add')}
-            className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors"
+            className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg whitespace-nowrap transition-all active:scale-95 shadow-md text-sm"
           >
-            Thêm máy mới
+            <span className="hidden sm:inline">Thêm mới</span>
+            <span className="sm:hidden">Thêm</span>
           </button>
         </div>
       </div>
 
-      {loading ? (
-        <p className="p-4 italic text-gray-500">Đang tải danh sách máy...</p>
-      ) : (
-        <CustomDatatable columns={columns} data={filteredData} />
-      )}
+      {
+        loading ? (
+          <div className="flex flex-col items-center justify-center p-20 text-gray-400">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+            <p className="italic text-sm">Đang tải dữ liệu máy móc...</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <CustomDatatable
+              columns={columns}
+              data={filteredData}
+              renderExpansion={(row) => (
+                <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-4 sm:gap-x-8 text-sm">
+                    <div className="flex flex-col gap-1 md:hidden">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Loại máy</span>
+                      <div className="relative max-w-[150px]">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenTypeManagement(); }} className="absolute right-1 top-[-9px] text-blue-500 text-[9px] font-bold underline z-20 bg-white/80 px-0.5">hiệu chỉnh</button>
+                        <SearchableSelect
+                          value={row.machineType || ''}
+                          options={machineTypes}
+                          onChange={(val) => handleMachineTypeChange(row, val)}
+                          className="w-full border border-gray-300 rounded-lg p-1 pr-7 bg-white text-[11px] min-h-[30px]"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1 md:hidden">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Trạng thái</span>
+                      <div className="relative max-w-[150px]">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenStatusManagement(); }} className="absolute right-1 top-[-9px] text-blue-500 text-[9px] font-bold underline z-20 bg-white/80 px-0.5">hiệu chỉnh</button>
+                        <SearchableSelect
+                          value={row.status || ''}
+                          options={machineStatuses}
+                          onChange={(val) => handleMachineStatusChange(row, val)}
+                          className="w-full border border-gray-300 rounded-lg p-1 pr-7 bg-white text-[11px] min-h-[30px]"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1 lg:hidden">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">OEE Target</span>
+                      <span className="text-gray-900 font-bold text-orange-600">{row.oeeTarget}%</span>
+                    </div>
+                    <div className="flex flex-col gap-1 lg:hidden">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Giờ chạy</span>
+                      <span className="text-gray-900 font-medium">{row.totalRunningHours?.toLocaleString()} h</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ngày sản xuất</span>
+                      <span className="text-gray-900 font-medium">{row.productionDate ? new Date(row.productionDate).toLocaleDateString('vi-VN') : '---'}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ngày bàn giao</span>
+                      <span className="text-gray-900 font-medium">{row.commissioningDate ? new Date(row.commissioningDate).toLocaleDateString('vi-VN') : '---'}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Bảo trì gần nhất</span>
+                      <span className="text-gray-900 font-medium">{row.lastMaintainance ? new Date(row.lastMaintainance).toLocaleDateString('vi-VN') : '---'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            />
+          </div>
+        )
+      }
 
       {/* Modal Form */}
       <Modal
@@ -674,16 +799,17 @@ export const Machines = () => {
         isMaximized={isModalMaximized}
         onMaximizeToggle={toggleModalMaximize}
       >
-        <form onSubmit={handleSubmit} className={`flex flex-col ${isModalMaximized ? 'h-[75vh]' : ''}`}>
+        <form onSubmit={handleSubmit} className={`flex flex-col ${isModalMaximized ? 'h-[75vh]' : 'max-h-[70vh] overflow-y-auto px-1'}`}>
           <div className={`space-y-5 ${isModalMaximized ? 'flex-1 overflow-y-auto pr-2 custom-scrollbar' : ''}`}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-2">
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Mã máy</label>
-                <input type="text" name="machineCode" value={currentMachine?.machineCode || ''} onChange={handleInputChange} disabled={modalMode === 'view'} className="w-full border border-gray-300 rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 h-[38px] text-sm bg-white" placeholder="VD: CNC-V1" required />
+                <label className={`text-xs ${errors.machineCode ? 'text-red-500' : 'text-gray-500'}  ml-1`}>Mã máy <span className="text-red-500">*</span></label>
+                <input type="text" name="machineCode" value={currentMachine?.machineCode || ''} onChange={handleInputChange} disabled={modalMode === 'view'} className={`w-full border ${errors.machineCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white shadow-sm`} placeholder="VD: CNC-V1" />
+                {errors.machineCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.machineCode}</p>}
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Loại máy</label>
+                <label className={`text-xs ${errors.machineType ? 'text-red-500' : 'text-gray-500'} ml-1`}>Loại máy</label>
                 <div className="relative">
                   <button
                     type="button"
@@ -697,24 +823,27 @@ export const Machines = () => {
                     options={machineTypes}
                     onChange={(val) => handleInputChange({ target: { name: 'machineType', value: val } })}
                     disabled={modalMode === 'view'}
-                    className="w-full border border-gray-300 rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 h-[38px] text-sm bg-white flex items-center justify-between cursor-pointer"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 text-sm bg-white flex items-center justify-between cursor-pointer shadow-sm"
                     placeholder="Tìm loại máy..."
+                    error={!!errors.machineType}
+                    errorMessage={errors.machineType}
                   />
                 </div>
               </div>
 
-              <DateInput label="Ngày sản xuất" name="productionDate" value={currentMachine?.productionDate || ''} onChange={handleInputChange} disabled={modalMode === 'view'} />
-              <DateInput label="Ngày đưa vào sử dụng" name="commissioningDate" value={currentMachine?.commissioningDate || ''} onChange={handleInputChange} disabled={modalMode === 'view'} />
+              <DateInput label="Ngày sản xuất" name="productionDate" value={currentMachine?.productionDate || ''} onChange={handleInputChange} disabled={modalMode === 'view'} error={!!errors.productionDate} errorMessage={errors.productionDate} />
+              <DateInput label="Ngày đưa vào sử dụng" name="commissioningDate" value={currentMachine?.commissioningDate || ''} onChange={handleInputChange} disabled={modalMode === 'view'} error={!!errors.commissioningDate} errorMessage={errors.commissioningDate} />
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Tổng số giờ đã chạy</label>
-                <input type="number" name="totalRunningHours" value={currentMachine?.totalRunningHours || 0} onChange={handleInputChange} disabled={modalMode === 'view'} className="w-full border border-gray-300 rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 h-[38px] text-sm" />
+                <label className={`text-xs ${errors.totalRunningHours ? 'text-red-500' : 'text-gray-500'} ml-1`}>Tổng số giờ đã chạy</label>
+                <input type="number" name="totalRunningHours" value={currentMachine?.totalRunningHours || 0} onChange={handleInputChange} disabled={modalMode === 'view'} className={`w-full border ${errors.totalRunningHours ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white shadow-sm`} />
+                {errors.totalRunningHours && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.totalRunningHours}</p>}
               </div>
 
-              <DateInput label="Ngày bảo trì gần nhất" name="lastMaintainance" value={currentMachine?.lastMaintainance || ''} onChange={handleInputChange} disabled={modalMode === 'view'} />
+              <DateInput label="Ngày bảo trì gần nhất" name="lastMaintainance" value={currentMachine?.lastMaintainance || ''} onChange={handleInputChange} disabled={modalMode === 'view'} error={!!errors.lastMaintainance} errorMessage={errors.lastMaintainance} />
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Trạng thái</label>
+                <label className={`text-xs ${errors.status ? 'text-red-500' : 'text-gray-500'} ml-1`}>Trạng thái</label>
                 <div className="relative">
                   <button
                     type="button"
@@ -728,25 +857,28 @@ export const Machines = () => {
                     options={machineStatuses}
                     onChange={(val) => handleInputChange({ target: { name: 'status', value: val } })}
                     disabled={modalMode === 'view'}
-                    className="w-full border border-gray-300 rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 h-[38px] text-sm bg-white flex items-center justify-between cursor-pointer"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 text-sm bg-white flex items-center justify-between cursor-pointer shadow-sm"
                     placeholder="Tìm trạng thái..."
+                    error={!!errors.status}
+                    errorMessage={errors.status}
                   />
                 </div>
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Mục tiêu hiệu suất (%)</label>
-                <input type="number" step="0.1" name="oeeTarget" value={currentMachine?.oeeTarget || 0} onChange={handleInputChange} disabled={modalMode === 'view'} className="w-full border border-gray-300 rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:bg-gray-50 h-[38px] text-sm" />
+                <label className={`text-xs ${errors.oeeTarget ? 'text-red-500' : 'text-gray-500'} ml-1`}>Mục tiêu hiệu suất (%)</label>
+                <input type="number" step="0.1" name="oeeTarget" value={currentMachine?.oeeTarget || 0} onChange={handleInputChange} disabled={modalMode === 'view'} className={`w-full border ${errors.oeeTarget ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm shadow-sm`} />
+                {errors.oeeTarget && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.oeeTarget}</p>}
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t mt-auto">
-            <button type="button" onClick={handleCloseModal} className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium transition-colors">
+          <div className="flex justify-end gap-3 pt-6 border-t mt-auto sticky bottom-0 bg-white">
+            <button type="button" onClick={handleCloseModal} className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-medium transition-colors text-sm">
               {modalMode === 'view' ? 'Đóng' : 'Hủy bỏ'}
             </button>
             {modalMode !== 'view' && (
-              <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-medium shadow-md transition-all active:scale-95">
+              <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm">
                 Lưu thông tin
               </button>
             )}
@@ -783,7 +915,8 @@ export const Machines = () => {
               onClick={handleOpenAddType} // Gọi hàm mở modal thêm mới
               className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-all active:scale-95"
             >
-              <Plus size={18} /> Thêm mới
+              <span className="hidden sm:inline">Thêm mới</span>
+              <span className="sm:hidden">Thêm</span>
             </button>
           </div>
 
@@ -796,7 +929,7 @@ export const Machines = () => {
       {/* 2. Modal NHẬP LIỆU (Thêm/Sửa) - Đây là phần thiết kế lại theo yêu cầu của bạn */}
       <Modal
         isOpen={isTypeFormModalOpen}
-        onClose={() => setIsTypeFormModalOpen(false)}
+        onClose={() => { setIsTypeFormModalOpen(false); setTypeErrors({}); }}
         title={typeModalMode === 'add' ? "Thêm loại máy mới" : "Chỉnh sửa loại máy"}
         maxWidth={isTypeFormModalMaximized ? "max-w-full" : "max-w-md"}
         isMaximized={isTypeFormModalMaximized}
@@ -804,22 +937,25 @@ export const Machines = () => {
       >
         <form onSubmit={handleSaveType} className={`space-y-6 ${isTypeFormModalMaximized ? 'flex-1 overflow-y-auto pr-2 custom-scrollbar' : ''}`}>
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-700">Tên loại máy mới</label>
+            <label className={`text-sm font-semibold ${typeErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên loại máy mới</label>
             <input
               type="text"
               value={currentType.name}
-              onChange={(e) => setCurrentType({ ...currentType, name: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+              onChange={(e) => {
+                setCurrentType({ ...currentType, name: e.target.value });
+                if (typeErrors.name) setTypeErrors({});
+              }}
+              className={`w-full border ${typeErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all shadow-sm`}
               placeholder="Nhập tên loại máy (VD: Máy CNC, Máy In...)"
-              required
               autoFocus
             />
+            {typeErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{typeErrors.name}</p>}
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button
               type="button"
-              onClick={() => setIsTypeFormModalOpen(false)}
+              onClick={() => { setIsTypeFormModalOpen(false); setTypeErrors({}); }}
               className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg text-sm font-medium transition-colors"
             >
               Hủy bỏ
@@ -862,7 +998,8 @@ export const Machines = () => {
               onClick={handleOpenAddStatus}
               className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-all active:scale-95"
             >
-              <Plus size={18} /> Thêm mới
+              <span className="hidden sm:inline">Thêm mới</span>
+              Thêm
             </button>
           </div>
           <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
@@ -874,7 +1011,7 @@ export const Machines = () => {
       {/* Modal NHẬP LIỆU Trạng thái (Thêm/Sửa) */}
       <Modal
         isOpen={isStatusFormModalOpen}
-        onClose={() => setIsStatusFormModalOpen(false)}
+        onClose={() => { setIsStatusFormModalOpen(false); setStatusErrors({}); }}
         title={statusModalMode === 'add' ? "Thêm trạng thái mới" : "Chỉnh sửa trạng thái"}
         maxWidth={isStatusFormModalMaximized ? "max-w-full" : "max-w-md"}
         isMaximized={isStatusFormModalMaximized}
@@ -882,21 +1019,21 @@ export const Machines = () => {
       >
         <form onSubmit={handleSaveStatus} className={`space-y-6 ${isStatusFormModalMaximized ? 'flex-1 overflow-y-auto pr-2 custom-scrollbar' : ''}`}>
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-700">Tên trạng thái mới</label>
+            <label className={`text-sm font-semibold ${statusErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên trạng thái mới</label>
             <input
               type="text"
               value={currentStatus.name}
               onChange={handleStatusInputChangeSub}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+              className={`w-full border ${statusErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all shadow-sm`}
               placeholder="Nhập tên trạng thái (VD: Đang chạy, Đang dừng...)"
-              required
               autoFocus
             />
+            {statusErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{statusErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button
               type="button"
-              onClick={() => setIsStatusFormModalOpen(false)}
+              onClick={() => { setIsStatusFormModalOpen(false); setStatusErrors({}); }}
               className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg text-sm font-medium transition-colors"
             >
               Hủy bỏ
@@ -921,6 +1058,6 @@ export const Machines = () => {
         type={confirmModal.type === 'export' ? 'success' : 'danger'}
       />
       <AppNotification isOpen={notification.isOpen} message={notification.message} type={notification.type} onClose={() => setNotification({ ...notification, isOpen: false })} />
-    </div>
+    </div >
   );
 };

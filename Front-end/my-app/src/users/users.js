@@ -37,6 +37,7 @@ export const Users = () => {
   const [isRolesMgmtMaximized, setIsRolesMgmtMaximized] = useState(false);
   const [isRoleEditModalOpen, setIsRoleEditModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState({ name: '' });
+  const [roleErrors, setRoleErrors] = useState({});
 
   // States cho quản lý Trạng thái (Statuses)
   const [isStatusesModalOpen, setIsStatusesModalOpen] = useState(false);
@@ -45,6 +46,7 @@ export const Users = () => {
   const [isStatusesMgmtMaximized, setIsStatusesMgmtMaximized] = useState(false);
   const [isStatusEditModalOpen, setIsStatusEditModalOpen] = useState(false);
   const [editingStatus, setEditingStatus] = useState({ name: '' });
+  const [statusErrors, setStatusErrors] = useState({});
 
   const fetchMetaData = async () => {
     try {
@@ -174,6 +176,12 @@ export const Users = () => {
   // Handlers cho quản lý Chức vụ
   const handleRoleSubmit = async (e) => {
     e.preventDefault();
+    if (!editingRole.name?.trim()) {
+      setRoleErrors({ name: "Bắt buộc nhập Tên chức vụ" });
+      return;
+    }
+    setRoleErrors({});
+
     try {
       if (roleModalMode === 'add') {
         await createRole({ name: editingRole.name });
@@ -182,7 +190,7 @@ export const Users = () => {
         await updateRole(editingRole.id, { name: editingRole.name });
         showNotification("Cập nhật chức vụ thành công!");
       }
-      setIsRoleEditModalOpen(false);
+      handleCloseRoleEditModal();
       fetchMetaData();
     } catch (err) {
       console.error("Error saving role:", err);
@@ -210,9 +218,20 @@ export const Users = () => {
     setIsRolesMgmtMaximized(false);
   };
 
+  const handleCloseRoleEditModal = () => {
+    setIsRoleEditModalOpen(false);
+    setRoleErrors({});
+  };
+
   // Handlers cho quản lý Trạng thái
   const handleStatusSubmit = async (e) => {
     e.preventDefault();
+    if (!editingStatus.name?.trim()) {
+      setStatusErrors({ name: "Bắt buộc nhập Tên trạng thái" });
+      return;
+    }
+    setStatusErrors({});
+
     try {
       if (statusModalMode === 'add') {
         await createStatus({ name: editingStatus.name });
@@ -221,7 +240,7 @@ export const Users = () => {
         await updateStatus(editingStatus.id, { name: editingStatus.name });
         showNotification("Cập nhật trạng thái thành công!");
       }
-      setIsStatusEditModalOpen(false);
+      handleCloseStatusEditModal();
       fetchMetaData();
     } catch (err) {
       console.error("Error saving status:", err);
@@ -247,6 +266,11 @@ export const Users = () => {
     setStatusSearchTerm('');
     setIsStatusesModalOpen(true);
     setIsStatusesMgmtMaximized(false);
+  };
+
+  const handleCloseStatusEditModal = () => {
+    setIsStatusEditModalOpen(false);
+    setStatusErrors({});
   };
 
   const handleCloseModal = () => {
@@ -556,16 +580,6 @@ export const Users = () => {
       header: (
         <div className="flex items-center justify-center gap-2">
           <span>Hành động</span>
-          {selectedUserIds.length >= 2 && (
-            <RiUnpinFill
-              className="text-red-500 cursor-pointer hover:scale-110 transition-transform"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedUserIds([]);
-              }}
-              title="Bỏ chọn tất cả"
-            />
-          )}
         </div>
       ),
       className: 'text-center w-[100px] sm:w-[180px]',
@@ -573,30 +587,18 @@ export const Users = () => {
         const isSelected = selectedUserIds.includes(row.id);
         return (
           <div className="flex justify-center items-center gap-3">
-            {/* Icon Pin nhích sang trái */}
-            <RxDrawingPinFilled
-              size={20}
-              className={`cursor-pointer transition-colors ${isSelected ? 'text-red-500' : 'text-gray-400'} hover:text-red-400`}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSelectUser(row.id);
-              }}
-              data-tooltip-id="select-multiple-users-tooltip"
-              data-tooltip-content={isSelected ? "Bỏ chọn" : "Chọn xóa nhiều dòng"}
-            />
-
             {/* Ẩn Sửa/Xóa khi chọn từ 2 dòng trở lên */}
             {selectedUserIds.length < 2 && (
               <div className="flex gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
                 <button
                   onClick={(e) => { e.stopPropagation(); handleEditUser(row); }}
-                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
                 >
                   Sửa
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDeleteUser(row.id); }}
-                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
                 >
                   Xóa
                 </button>
@@ -610,25 +612,25 @@ export const Users = () => {
 
   // Định nghĩa cột cho bảng danh sách Chức vụ
   const roleTableColumns = useMemo(() => [
-    { header: 'STT', render: (_, { index }) => index },
+    { header: 'STT', render: (_, { index }) => index, className: '!px-1 sm:px-4 !flex !justify-center' },
     {
-      header: 'Tên chức vụ',
+      header: 'Tên chức vụ', className: '!px-1 sm:!px-4',
       render: (row) => <span className="font-bold text-gray-700">{row.label}</span>
     },
     {
       header: 'Hành động',
-      className: 'text-right pr-5',
+      className: 'text-right pr-5 !px-2 sm:!px-4',
       render: (row) => (
         <div className="flex gap-2 justify-end">
           <button
             onClick={() => { setEditingRole({ id: row.value, name: row.label }); setRoleModalMode('edit'); setIsRoleEditModalOpen(true); }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
           >
             Sửa
           </button>
           <button
             onClick={() => handleDeleteRole(row.value)}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
           >
             Xóa
           </button>
@@ -650,7 +652,12 @@ export const Users = () => {
       render: (row) => (
         <div className="flex gap-2 justify-end">
           <button
-            onClick={() => { setEditingStatus({ id: row.value, name: row.label }); setStatusModalMode('edit'); setIsStatusEditModalOpen(true); }}
+            onClick={() => {
+              setEditingStatus({ id: row.value, name: row.label });
+              setStatusModalMode('edit');
+              setStatusErrors({});
+              setIsStatusEditModalOpen(true);
+            }}
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs transition-all active:scale-95"
           >
             Sửa
@@ -719,87 +726,152 @@ export const Users = () => {
             <CustomDatatable
               columns={userColumns}
               data={filteredUsers}
-              renderExpansion={(row) => (
-                <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8 text-sm">
-                    <div className="flex flex-col gap-1 md:col-span-1">
-                      {(() => {
-                        const statusObj = statuses.find(s => String(s.value) === String(row.status));
-                        const displayLabel = statusObj ? statusObj.label : '---';
-                        return (
-                          <>
-                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Trạng thái</span>
-                            <div className="relative max-w-[150px]">
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); handleOpenStatusesModal(); }}
-                                className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
-                              >
-                                hiệu chỉnh
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (openStatusMenuId !== row.id) setMenuSearchQuery('');
-                                  setOpenStatusMenuId(openStatusMenuId === row.id ? null : row.id);
-                                  setOpenDepartmentMenuId(null);
-                                  setOpenBranchMenuId(null);
-                                  setOpenRoleMenuId(null);
-                                }}
-                                className="bg-white border border-gray-300 text-gray-900 text-xs rounded-lg p-1 pr-8 appearance-none cursor-pointer outline-none font-medium text-left relative min-h-[30px] w-full block hover:border-blue-400 transition-colors shadow-sm"
-                              >
-                                <span className="truncate block">{displayLabel}</span>
-                                <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
-                                  <ChevronDown size={14} />
-                                </div>
-                              </button>
+              renderExpansion={(row) => {
+                const roleObj = roles.find(r => String(r.value) === String(row.role));
+                return (
+                  <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
+                    <div className="grid grid-cols-12 md:grid-cols-4 gap-y-4 gap-x-4 sm:gap-x-8 text-sm">
+                      <div className="flex flex-col gap-1 col-span-6 md:col-span-1">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Chức vụ</span>
+                        <div className="relative max-w-[150px]">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleOpenRolesModal(); }}
+                            className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+                          >
+                            hiệu chỉnh
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (openRoleMenuId !== row.id) setMenuSearchQuery('');
+                              setOpenRoleMenuId(openRoleMenuId === row.id ? null : row.id);
+                              setOpenStatusMenuId(null);
+                              setOpenDepartmentMenuId(null);
+                              setOpenBranchMenuId(null);
+                            }}
+                            className="bg-white border border-gray-300 text-gray-900 text-xs rounded-lg p-1 pr-8 appearance-none cursor-pointer outline-none font-medium text-left relative min-h-[30px] w-full block hover:border-blue-400 transition-colors shadow-sm"
+                          >
+                            <span className="truncate block">{roleObj?.label || '---'}</span>
+                            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                              <ChevronDown size={14} />
+                            </div>
+                          </button>
 
-                              {openStatusMenuId === row.id && (
-                                <div className="absolute inset-x-0 top-full mt-1 bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal overflow-y-auto max-h-48">
-                                  <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
-                                    <div className="relative">
-                                      <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-                                      <input
-                                        type="text"
-                                        className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
-                                        placeholder="Lọc trạng thái..."
-                                        value={menuSearchQuery}
-                                        onChange={(e) => setMenuSearchQuery(e.target.value)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        autoFocus
-                                      />
+                          {openRoleMenuId === row.id && (
+                            <div className="absolute inset-x-0 top-full mt-1 bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal overflow-y-auto max-h-48">
+                              <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                                <div className="relative">
+                                  <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                                  <input
+                                    type="text"
+                                    className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
+                                    placeholder="Lọc chức vụ..."
+                                    value={menuSearchQuery}
+                                    onChange={(e) => setMenuSearchQuery(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    autoFocus
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex flex-col gap-0.5">
+                                {roles.filter(r => r.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((r) => (
+                                  <button
+                                    key={r.value}
+                                    onClick={() => handleRoleChange(row, r.value)}
+                                    className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.role) === String(r.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                                  >
+                                    <span className="block w-full !whitespace-normal break-words leading-tight">{r.label}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+                      <div className="flex flex-col gap-1 col-span-6 md:col-span-1 lg:hidden">
+                        {(() => {
+                          const statusObj = statuses.find(s => String(s.value) === String(row.status));
+                          const displayLabel = statusObj ? statusObj.label : '---';
+                          return (
+                            <>
+                              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Trạng thái</span>
+                              <div className="relative max-w-[150px]">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleOpenStatusesModal(); }}
+                                  className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+                                >
+                                  hiệu chỉnh
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (openStatusMenuId !== row.id) setMenuSearchQuery('');
+                                    setOpenStatusMenuId(openStatusMenuId === row.id ? null : row.id);
+                                    setOpenDepartmentMenuId(null);
+                                    setOpenBranchMenuId(null);
+                                    setOpenRoleMenuId(null);
+                                  }}
+                                  className="bg-white border border-gray-300 text-gray-900 text-xs rounded-lg p-1 pr-8 appearance-none cursor-pointer outline-none font-medium text-left relative min-h-[30px] w-full block hover:border-blue-400 transition-colors shadow-sm"
+                                >
+                                  <span className="truncate block">{displayLabel}</span>
+                                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                                    <ChevronDown size={14} />
+                                  </div>
+                                </button>
+
+                                {openStatusMenuId === row.id && (
+                                  <div className="absolute inset-x-0 top-full mt-1 bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal overflow-y-auto max-h-48">
+                                    <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                                      <div className="relative">
+                                        <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <input
+                                          type="text"
+                                          className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
+                                          placeholder="Lọc trạng thái..."
+                                          value={menuSearchQuery}
+                                          onChange={(e) => setMenuSearchQuery(e.target.value)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          autoFocus
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                      {statuses.filter(s => s.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((s) => (
+                                        <button
+                                          key={s.value}
+                                          onClick={() => handleStatusChange(row, s.value)}
+                                          className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.status) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                                        >
+                                          <span className="block w-full !whitespace-normal break-words leading-tight">{s.label}</span>
+                                        </button>
+                                      ))}
                                     </div>
                                   </div>
-                                  <div className="flex flex-col gap-0.5">
-                                    {statuses.filter(s => s.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((s) => (
-                                      <button
-                                        key={s.value}
-                                        onClick={() => handleStatusChange(row, s.value)}
-                                        className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.status) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
-                                      >
-                                        <span className="block w-full !whitespace-normal break-words leading-tight">{s.label}</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
-                      <span className="text-gray-900 font-medium">{row.phone || '---'}</span>
-
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Địa chỉ</span>
-                      <span className="text-gray-900 font-medium">{row.address || '---'}</span>
+                                )}
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                      <div className="flex flex-col gap-1 col-span-7 md:col-span-1 md:hidden">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
+                        <span className="text-gray-900 font-medium break-all">{row.email || '---'}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 col-span-5 md:col-span-1">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
+                        <span className="text-gray-900 font-medium">{row.phone || '---'}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 col-span-12 md:col-span-4">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Địa chỉ</span>
+                        <span className="text-gray-900 font-medium">{row.address || '---'}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              }}
             />
           </div>
 
@@ -852,17 +924,28 @@ export const Users = () => {
       {/* Modal Thêm/Sửa Chức vụ */}
       <Modal
         isOpen={isRoleEditModalOpen}
-        onClose={() => setIsRoleEditModalOpen(false)}
+        onClose={handleCloseRoleEditModal}
         title={roleModalMode === 'add' ? "Thêm chức vụ mới" : "Chỉnh sửa chức vụ"}
         maxWidth="max-w-sm"
       >
         <form onSubmit={handleRoleSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-700">Tên chức vụ <span className="text-red-500">*</span></label>
-            <input type="text" className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" placeholder="Nhập tên chức vụ..." value={editingRole.name} onChange={(e) => setEditingRole({ ...editingRole, name: e.target.value })} required autoFocus />
+            <label className={`text-xs font-bold ${roleErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên chức vụ <span className="text-red-500">*</span></label>
+            <input
+              type="text"
+              className={`w-full border ${roleErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2.5 outline-none focus:ring-2 transition-all text-sm`}
+              placeholder="Nhập tên chức vụ..."
+              value={editingRole.name}
+              onChange={(e) => {
+                setEditingRole({ ...editingRole, name: e.target.value });
+                if (roleErrors.name) setRoleErrors({});
+              }}
+              autoFocus
+            />
+            {roleErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{roleErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <button type="button" onClick={() => setIsRoleEditModalOpen(false)} className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm">Hủy</button>
+            <button type="button" onClick={handleCloseRoleEditModal} className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm">Hủy</button>
             <button type="submit" className="px-6 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg transition-all active:scale-95 text-sm">Lưu</button>
           </div>
         </form>
@@ -889,7 +972,12 @@ export const Users = () => {
                 onChange={(e) => setStatusSearchTerm(e.target.value)}
               />
             </div>
-            <button onClick={() => { setEditingStatus({ name: '' }); setStatusModalMode('add'); setIsStatusEditModalOpen(true); }} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
+            <button onClick={() => {
+              setEditingStatus({ name: '' });
+              setStatusModalMode('add');
+              setStatusErrors({});
+              setIsStatusEditModalOpen(true);
+            }} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
               <Plus size={16} /> Thêm trạng thái
             </button>
           </div>
@@ -902,17 +990,28 @@ export const Users = () => {
       {/* Modal Thêm/Sửa Trạng thái */}
       <Modal
         isOpen={isStatusEditModalOpen}
-        onClose={() => setIsStatusEditModalOpen(false)}
+        onClose={handleCloseStatusEditModal}
         title={statusModalMode === 'add' ? "Thêm trạng thái mới" : "Chỉnh sửa trạng thái"}
         maxWidth="max-w-sm"
       >
         <form onSubmit={handleStatusSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-700">Tên trạng thái <span className="text-red-500">*</span></label>
-            <input type="text" className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" placeholder="Tên trạng thái" value={editingStatus.name} onChange={(e) => setEditingStatus({ ...editingStatus, name: e.target.value })} required autoFocus />
+            <label className={`text-xs font-bold ${statusErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên trạng thái <span className="text-red-500">*</span></label>
+            <input
+              type="text"
+              className={`w-full border ${statusErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2.5 outline-none focus:ring-2 transition-all text-sm`}
+              placeholder="Tên trạng thái"
+              value={editingStatus.name}
+              onChange={(e) => {
+                setEditingStatus({ ...editingStatus, name: e.target.value });
+                if (statusErrors.name) setStatusErrors({});
+              }}
+              autoFocus
+            />
+            {statusErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{statusErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <button type="button" onClick={() => setIsStatusEditModalOpen(false)} className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm">Hủy</button>
+            <button type="button" onClick={handleCloseStatusEditModal} className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm">Hủy</button>
             <button type="submit" className="px-6 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg transition-all active:scale-95 text-sm">Lưu</button>
           </div>
         </form>

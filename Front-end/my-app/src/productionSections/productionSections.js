@@ -23,6 +23,7 @@ export const ProductionSections = () => {
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [dropdownSearch, setDropdownSearch] = useState('');
+  const [errors, setErrors] = useState({});
 
   const handleRequestExportExcel = () => {
     setConfirmModal({
@@ -40,7 +41,7 @@ export const ProductionSections = () => {
 
       worksheet.columns = [
         { header: 'STT', key: 'stt', width: 10 },
-        { header: 'Mã tổ', key: 'productionSectionCode', width: 20 },
+        { header: 'Mã tổ', key: 'productionSectionCode', width: 10 },
         { header: 'Tên tổ', key: 'name', width: 30 },
         { header: 'Tổ trưởng', key: 'leader', width: 25 },
         { header: 'Chi phí cơ bản (VNĐ)', key: 'baseUnitCost', width: 25 },
@@ -202,16 +203,38 @@ export const ProductionSections = () => {
     setIsModalOpen(false);
     setCurrentEditingSection(null);
     setIsMaximized(false);
+    setErrors({}); // Reset errors when modal is closed
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCurrentEditingSection(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' })); // Clear error for this field
+    }
   };
 
   const handleLeaderChange = async (section, newLeaderId) => {
     try {
       const id = section.id || section.ID;
+      // Clear leader error if it exists
+      if (errors.leader) {
+        setErrors(prev => ({ ...prev, leader: '' }));
+      }
+
+      // Check if newLeaderId is valid (not empty string)
+      if (newLeaderId === '') {
+        // If leader is set to empty, ensure it's null in payload
+        const payload = {
+          ...section,
+          leader: null
+        };
+        const updatedItem = await updateProductionSection(id, payload);
+        setSections(prev => prev.map(s => (s.id || s.ID) === id ? updatedItem : s));
+        showNotification("Cập nhật tổ trưởng thành công!");
+        return;
+      }
+
       const payload = {
         ...section,
         leader: newLeaderId || null
@@ -226,6 +249,25 @@ export const ProductionSections = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const newErrors = {};
+    if (!currentEditingSection?.productionSectionCode?.trim()) {
+      newErrors.productionSectionCode = "Bắt buộc nhập Mã tổ sản xuất";
+    }
+    if (!currentEditingSection?.name?.trim()) {
+      newErrors.name = "Bắt buộc nhập Tên tổ sản xuất";
+    }
+    if (!currentEditingSection?.leader) {
+      newErrors.leader = "Bắt buộc chọn Tổ trưởng";
+    }
+    if (currentEditingSection?.baseUnitCost === null || currentEditingSection?.baseUnitCost === undefined || currentEditingSection?.baseUnitCost <= 0) {
+      newErrors.baseUnitCost = "Bắt buộc nhập Chi phí cơ bản";
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({}); // Clear all errors if validation passes
     try {
       if (modalMode === 'add') {
         const newItem = await createProductionSection(currentEditingSection);
@@ -244,12 +286,12 @@ export const ProductionSections = () => {
   };
 
   const columns = [
-    { header: 'STT', render: (row, { index }) => index },
-    { header: 'Mã tổ', accessor: 'productionSectionCode' },
-    { header: 'Tên tổ', accessor: 'name' },
+    { header: 'STT', className: 'w-[50px] text-center !px-1 sm:!px-4', render: (row, { index }) => index },
+    { header: 'Mã tổ', accessor: 'productionSectionCode', className: 'font-medium text-blue-600 min-w-[120px] hidden sm:table-cell' },
+    { header: 'Tên tổ', accessor: 'name', className: 'min-w-[150px] !px-1 sm:!px-4' },
     {
       header: 'Tổ trưởng',
-      className: 'min-w-[200px]',
+      className: 'hidden md:table-cell min-w-[200px]', // Hide on small screens
       render: (row) => {
         const rowId = row.id || row.ID;
         const isOpen = openDropdownId === rowId;
@@ -316,16 +358,18 @@ export const ProductionSections = () => {
       }
     },
     {
-      header: 'Chi phí cơ bản',
+      header: 'Chi phí cơ bản (VNĐ)',
       accessor: 'baseUnitCost',
+      className: 'hidden lg:table-cell text-right', // Hide on smaller screens
       render: (row) => row.baseUnitCost?.toLocaleString() + ' VNĐ'
     },
     {
       header: 'Hành động',
+      className: 'text-right pr-2 sm:pr-5 w-[120px] sm:w-[160px]',
       render: (row) => (
-        <div className="flex gap-2">
-          <button onClick={() => handleEdit(row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm">Sửa</button>
-          <button onClick={() => handleDelete(row.id || row.ID)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-sm">Xóa</button>
+        <div className="flex justify-end items-center gap-2">
+          <button onClick={() => handleEdit(row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 !px-2 sm:px-3 rounded text-xs transition-all active:scale-95">Sửa</button>
+          <button onClick={() => handleDelete(row.id || row.ID)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 !px-2 sm:px-3 rounded text-xs transition-all active:scale-95">Xóa</button>
         </div>
       ),
     },
@@ -333,101 +377,149 @@ export const ProductionSections = () => {
 
   const formContent = (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="productionSectionCode" className="block text-sm font-medium text-gray-700">Mã tổ sản xuất</label>
+      <div className="flex flex-col gap-1"> {/* Mã tổ sản xuất */}
+        <label htmlFor="productionSectionCode" className={`text-xs ml-1 ${errors.productionSectionCode ? 'text-red-500' : 'text-gray-500'}`}>Mã tổ sản xuất <span className="text-red-500">*</span></label>
         <input
           type="text"
           id="productionSectionCode"
           name="productionSectionCode"
           value={currentEditingSection?.productionSectionCode || ''}
-          onChange={handleInputChange}
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-          required
+          onChange={(e) => {
+            handleInputChange(e);
+            if (errors.productionSectionCode) setErrors(prev => ({ ...prev, productionSectionCode: '' }));
+          }}
+          className={`mt-1 block w-full border ${errors.productionSectionCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:border-blue-500 outline-none transition-all text-sm`}
         />
+        {errors.productionSectionCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.productionSectionCode}</p>}
       </div>
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700">Tên tổ sản xuất</label>
+      <div className="flex flex-col gap-1"> {/* Tên tổ sản xuất */}
+        <label htmlFor="name" className={`text-xs ml-1 ${errors.name ? 'text-red-500' : 'text-gray-500'}`}>Tên tổ sản xuất <span className="text-red-500">*</span></label>
         <input
           type="text"
           id="name"
           name="name"
           value={currentEditingSection?.name || ''}
-          onChange={handleInputChange}
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-          required
+          onChange={(e) => {
+            handleInputChange(e);
+            if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+          }}
+          className={`mt-1 block w-full border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:border-blue-500 outline-none transition-all text-sm`}
         />
+        {errors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.name}</p>}
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"> {/* Tổ trưởng & Chi phí cơ bản */}
         <CustomSelect
           label="Tổ trưởng"
           name="leader"
           value={currentEditingSection?.leader || ''}
-          onChange={handleInputChange}
+          onChange={(e) => {
+            handleInputChange(e);
+            if (errors.leader) setErrors(prev => ({ ...prev, leader: '' }));
+          }}
           options={[
             { value: '', label: '-- Chọn tổ trưởng --' },
             ...users.map(u => ({ value: u.id, label: u.name }))
           ]}
+          isModalMaximized={isMaximized}
+          error={!!errors.leader}
+          errorMessage={errors.leader}
         />
-        <div>
-          <label htmlFor="baseUnitCost" className="block text-sm font-medium text-gray-700">Chi phí cơ bản (VNĐ)</label>
+        <div className="flex flex-col gap-1"> {/* Chi phí cơ bản */}
+          <label htmlFor="baseUnitCost" className={`text-xs ml-1 ${errors.baseUnitCost ? 'text-red-500' : 'text-gray-500'}`}>Chi phí cơ bản (VNĐ)</label>
           <input
             type="number"
             id="baseUnitCost"
             name="baseUnitCost"
             value={currentEditingSection?.baseUnitCost || 0}
-            onChange={handleInputChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+            onChange={(e) => {
+              handleInputChange(e);
+              if (errors.baseUnitCost) setErrors(prev => ({ ...prev, baseUnitCost: '' }));
+            }}
+            className={`mt-1 block w-full border ${errors.baseUnitCost ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:border-blue-500 outline-none transition-all text-sm`}
           />
+          {errors.baseUnitCost && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.baseUnitCost}</p>}
         </div>
       </div>
-      <div className="flex justify-end gap-3 pt-4">
-        <button type="button" onClick={handleCloseModal} className="bg-gray-500 text-white py-2 px-6 rounded-md hover:bg-gray-600 transition-colors">Hủy</button>
-        <button type="submit" className="bg-blue-600 text-white py-2 px-6 rounded-md hover:bg-blue-700 transition-colors">Lưu</button>
+      <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
+        <button type="button" onClick={handleCloseModal} className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-medium transition-colors text-sm">Hủy bỏ</button>
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm">Lưu thông tin</button>
       </div>
     </form>
   );
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Danh sách tổ sản xuất</h2>
+    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
+      <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Danh sách tổ sản xuất</h2>
 
-      <div className="flex justify-between items-center mb-4 gap-4">
-        <div className="relative w-full max-w-[280px]">
+      <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
+        <div className="relative w-full lg:max-w-[350px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <Search size={18} className="text-gray-400" />
           </span>
           <input
             type="text"
-            placeholder="Tìm theo tên hoặc mô tả"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:ring-2 focus:ring-blue-500 sm:text-sm"
+            placeholder="Tìm theo mã hoặc tên tổ..."
+            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white focus:ring-2 focus:ring-blue-500 shadow-sm outline-none transition-all sm:text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
-          <button className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2">
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
           <button
             onClick={handleRequestExportExcel}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors"
+            className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm"
           >
-            <FileDown size={18} />
-            Xuất Excel
+            <FileDown size={18} /> Xuất Excel
           </button>
           <button
             onClick={handleAdd}
-            className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors"
+            className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg whitespace-nowrap transition-all active:scale-95 shadow-md text-sm"
           >
-            Thêm tổ sản xuất mới
+            + Thêm mới
           </button>
         </div>
       </div>
 
-      {loading && <p className="text-gray-600 p-4">Đang tải dữ liệu...</p>}
+      {
+        loading ? (
+          <div className="flex flex-col items-center justify-center p-20 text-gray-400">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+            <p className="italic text-sm">Đang tải dữ liệu tổ sản xuất...</p>
+          </div>
+        ) : null
+      }
       {error && <p className="text-red-600 p-4">Lỗi: {error}</p>}
-      {!loading && !error && <CustomDatatable columns={columns} data={filteredSections} />}
+      {
+        !loading && !error && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <CustomDatatable
+              columns={columns}
+              data={filteredSections}
+              renderExpansion={(row) => {
+                const leader = users.find(u => String(u.id || u.ID) === String(row.leader));
+                return (
+                  <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-sm">
+                      <div className="flex flex-col gap-1 md:hidden"> {/* Show leader on mobile if hidden in main table */}
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tổ trưởng</span>
+                        <span className="text-gray-900 font-medium">{leader ? leader.name : 'Chưa phân công'}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 lg:hidden"> {/* Show baseUnitCost on mobile if hidden in main table */}
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Chi phí cơ bản (VNĐ)</span>
+                        <span className="text-gray-900 font-medium">{row.baseUnitCost?.toLocaleString() + ' VNĐ' || '---'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+          </div>
+        )
+      }
 
       <Modal
         isOpen={isModalOpen}
@@ -455,6 +547,6 @@ export const ProductionSections = () => {
         type={notification.type}
         onClose={() => setNotification(prev => ({ ...prev, isOpen: false }))}
       />
-    </div>
+    </div >
   );
 };

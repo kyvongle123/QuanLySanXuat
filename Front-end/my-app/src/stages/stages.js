@@ -506,14 +506,14 @@ export const Stages = () => {
             const currentSection = productionSections.find(s => String(s.value) === String(row.productionSection || row.ProductionSection));
             return (
               <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100">
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
-                  <div className="flex flex-col gap-1 sm:hidden">
+                <div className="grid grid-cols-12 lg:grid-cols-3 gap-6 text-sm">
+                  <div className="flex flex-col col-span-4 gap-1 sm:hidden">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mã công đoạn</span>
                     <span className="text-gray-700 font-medium">{row.stageCode || row.StageCode}</span>
                   </div>
-                  <div className="flex flex-col gap-1 md:hidden">
+                  <div className="flex flex-col col-span-8 gap-1 md:hidden">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tổ sản xuất</span>
-                    <div className="relative w-full max-w-[250px]">
+                    <div className="relative w-full max-w-[200px]">
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setIsSectionMgmtModalOpen(true); }}
@@ -545,7 +545,7 @@ export const Stages = () => {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col gap-1 lg:hidden">
+                  <div className="flex flex-col col-span-6 gap-1 lg:hidden">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Thứ tự thực hiện</span>
                     <span className="text-gray-700 font-medium">Bước số {row.sequence || row.Sequence}</span>
                   </div>

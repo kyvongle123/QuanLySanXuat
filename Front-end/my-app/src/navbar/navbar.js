@@ -81,11 +81,10 @@ export const Navbar = ({ onToggleSidebar }) => {
               type="button"
               onClick={handleOpenGuide}
               aria-label="Huong dan su dung trang web"
-              className={`relative p-2 rounded-full transition-all focus:outline-none focus:ring-4 focus:ring-blue-100 ${
-                hasOpenedGuide
+              className={`relative p-2 rounded-full transition-all focus:outline-none focus:ring-4 focus:ring-blue-100 ${hasOpenedGuide
                   ? 'text-gray-500 hover:text-blue-600 hover:bg-gray-100'
                   : 'text-white bg-blue-600 shadow-lg shadow-blue-200 ring-4 ring-blue-100 hover:bg-blue-700 animate-pulse'
-              }`}
+                }`}
             >
               <HelpCircle size={20} />
               {!hasOpenedGuide && (
@@ -95,8 +94,8 @@ export const Navbar = ({ onToggleSidebar }) => {
 
             {!hasOpenedGuide && (
               <div className="absolute left-0 sm:left-1/2 top-full mt-3 w-40 sm:w-64 sm:-translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-center text-xs font-medium text-white shadow-xl pointer-events-none z-50 animate-pulse">
-                <span className="sm:hidden">Vui lòng đọc hướng dẫn</span>
-                <span className="hidden sm:inline">Vui lòng đọc hướng dẫn sử dụng trang web</span>
+                <span className="sm:hidden">Vui lòng đọc nghiệp vụ của trang web</span>
+                <span className="hidden sm:inline">Vui lòng đọc nghiệp vụ của trang web</span>
                 <span className="absolute left-4 sm:left-1/2 -top-1 h-2 w-2 sm:-translate-x-1/2 rotate-45 bg-gray-900"></span>
               </div>
             )}

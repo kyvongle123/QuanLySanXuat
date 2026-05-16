@@ -76,7 +76,7 @@ export const CustomDatatable = ({ columns, data, renderExpansion, paginationClas
 
   return (
     <div className="bg-white rounded-lg shadow-md">
-      <div className="relative z-10 overflow-x-auto">
+      <div className="relative z-10 overflow-x-auto overflow-y-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -499,7 +499,7 @@ const CustomCalendar = ({ selectedDate, onSelect }) => {
   );
 };
 
-export const DateInput = ({ label, value, onChange, name, isModalMaximized = false, placement = 'bottom', className }) => {
+export const DateInput = ({ label, value, onChange, name, isModalMaximized = false, placement = 'bottom', className, error = false, errorMessage = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -517,12 +517,12 @@ export const DateInput = ({ label, value, onChange, name, isModalMaximized = fal
 
   return (
     <div className="flex flex-col gap-1 w-full relative" ref={containerRef}>
-      {label && <label className="text-xs font-medium text-gray-700">{label}</label>}
+      {label && <label className={`text-xs font-medium ${error ? 'text-red-500' : 'text-gray-700'}`}>{label}</label>}
       <div className="relative">
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={className || `w-full pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white text-left cursor-pointer flex items-center ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
+          className={className || `w-full pr-10 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md focus:outline-none focus:ring-2 transition-all bg-white text-left cursor-pointer flex items-center ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
         >
           <span className="truncate">{formattedValue}</span>
           <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-gray-500">
@@ -537,6 +537,7 @@ export const DateInput = ({ label, value, onChange, name, isModalMaximized = fal
           </div>
         )}
       </div>
+      {errorMessage && <p className="text-red-500 text-[10px] mt-1 font-medium">{errorMessage}</p>}
     </div>
   );
 };
