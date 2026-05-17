@@ -319,6 +319,7 @@ export const Customers = () => {
           <CustomDatatable
             columns={columns}
             data={filteredCustomers}
+            bodyCellClassName="!py-2 sm:!py-3"
             renderExpansion={(row) => (
               <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-4 sm:gap-x-8 text-sm">

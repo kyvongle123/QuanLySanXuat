@@ -82,8 +82,8 @@ export const Navbar = ({ onToggleSidebar }) => {
               onClick={handleOpenGuide}
               aria-label="Huong dan su dung trang web"
               className={`relative p-2 rounded-full transition-all focus:outline-none focus:ring-4 focus:ring-blue-100 ${hasOpenedGuide
-                  ? 'text-gray-500 hover:text-blue-600 hover:bg-gray-100'
-                  : 'text-white bg-blue-600 shadow-lg shadow-blue-200 ring-4 ring-blue-100 hover:bg-blue-700 animate-pulse'
+                ? 'text-gray-500 hover:text-blue-600 hover:bg-gray-100'
+                : 'text-white bg-blue-600 shadow-lg shadow-blue-200 ring-4 ring-blue-100 hover:bg-blue-700 animate-pulse'
                 }`}
             >
               <HelpCircle size={20} />
@@ -166,7 +166,7 @@ export const Navbar = ({ onToggleSidebar }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-md rounded-xl bg-white shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-              <h2 className="text-lg font-bold text-gray-800">Hướng dẫn sử dụng trang web</h2>
+              <h2 className="text-lg font-bold text-gray-800">Hướng dẫn nghiệp vụ trang web</h2>
               <button
                 type="button"
                 onClick={() => setIsGuideModalOpen(false)}

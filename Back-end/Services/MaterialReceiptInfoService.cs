@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Google.Cloud.Storage.V1;
 using Aspose.Words;
 using MiniSoftware;
 using MyProject.Backend.Data;
@@ -351,21 +352,34 @@ namespace MyProject.Service
         {
             if (file == null || file.Length == 0) return null;
 
-            string rootPath = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
-            string uploadPath = Path.Combine(rootPath, "Public", "MaterialReceipts", subFolder);
-            if (!Directory.Exists(uploadPath)) Directory.CreateDirectory(uploadPath);
+            // Tên bucket từ Firebase của bạn (đã bỏ gs://)
+            string bucketName = "quanlysanxuat-cb353.firebasestorage.app";
 
+            // Tạo tên file và đường dẫn (Object Name) trên Firebase Storage
             string fileName = $"{materialReceiptCode} - {suffix}{Path.GetExtension(file.FileName)}";
-            string fullPath = Path.Combine(uploadPath, fileName);
+            string objectName = $"MaterialReceipts/{subFolder}/{fileName}";
 
-            if (System.IO.File.Exists(fullPath)) System.IO.File.Delete(fullPath);
-
-            using (var stream = new FileStream(fullPath, FileMode.Create))
+            try
             {
-                file.CopyTo(stream);
-            }
+                // Khởi tạo StorageClient (Yêu cầu file JSON Service Account đã được cấu hình)
+                var storage = StorageClient.Create();
 
-            return $"/Public/MaterialReceipts/{subFolder}/{fileName}";
+                using (var stream = file.OpenReadStream())
+                {
+                    // Tải file lên Firebase
+                    storage.UploadObject(bucketName, objectName, file.ContentType, stream);
+                }
+
+                // Trả về URL dạng media để Frontend có thể hiển thị hoặc tải về trực tiếp
+                // Lưu ý: Cần phân quyền Public Read trên Firebase nếu muốn truy cập trực tiếp qua link này
+                string encodedPath = Uri.EscapeDataString(objectName);
+                return $"https://firebasestorage.googleapis.com/v0/b/{bucketName}/o/{encodedPath}?alt=media";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] SaveUploadedFile to Firebase: {ex.Message}");
+                return null;
+            }
         }
     }
 }
