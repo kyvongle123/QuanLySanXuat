@@ -209,7 +209,7 @@ export const TransportVehicles = () => {
         </button>
       ),
     },
-    { header: 'STT', className: 'w-[50px] text-center hidden sm:table-cell', render: (_, { index }) => index + 1 },
+    { header: 'STT', className: 'w-[50px] text-center hidden sm:table-cell', render: (_, { index }) => index },
     {
       header: 'Mã số xe', // Đã sửa lại tên cột cho rõ ràng
       accessor: 'vehicleCode',

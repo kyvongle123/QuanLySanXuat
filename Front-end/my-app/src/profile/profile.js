@@ -20,7 +20,7 @@ export const Profile = () => {
   });
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [activeTab, setActiveTab] = useState('personalInfo'); // State for active tab
-
+  const [errors, setErrors] = useState({});
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -69,6 +69,7 @@ export const Profile = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setUserData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }))
   };
 
   const handleAvatarChange = (e) => {
@@ -84,6 +85,19 @@ export const Profile = () => {
 
   const handleSavePersonalInfo = async (e) => {
     e.preventDefault();
+    // Validation logic
+    const newErrors = {};
+    if (!userData.name?.trim()) newErrors.name = "Bắt buộc nhập Họ và tên";
+    if (!userData.email?.trim()) newErrors.email = "Bắt buộc nhập Email cá nhân";
+    if (!userData.phone?.trim()) newErrors.phone = "Bắt buộc nhập Số điện thoại";
+    if (!userData.address?.trim()) newErrors.address = "Bắt buộc nhập Địa chỉ liên lạc";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
     try {
       const response = await updateUser(userData.id, userData);
       const updatedData = response?.data || response;
@@ -102,16 +116,24 @@ export const Profile = () => {
   const handlePasswordFormChange = (e) => {
     const { name, value } = e.target;
     setPasswordForm(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
   };
 
   const handleSavePassword = async (e) => {
     e.preventDefault();
     const { currentPassword, newPassword, confirmNewPassword } = passwordForm;
 
-    if (!currentPassword || !newPassword || !confirmNewPassword) {
-      setNotification({ isOpen: true, message: 'Vui lòng điền đầy đủ các trường mật khẩu.', type: 'error' });
+    // Validation logic cho mật khẩu
+    const newErrors = {};
+    if (!currentPassword?.trim()) newErrors.currentPassword = "Bắt buộc nhập Mật khẩu hiện tại";
+    if (!newPassword?.trim()) newErrors.newPassword = "Bắt buộc nhập Mật khẩu mới";
+    if (!confirmNewPassword?.trim()) newErrors.confirmNewPassword = "Bắt buộc nhập Xác nhận mật khẩu mới";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
+    setErrors({});
 
     if (newPassword !== confirmNewPassword) {
       setNotification({ isOpen: true, message: 'Mật khẩu mới và xác nhận mật khẩu không khớp.', type: 'error' });
@@ -143,7 +165,7 @@ export const Profile = () => {
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
         <div className="h-28 bg-gradient-to-r from-blue-600 to-indigo-700"></div>
 
-        <div className="px-8 pb-8">
+        <div className="px-4 pb-8">
           <div className="relative -mt-16 mb-8 flex flex-col items-center sm:items-start sm:flex-row gap-6">
             <div className="relative">
               <div className="w-32 h-32 rounded-2xl bg-white p-1 shadow-lg border border-gray-100 overflow-hidden">
@@ -163,15 +185,17 @@ export const Profile = () => {
 
             <div className="flex-1 mt-1 sm:mt-16 text-center sm:text-left">
               <h1 className="text-2xl font-bold text-gray-900">{userData.name || 'Người dùng'}</h1>
-              <div className="flex items-center justify-center sm:justify-start gap-1.5 text-blue-600 mt-1">
+              <div className="hidden sm:flex items-center justify-center sm:justify-start gap-1.5 text-blue-600 mt-1">
                 <ShieldCheck size={16} />
                 <span className="text-sm font-bold uppercase">@{userData.username}</span>
+              </div>
+              <div className="flex py-1 sm:hidden items-center justify-center sm:justify-start gap-1.5 text-blue-600 mt-1">
               </div>
             </div>
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex justify-end mb-6 -mt-10 sm:-mt-16"> {/* Điều chỉnh margin-top để định vị tab */}
+          <div className="flex justify-center sm:justify-end mb-6 -mt-10 sm:-mt-16"> {/* Điều chỉnh margin-top để định vị tab */}
             <div className="inline-flex rounded-lg shadow-sm bg-gray-100 p-1">
               <button
                 type="button"
@@ -202,9 +226,9 @@ export const Profile = () => {
                   { label: 'Địa chỉ liên lạc', name: 'address', icon: MapPin, placeholder: 'Tên đường, phường/xã...' },
                 ].map((field) => (
                   <div key={field.name} className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">{field.label}</label>
+                    <label className={`text-[11px] font-bold uppercase tracking-wider ml-1 ${errors[field.name] ? 'text-red-500' : 'text-gray-500'}`}>{field.label}</label>
                     <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                      <span className={`absolute inset-y-0 left-0 pl-3 flex items-center ${errors[field.name] ? 'text-red-400' : 'text-gray-400'}`}>
                         <field.icon size={18} />
                       </span>
                       <input
@@ -212,29 +236,31 @@ export const Profile = () => {
                         name={field.name}
                         value={userData[field.name]}
                         onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm font-medium"
+                        className={`w-full pl-10 pr-4 py-2.5 bg-gray-50 border rounded-xl focus:ring-2 outline-none transition-all text-sm font-medium ${errors[field.name] ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500 focus:bg-white'
+                          }`}
                         placeholder={field.placeholder}
                       />
                     </div>
+                    {errors[field.name] && <p className="text-red-500 text-[10px] ml-1 mt-1 font-medium">{errors[field.name]}</p>}
                   </div>
                 ))}
               </div>
 
-              <div className="pt-4 flex justify-end gap-3">
+              <div className="pt-4 flex justify-center sm:justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => navigate(-1)}
-                  className="flex items-center gap-2 px-10 py-3 bg-gray-500 text-white rounded-xl font-bold shadow-lg shadow-gray-200 hover:bg-gray-600 transition-all active:scale-95"
+                  className="flex-1 sm:flex-none flex sm:font-bold sm:uppercase items-center justify-center gap-2 px-6 sm:px-10 py-2 sm:py-3 bg-gray-500 text-white rounded-xl font-bold shadow-lg shadow-gray-200 hover:bg-gray-600 transition-all active:scale-95 text-sm sm:text-base"
                 >
                   <ArrowLeft size={20} />
-                  QUAY LẠI
+                  Quay lại
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-10 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 transition-all active:scale-95"
+                  className="flex-1 sm:flex-none flex sm:font-bold sm:uppercase items-center justify-center gap-2 px-6 sm:px-10 py-2 sm:py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 transition-all active:scale-95 text-sm sm:text-base"
                 >
                   <Save size={20} />
-                  LƯU HỒ SƠ
+                  Lưu hồ sơ
                 </button>
               </div>
             </form>
@@ -249,9 +275,9 @@ export const Profile = () => {
                   { label: 'Xác nhận mật khẩu mới', name: 'confirmNewPassword', type: 'password', icon: Lock, placeholder: 'Nhập lại mật khẩu mới' },
                 ].map((field) => (
                   <div key={field.name} className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider ml-1">{field.label}</label>
+                    <label className={`text-[11px] font-bold uppercase tracking-wider ml-1 ${errors[field.name] ? 'text-red-500' : 'text-gray-500'}`}>{field.label}</label>
                     <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                      <span className={`absolute inset-y-0 left-0 pl-3 flex items-center ${errors[field.name] ? 'text-red-400' : 'text-gray-400'}`}>
                         <field.icon size={18} />
                       </span>
                       <input
@@ -259,29 +285,31 @@ export const Profile = () => {
                         name={field.name}
                         value={passwordForm[field.name]}
                         onChange={handlePasswordFormChange}
-                        className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm font-medium"
+                        className={`w-full pl-10 pr-4 py-2 bg-gray-50 border rounded-xl focus:ring-2 outline-none transition-all text-sm font-medium ${errors[field.name] ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500 focus:bg-white'
+                          }`}
                         placeholder={field.placeholder}
                       />
                     </div>
+                    {errors[field.name] && <p className="text-red-500 text-[10px] ml-1 mt-1 font-medium">{errors[field.name]}</p>}
                   </div>
                 ))}
               </div>
 
-              <div className="pt-4 flex justify-end gap-3">
+              <div className="pt-4 flex justify-center sm:justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => navigate(-1)}
-                  className="flex items-center gap-2 px-10 py-3 bg-gray-500 text-white rounded-xl font-bold shadow-lg shadow-gray-200 hover:bg-gray-600 transition-all active:scale-95"
+                  className="flex-1 sm:flex-none flex sm:font-bold sm:uppercase items-center justify-center gap-2 px-6 sm:px-10 py-2 sm:py-3 bg-gray-500 text-white rounded-xl font-bold shadow-lg shadow-gray-200 hover:bg-gray-600 transition-all active:scale-95 text-sm sm:text-base"
                 >
                   <ArrowLeft size={20} />
-                  QUAY LẠI
+                  Quay lại
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-10 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 transition-all active:scale-95"
+                  className="flex sm:flex-none flex sm:font-bold sm:uppercase items-center justify-center gap-2 px-6 sm:px-10 py-2 sm:py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 transition-all active:scale-95 text-sm sm:text-base"
                 >
                   <Save size={20} />
-                  ĐỔI MẬT KHẨU
+                  Đổi mật khẩu
                 </button>
               </div>
             </form>
