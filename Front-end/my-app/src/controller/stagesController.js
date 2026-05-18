@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:10000/api/Stages';
+const API_URL = 'http://quanlysanxuat-back-end.onrender.com/api/Stages';
 
 const normalizeStageData = (data) => {
     if (Array.isArray(data)) {

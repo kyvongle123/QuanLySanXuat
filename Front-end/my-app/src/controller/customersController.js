@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Sử dụng port 49851 thống nhất với các controller khác trong dự án
-const API_URL = 'http://localhost:10000/api/Customers';
+const API_URL = 'http://quanlysanxuat-back-end.onrender.com/api/Customers';
 
 // Hàm chuẩn hóa dữ liệu để xử lý sự khác biệt giữa camelCase và PascalCase từ API
 const normalizeCustomerData = (data) => {

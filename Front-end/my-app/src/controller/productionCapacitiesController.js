@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:10000/api/productioncapacities';
+const API_URL = 'http://quanlysanxuat-back-end.onrender.com/api/productioncapacities';
 
 export const getProductionCapacities = async () => {
     const response = await axios.get(API_URL);
