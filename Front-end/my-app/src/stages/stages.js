@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Plus, FileDown, ChevronDown, FileUp, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -40,11 +41,18 @@ export const Stages = () => {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
 
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [openDropdownAnchorKey, setOpenDropdownAnchorKey] = useState(null);
+  const [dropdownRect, setDropdownRect] = useState(null);
+  const dropdownAnchorRefs = useRef({});
   const [dropdownSearch, setDropdownSearch] = useState('');
 
   // Lắng nghe click toàn cục để đóng dropdown
   useEffect(() => {
-    const handleGlobalClick = () => setOpenDropdownId(null);
+    const handleGlobalClick = () => {
+      setOpenDropdownId(null);
+      setOpenDropdownAnchorKey(null);
+      setDropdownRect(null);
+    };
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
   }, []);
@@ -52,6 +60,31 @@ export const Stages = () => {
   useEffect(() => {
     setDropdownSearch('');
   }, [openDropdownId]);
+
+  useEffect(() => {
+    if (!openDropdownId || !openDropdownAnchorKey) return;
+
+    const updateDropdownRect = () => {
+      const anchor = dropdownAnchorRefs.current[openDropdownAnchorKey];
+      if (!anchor) return;
+
+      const rect = anchor.getBoundingClientRect();
+      setDropdownRect({
+        left: rect.left,
+        top: rect.bottom + 4,
+        width: Math.max(rect.width, 200),
+      });
+    };
+
+    updateDropdownRect();
+    window.addEventListener('resize', updateDropdownRect);
+    window.addEventListener('scroll', updateDropdownRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateDropdownRect);
+      window.removeEventListener('scroll', updateDropdownRect, true);
+    };
+  }, [openDropdownId, openDropdownAnchorKey]);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ isOpen: true, message, type });
@@ -221,6 +254,9 @@ export const Stages = () => {
 
       await updateStage(stage.id, payload);
       setStages(prev => prev.map(s => (s.id || s.ID) === stage.id ? { ...s, productionSection: newSectionId, ProductionSection: newSectionId } : s));
+      setOpenDropdownId(null);
+      setOpenDropdownAnchorKey(null);
+      setDropdownRect(null);
       showNotification("Cập nhật tổ sản xuất thành công!");
     } catch (err) {
       console.error(err);
@@ -411,9 +447,9 @@ export const Stages = () => {
             </button>
 
             <button
+              ref={(el) => { dropdownAnchorRefs.current[`section-desktop-${rowId}`] = el; }}
               onClick={(e) => {
-                e.stopPropagation();
-                setOpenDropdownId(isOpen ? null : rowId);
+                toggleSectionMenu(e, rowId, `section-desktop-${rowId}`);
               }}
               className="bg-gray-50 border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[26px] font-bold text-gray-700"
             >
@@ -425,7 +461,9 @@ export const Stages = () => {
               </div>
             </button>
 
-            {isOpen && (
+            {renderSectionMenu(row, rowId, `section-desktop-${rowId}`)}
+
+            {false && isOpen && (
               <div className="absolute left-0 top-full mt-1 w-full min-w-[200px] bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top">
                 <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                   <div className="relative">
@@ -483,13 +521,82 @@ export const Stages = () => {
     },
   ];
 
+  const toggleSectionMenu = (e, rowId, anchorKey) => {
+    e.stopPropagation();
+    const isSameMenuOpen = openDropdownId === rowId && openDropdownAnchorKey === anchorKey;
+
+    if (isSameMenuOpen) {
+      setOpenDropdownId(null);
+      setOpenDropdownAnchorKey(null);
+      setDropdownRect(null);
+      return;
+    }
+
+    setDropdownSearch('');
+    setOpenDropdownId(rowId);
+    setOpenDropdownAnchorKey(anchorKey);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDropdownRect({
+      left: rect.left,
+      top: rect.bottom + 4,
+      width: Math.max(rect.width, 200),
+    });
+  };
+
+  const renderSectionMenu = (row, rowId, anchorKey, inputPaddingClassName = 'py-0.5') => {
+    if (openDropdownId !== rowId || openDropdownAnchorKey !== anchorKey || !dropdownRect) return null;
+
+    return createPortal(
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fixed bg-white rounded-md shadow-2xl z-[9999] border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top"
+        style={{
+          left: dropdownRect.left,
+          top: dropdownRect.top,
+          width: dropdownRect.width,
+        }}
+      >
+        <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+          <div className="relative">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className={`w-full pl-6 pr-2 ${inputPaddingClassName} text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900`}
+              placeholder="Lọc tổ..."
+              value={dropdownSearch}
+              onChange={(e) => setDropdownSearch(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
+          {productionSections
+            .filter(s => (s.label || "").toLowerCase().includes(dropdownSearch.toLowerCase()))
+            .map((s) => (
+              <button
+                key={s.value}
+                onClick={() => handleSectionChange(row, s.value)}
+                className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.productionSection || row.ProductionSection) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+              >
+                <span className="block w-full truncate">{s.label}</span>
+              </button>
+            ))}
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
   return (
-    <div className="p-2 sm:p-6 bg-gray-50/50 min-h-screen">
+    <div className="p-2 lg:p-6">
       <div className="mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Quản lý Công đoạn sản xuất</h2>
       </div>
 
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-4 gap-4">
         <div className="relative w-full lg:max-w-[300px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
             <Search size={18} />
@@ -505,19 +612,19 @@ export const Stages = () => {
 
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="flex flex-row gap-2 w-full sm:w-auto">
-            <button className="flex-1 sm:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded-lg whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
+            <button className="flex-1 sm:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
               <FileUp size={16} /> Nhập Excel
             </button>
             <button
               onClick={handleRequestExportExcel}
-              className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
+              className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
             >
               <FileDown size={16} /> Xuất Excel
             </button>
           </div>
           <button
             onClick={handleAddItem}
-            className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
+            className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
             <Plus size={18} /> Thêm công đoạn
           </button>
@@ -550,7 +657,8 @@ export const Stages = () => {
                         className="absolute right-1 top-[-10px] text-blue-600 text-[9px] font-bold underline z-20 leading-none bg-white/80 px-1 rounded"
                       >hiệu chỉnh</button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setOpenDropdownId(isOpen ? null : rowId); }}
+                        ref={(el) => { dropdownAnchorRefs.current[`section-mobile-${rowId}`] = el; }}
+                        onClick={(e) => { toggleSectionMenu(e, rowId, `section-mobile-${rowId}`); }}
                         className="bg-white border border-gray-300 text-gray-900 text-[11px] rounded-lg p-1.5 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[34px] w-full font-bold shadow-sm"
                       >
                         <span className="truncate block">{currentSection?.label || '-- Chọn tổ --'}</span>
@@ -558,7 +666,9 @@ export const Stages = () => {
                           <ChevronDown size={14} />
                         </div>
                       </button>
-                      {isOpen && (
+                      {renderSectionMenu(row, rowId, `section-mobile-${rowId}`, 'py-1')}
+
+                      {false && isOpen && (
                         <div className="absolute left-0 top-full mt-1 w-full min-w-[200px] bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top">
                           <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                             <div className="relative">

@@ -229,7 +229,7 @@ export const TransportVehicles = () => {
   ];
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
+    <div className="p-2 lg:p-6">
       <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Quản lý xe hàng</h2>
 
       <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
@@ -246,14 +246,14 @@ export const TransportVehicles = () => {
           />
         </div>
         <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileDown size={18} /> Xuất Excel
           </button>
-          <button onClick={handleOpenAddModal} className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+          <button onClick={handleOpenAddModal} className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
             + Thêm mới
           </button>
         </div>
@@ -274,15 +274,16 @@ export const TransportVehicles = () => {
             <CustomDatatable
               columns={columns}
               data={filteredVehicles}
+              bodyCellClassName="!py-2 lg:!py-3"
               renderExpansion={(row) => (
                 <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                     <div className="flex flex-col gap-1">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mã số xe</span>
+                      <span className="text-[10px] text-gray-400 tracking-wider">Mã số xe</span>
                       <span className="text-gray-900 font-medium">{row.vehicleCode || '---'}</span>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Biển số xe</span>
+                      <span className="text-[10px] text-gray-400 tracking-wider">Biển số xe</span>
                       <span className="text-gray-900 font-medium">{row.licensePlate || '---'}</span>
                     </div>
                   </div>

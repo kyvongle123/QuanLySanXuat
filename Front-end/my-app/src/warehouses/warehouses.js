@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Plus, FileDown, ChevronDown, Trash2, FileUp, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -27,8 +28,14 @@ export const Warehouses = () => {
   const [isModalMaximized, setIsModalMaximized] = useState(false);
 
   const [openLocationMenuId, setOpenLocationMenuId] = useState(null);
+  const [openLocationMenuAnchorKey, setOpenLocationMenuAnchorKey] = useState(null);
+  const [locationMenuRect, setLocationMenuRect] = useState(null);
+  const locationMenuAnchorRefs = useRef({});
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [openTypeMenuId, setOpenTypeMenuId] = useState(null);
+  const [openTypeMenuAnchorKey, setOpenTypeMenuAnchorKey] = useState(null);
+  const [typeMenuRect, setTypeMenuRect] = useState(null);
+  const typeMenuAnchorRefs = useRef({});
   const [typeMenuSearchQuery, setTypeMenuSearchQuery] = useState('');
 
   const [isTypeMgmtModalOpen, setIsTypeMgmtModalOpen] = useState(false);
@@ -110,7 +117,11 @@ export const Warehouses = () => {
 
     const handleGlobalClick = () => {
       setOpenLocationMenuId(null);
+      setOpenLocationMenuAnchorKey(null);
+      setLocationMenuRect(null);
       setOpenTypeMenuId(null);
+      setOpenTypeMenuAnchorKey(null);
+      setTypeMenuRect(null);
       setMenuSearchQuery('');
       setTypeMenuSearchQuery('');
     };
@@ -120,6 +131,56 @@ export const Warehouses = () => {
       document.removeEventListener('click', handleGlobalClick);
     };
   }, []);
+
+  useEffect(() => {
+    if (!openLocationMenuId || !openLocationMenuAnchorKey) return;
+
+    const updateLocationMenuRect = () => {
+      const anchor = locationMenuAnchorRefs.current[openLocationMenuAnchorKey];
+      if (!anchor) return;
+
+      const rect = anchor.getBoundingClientRect();
+      setLocationMenuRect({
+        left: rect.left,
+        top: rect.bottom + 4,
+        width: rect.width,
+      });
+    };
+
+    updateLocationMenuRect();
+    window.addEventListener('resize', updateLocationMenuRect);
+    window.addEventListener('scroll', updateLocationMenuRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateLocationMenuRect);
+      window.removeEventListener('scroll', updateLocationMenuRect, true);
+    };
+  }, [openLocationMenuId, openLocationMenuAnchorKey]);
+
+  useEffect(() => {
+    if (!openTypeMenuId || !openTypeMenuAnchorKey) return;
+
+    const updateTypeMenuRect = () => {
+      const anchor = typeMenuAnchorRefs.current[openTypeMenuAnchorKey];
+      if (!anchor) return;
+
+      const rect = anchor.getBoundingClientRect();
+      setTypeMenuRect({
+        left: rect.left,
+        top: rect.bottom + 4,
+        width: rect.width,
+      });
+    };
+
+    updateTypeMenuRect();
+    window.addEventListener('resize', updateTypeMenuRect);
+    window.addEventListener('scroll', updateTypeMenuRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateTypeMenuRect);
+      window.removeEventListener('scroll', updateTypeMenuRect, true);
+    };
+  }, [openTypeMenuId, openTypeMenuAnchorKey]);
 
   const filteredData = useMemo(() => {
     return warehouses.filter(w => {
@@ -269,6 +330,8 @@ export const Warehouses = () => {
       await updateWarehouse(warehouse.id, payload);
       setWarehouses(prev => prev.map(w => w.id === warehouse.id ? { ...w, location: parseInt(newLocationId), Location: parseInt(newLocationId) } : w));
       setOpenLocationMenuId(null);
+      setOpenLocationMenuAnchorKey(null);
+      setLocationMenuRect(null);
       showNotification("Cập nhật vị trí thành công!");
     } catch (err) {
       console.error("Error updating location:", err);
@@ -291,10 +354,153 @@ export const Warehouses = () => {
         type: parseInt(newTypeId),
         Type: parseInt(newTypeId)
       } : w));
+      setOpenTypeMenuId(null);
+      setOpenTypeMenuAnchorKey(null);
+      setTypeMenuRect(null);
       showNotification("Cập nhật loại kho thành công!");
     } catch (err) {
       showNotification("Lỗi khi cập nhật loại kho.", "error");
     }
+  };
+
+  const toggleLocationMenu = (e, rowId, anchorKey) => {
+    e.stopPropagation();
+    const isSameMenuOpen = openLocationMenuId === rowId && openLocationMenuAnchorKey === anchorKey;
+
+    if (isSameMenuOpen) {
+      setOpenLocationMenuId(null);
+      setOpenLocationMenuAnchorKey(null);
+      setLocationMenuRect(null);
+      return;
+    }
+
+    setMenuSearchQuery('');
+    setOpenLocationMenuId(rowId);
+    setOpenLocationMenuAnchorKey(anchorKey);
+    setOpenTypeMenuId(null);
+    setOpenTypeMenuAnchorKey(null);
+    setTypeMenuRect(null);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    setLocationMenuRect({
+      left: rect.left,
+      top: rect.bottom + 4,
+      width: rect.width,
+    });
+  };
+
+  const renderLocationMenu = (row, anchorKey) => {
+    if (openLocationMenuId !== row.id || openLocationMenuAnchorKey !== anchorKey || !locationMenuRect) return null;
+
+    return createPortal(
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fixed bg-white rounded-md shadow-2xl z-[9999] border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal"
+        style={{
+          left: locationMenuRect.left,
+          top: locationMenuRect.top,
+          width: locationMenuRect.width,
+        }}
+      >
+        <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+          <div className="relative">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+              placeholder="Tìm nhanh vị trí..."
+              value={menuSearchQuery}
+              onChange={(e) => setMenuSearchQuery(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="max-h-56 overflow-y-auto flex flex-col gap-0.5">
+          {sections.filter(s => s.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((s) => (
+            <button
+              key={s.value}
+              onClick={() => handleLocationChange(row, s.value)}
+              className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location || row.Location) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+              <span className="block w-full !whitespace-normal break-words leading-tight">{s.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  const toggleTypeMenu = (e, rowId, anchorKey) => {
+    e.stopPropagation();
+    const isSameMenuOpen = openTypeMenuId === rowId && openTypeMenuAnchorKey === anchorKey;
+
+    if (isSameMenuOpen) {
+      setOpenTypeMenuId(null);
+      setOpenTypeMenuAnchorKey(null);
+      setTypeMenuRect(null);
+      return;
+    }
+
+    setTypeMenuSearchQuery('');
+    setOpenTypeMenuId(rowId);
+    setOpenTypeMenuAnchorKey(anchorKey);
+    setOpenLocationMenuId(null);
+    setOpenLocationMenuAnchorKey(null);
+    setLocationMenuRect(null);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTypeMenuRect({
+      left: rect.left,
+      top: rect.bottom + 4,
+      width: rect.width,
+    });
+  };
+
+  const renderTypeMenu = (row, rowId, anchorKey, maxHeightClassName = 'max-h-48') => {
+    if (openTypeMenuId !== rowId || openTypeMenuAnchorKey !== anchorKey || !typeMenuRect) return null;
+
+    return createPortal(
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fixed bg-white rounded-md shadow-2xl z-[9999] border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal"
+        style={{
+          left: typeMenuRect.left,
+          top: typeMenuRect.top,
+          width: typeMenuRect.width,
+        }}
+      >
+        <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+          <div className="relative">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+              placeholder="Tìm nhanh..."
+              value={typeMenuSearchQuery}
+              onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className={`${maxHeightClassName} overflow-y-auto flex flex-col gap-0.5`}>
+          {types.filter(t => t.label.toLowerCase().includes(typeMenuSearchQuery.toLowerCase())).map((t) => (
+            <button
+              key={t.value}
+              onClick={() => handleTypeChange(row, t.value)}
+              className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.type || row.Type) === String(t.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+              <span className="block w-full truncate">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body
+    );
   };
 
   const handleOpenLocEdit = (mode, loc = null) => {
@@ -634,10 +840,9 @@ export const Warehouses = () => {
               hiệu chỉnh
             </button>
             <button
+              ref={(el) => { typeMenuAnchorRefs.current[`warehouse-type-desktop-${rowId}`] = el; }}
               onClick={(e) => {
-                e.stopPropagation();
-                if (openTypeMenuId !== rowId) setTypeMenuSearchQuery('');
-                setOpenTypeMenuId(isOpen ? null : rowId);
+                toggleTypeMenu(e, rowId, `warehouse-type-desktop-${rowId}`);
               }}
               className="bg-gray-50 border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[26px] font-bold text-gray-700"
             >
@@ -649,7 +854,9 @@ export const Warehouses = () => {
               </div>
             </button>
 
-            {isOpen && (
+            {renderTypeMenu(row, rowId, `warehouse-type-desktop-${rowId}`)}
+
+            {false && isOpen && (
               <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
                 <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                   <div className="relative">
@@ -700,10 +907,9 @@ export const Warehouses = () => {
             hiệu chỉnh
           </button>
           <button
+            ref={(el) => { locationMenuAnchorRefs.current[`warehouse-location-${row.id}`] = el; }}
             onClick={(e) => {
-              e.stopPropagation();
-              if (openLocationMenuId !== row.id) setMenuSearchQuery('');
-              setOpenLocationMenuId(openLocationMenuId === row.id ? null : row.id);
+              toggleLocationMenu(e, row.id, `warehouse-location-${row.id}`);
             }}
             className="bg-gray-50 border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[26px] font-bold text-blue-600"
           >
@@ -715,7 +921,9 @@ export const Warehouses = () => {
             </div>
           </button>
 
-          {openLocationMenuId === row.id && (
+          {renderLocationMenu(row, `warehouse-location-${row.id}`)}
+
+          {false && openLocationMenuId === row.id && (
             <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
               <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                 <div className="relative">
@@ -838,11 +1046,10 @@ export const Warehouses = () => {
                       hiệu chỉnh
                     </button>
                     <button
+                      ref={(el) => { typeMenuAnchorRefs.current[`warehouse-type-mobile-${row.id || row.ID}`] = el; }}
                       onClick={(e) => {
-                        e.stopPropagation();
                         const rowId = row.id || row.ID;
-                        if (openTypeMenuId !== rowId) setTypeMenuSearchQuery('');
-                        setOpenTypeMenuId(openTypeMenuId === rowId ? null : rowId);
+                        toggleTypeMenu(e, rowId, `warehouse-type-mobile-${rowId}`);
                       }}
                       className="bg-white border border-gray-300 text-gray-900 text-[11px] rounded-lg p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[30px] w-full block hover:border-blue-400 transition-colors font-bold"
                     >
@@ -854,7 +1061,9 @@ export const Warehouses = () => {
                       </div>
                     </button>
 
-                    {openTypeMenuId === (row.id || row.ID) && (
+                    {renderTypeMenu(row, row.id || row.ID, `warehouse-type-mobile-${row.id || row.ID}`, 'max-h-40')}
+
+                    {false && openTypeMenuId === (row.id || row.ID) && (
                       <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
                         <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                           <div className="relative">

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { MapPin, Truck, Package, Plus, Trash2, Edit3, ArrowRight, Search, MapPinned, FileDown, FileUp, ChevronRight, User } from 'lucide-react';
@@ -27,12 +28,16 @@ export const TransportRoutes = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentRoute, setCurrentRoute] = useState({ from: '', to: '', driver: '', transportVehicle: '', selectedItems: [] });
+  const [routeErrors, setRouteErrors] = useState({});
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
   const [openFromMenuId, setOpenFromMenuId] = useState(null);
   const [openToMenuId, setOpenToMenuId] = useState(null);
   const [openVehicleMenuId, setOpenVehicleMenuId] = useState(null);
+  const [openRouteMenuAnchorKey, setOpenRouteMenuAnchorKey] = useState(null);
+  const [routeMenuRect, setRouteMenuRect] = useState(null);
+  const routeMenuAnchorRefs = useRef({});
 
   // States cho quản lý Khách hàng (Customers)
   const [isCustomersModalOpen, setIsCustomersModalOpen] = useState(false);
@@ -75,6 +80,8 @@ export const TransportRoutes = () => {
       setOpenFromMenuId(null);
       setOpenToMenuId(null);
       setOpenVehicleMenuId(null);
+      setOpenRouteMenuAnchorKey(null);
+      setRouteMenuRect(null);
       setMenuSearchQuery('');
 
       // Đóng menu sắp xếp nếu click ra ngoài
@@ -88,6 +95,32 @@ export const TransportRoutes = () => {
       document.removeEventListener('click', handleGlobalClick);
     };
   }, [sortMenu.isOpen]);
+
+  useEffect(() => {
+    const openRouteMenuId = openVehicleMenuId || openToMenuId;
+    if (!openRouteMenuId || !openRouteMenuAnchorKey) return;
+
+    const updateRouteMenuRect = () => {
+      const anchor = routeMenuAnchorRefs.current[openRouteMenuAnchorKey];
+      if (!anchor) return;
+
+      const rect = anchor.getBoundingClientRect();
+      setRouteMenuRect({
+        left: rect.left + (rect.width / 2) - 112,
+        top: rect.bottom + 4,
+        width: 224,
+      });
+    };
+
+    updateRouteMenuRect();
+    window.addEventListener('resize', updateRouteMenuRect);
+    window.addEventListener('scroll', updateRouteMenuRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateRouteMenuRect);
+      window.removeEventListener('scroll', updateRouteMenuRect, true);
+    };
+  }, [openVehicleMenuId, openToMenuId, openRouteMenuAnchorKey]);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ isOpen: true, message, type });
@@ -198,6 +231,8 @@ export const TransportRoutes = () => {
       const updated = await updateTransportRoute(route.id, { ...route, to: parseInt(newBranchId) });
       setRoutes(prev => prev.map(r => r.id === updated.id ? updated : r));
       setOpenToMenuId(null);
+      setOpenRouteMenuAnchorKey(null);
+      setRouteMenuRect(null);
       showNotification("Cập nhật điểm đến thành công!");
     } catch (err) {
       showNotification("Lỗi khi cập nhật điểm đến.", "error");
@@ -211,6 +246,116 @@ export const TransportRoutes = () => {
       title: 'Xác nhận xuất Excel',
       message: 'Bạn có chắc chắn muốn xuất danh sách chuyến hàng ra tệp Excel không?'
     });
+  };
+
+  const toggleRouteMenu = (e, routeId, menuType) => {
+    e.stopPropagation();
+    const anchorKey = `${menuType}-${routeId}`;
+    const isVehicleMenu = menuType === 'vehicle';
+    const isSameMenuOpen = isVehicleMenu ? openVehicleMenuId === routeId : openToMenuId === routeId;
+
+    if (isSameMenuOpen && openRouteMenuAnchorKey === anchorKey) {
+      if (isVehicleMenu) setOpenVehicleMenuId(null);
+      else setOpenToMenuId(null);
+      setOpenRouteMenuAnchorKey(null);
+      setRouteMenuRect(null);
+      setMenuSearchQuery('');
+      return;
+    }
+
+    setOpenFromMenuId(null);
+    setOpenVehicleMenuId(isVehicleMenu ? routeId : null);
+    setOpenToMenuId(isVehicleMenu ? null : routeId);
+    setOpenRouteMenuAnchorKey(anchorKey);
+    setMenuSearchQuery('');
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    setRouteMenuRect({
+      left: rect.left + (rect.width / 2) - 112,
+      top: rect.bottom + 4,
+      width: 224,
+    });
+  };
+
+  const renderRouteVehicleMenu = (route) => {
+    const anchorKey = `vehicle-${route.id}`;
+    if (openVehicleMenuId !== route.id || openRouteMenuAnchorKey !== anchorKey || !routeMenuRect) return null;
+
+    return createPortal(
+      <div
+        className="fixed bg-white rounded-md shadow-2xl z-[9999] border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top"
+        style={{ left: routeMenuRect.left, top: routeMenuRect.top, width: routeMenuRect.width }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-1.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+          <div className="relative">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className="w-full pl-6 pr-2 py-1 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
+              placeholder="Lọc xe hàng..."
+              value={menuSearchQuery}
+              onChange={(e) => setMenuSearchQuery(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
+          {vehicles.filter(v => v.label.toLowerCase().includes(menuSearchQuery.toLowerCase()) || v.vehicleCode.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((v) => (
+            <button
+              key={v.value}
+              onClick={() => handleVehicleChange(route, v.value)}
+              className={`px-2 py-2 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(route.transportVehicle) === String(v.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+              <span className="block w-full whitespace-normal break-words leading-tight">{v.vehicleCode} - {v.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  const renderRouteToMenu = (route) => {
+    const anchorKey = `to-${route.id}`;
+    if (openToMenuId !== route.id || openRouteMenuAnchorKey !== anchorKey || !routeMenuRect) return null;
+
+    return createPortal(
+      <div
+        className="fixed bg-white rounded-md shadow-2xl z-[9999] border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top"
+        style={{ left: routeMenuRect.left, top: routeMenuRect.top, width: routeMenuRect.width }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-1.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+          <div className="relative">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className="w-full pl-6 pr-2 py-1 text-[11px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
+              placeholder="Lọc chi nhánh..."
+              value={menuSearchQuery}
+              onChange={(e) => setMenuSearchQuery(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
+          {customers.filter(c => c.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((c) => (
+            <button
+              key={c.value}
+              onClick={() => handleToChange(route, c.value)}
+              className={`px-2 py-2 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(route.to) === String(c.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              <span className="block w-full whitespace-normal break-words leading-tight">{c.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body
+    );
   };
 
   const handleExportExcel = async () => {
@@ -329,6 +474,7 @@ export const TransportRoutes = () => {
       // Tự động chọn khách hàng vừa tạo/cập nhật trong select của lộ trình
       if (savedCustomer) {
         setCurrentRoute(prev => ({ ...prev, to: savedCustomer.id || savedCustomer.Id }));
+        setRouteErrors(prev => ({ ...prev, to: null }));
       }
     } catch (err) {
       showNotification("Lỗi khi lưu khách hàng", "error");
@@ -437,6 +583,7 @@ export const TransportRoutes = () => {
 
       if (savedDriver) {
         setCurrentRoute(prev => ({ ...prev, driver: savedDriver.id || savedDriver.Id }));
+        setRouteErrors(prev => ({ ...prev, driver: null }));
       }
     } catch (err) {
       showNotification("Lỗi khi lưu tài xế", "error");
@@ -537,6 +684,7 @@ export const TransportRoutes = () => {
 
       if (savedVehicle) {
         setCurrentRoute(prev => ({ ...prev, transportVehicle: savedVehicle.id || savedVehicle.Id }));
+        setRouteErrors(prev => ({ ...prev, transportVehicle: null }));
       }
     } catch (err) {
       showNotification("Lỗi khi lưu xe hàng", "error");
@@ -605,12 +753,14 @@ export const TransportRoutes = () => {
   const handleOpenAdd = () => {
     setModalMode('add');
     setCurrentRoute({ from: '', to: '', driver: '', transportVehicle: '', selectedItems: [] });
+    setRouteErrors({});
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setIsModalMaximized(false);
+    setRouteErrors({});
   };
 
   const handleOpenEdit = (route) => {
@@ -625,11 +775,25 @@ export const TransportRoutes = () => {
       transportVehicle: route.transportVehicle || '',
       selectedItems: itemsOnThisRoute
     });
+    setRouteErrors({});
     setIsModalOpen(true);
   };
 
   const handleModalSubmit = async (e) => {
     e.preventDefault();
+
+    const newErrors = {};
+    if (!currentRoute.to) newErrors.to = "Bắt buộc nhập Điểm đến";
+    if (!currentRoute.driver) newErrors.driver = "Bắt buộc nhập Chỉ định tài xế";
+    if (!currentRoute.transportVehicle) newErrors.transportVehicle = "Bắt buộc nhập Chọn xe hàng";
+
+    if (Object.keys(newErrors).length > 0) {
+      setRouteErrors(newErrors);
+      return;
+    }
+
+    setRouteErrors({});
+
     try {
       const payload = {
         id: parseInt(currentRoute.id) || 0,
@@ -683,7 +847,7 @@ export const TransportRoutes = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
+    <div className="p-2 lg:p-6">
       <div className="mb-6 sm:mb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Danh sách chuyến hàng</h2>
@@ -848,12 +1012,9 @@ export const TransportRoutes = () => {
                     <div className="w-full flex items-center gap-1 mb-2 relative">
                       <div className="h-px bg-gray-200 flex-1 border-dashed border-t"></div>
                       <button
+                        ref={(el) => { routeMenuAnchorRefs.current[`vehicle-${route.id}`] = el; }}
                         onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenVehicleMenuId(openVehicleMenuId === route.id ? null : route.id);
-                          setOpenFromMenuId(null);
-                          setOpenToMenuId(null);
-                          setMenuSearchQuery('');
+                          toggleRouteMenu(e, route.id, 'vehicle');
                         }}
                         className={`p-1.5 rounded-lg transition-colors ${openVehicleMenuId === route.id ? 'bg-blue-600 text-white shadow-md' : 'text-blue-500 hover:bg-blue-50'}`}
                         title="Thay đổi xe hàng"
@@ -862,7 +1023,9 @@ export const TransportRoutes = () => {
                       </button>
                       <div className="h-px bg-gray-200 flex-1 border-dashed border-t"></div>
 
-                      {openVehicleMenuId === route.id && (
+                      {renderRouteVehicleMenu(route)}
+
+                      {false && openVehicleMenuId === route.id && (
                         <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-56 bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top" onClick={e => e.stopPropagation()}>
                           <div className="p-1.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                             <div className="relative">
@@ -900,11 +1063,9 @@ export const TransportRoutes = () => {
                   <div className="flex flex-col items-center flex-1">
                     <div className="relative">
                       <button
+                        ref={(el) => { routeMenuAnchorRefs.current[`to-${route.id}`] = el; }}
                         onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenToMenuId(openToMenuId === route.id ? null : route.id);
-                          setOpenFromMenuId(null);
-                          setMenuSearchQuery('');
+                          toggleRouteMenu(e, route.id, 'to');
                         }}
                         className={`p-3 rounded-xl mb-2 transition-colors ${openToMenuId === route.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
                         title="Thay đổi điểm đến"
@@ -912,7 +1073,9 @@ export const TransportRoutes = () => {
                         <MapPin size={24} />
                       </button>
 
-                      {openToMenuId === route.id && (
+                      {renderRouteToMenu(route)}
+
+                      {false && openToMenuId === route.id && (
                         <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-56 bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top" onClick={e => e.stopPropagation()}>
                           <div className="p-1.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                             <div className="relative">
@@ -1013,7 +1176,12 @@ export const TransportRoutes = () => {
                 label="Điểm đến (Đến)"
                 options={customers}
                 value={currentRoute.to}
-                onChange={(e) => setCurrentRoute({ ...currentRoute, to: e.target.value })}
+                onChange={(e) => {
+                  setCurrentRoute({ ...currentRoute, to: e.target.value });
+                  if (routeErrors.to) setRouteErrors(prev => ({ ...prev, to: null }));
+                }}
+                error={!!routeErrors.to}
+                errorMessage={routeErrors.to}
                 wrapText={true}
               />
             </div>
@@ -1032,7 +1200,12 @@ export const TransportRoutes = () => {
                 label="Chỉ định Tài xế"
                 options={[...drivers]}
                 value={currentRoute.driver}
-                onChange={(e) => setCurrentRoute({ ...currentRoute, driver: e.target.value })}
+                onChange={(e) => {
+                  setCurrentRoute({ ...currentRoute, driver: e.target.value });
+                  if (routeErrors.driver) setRouteErrors(prev => ({ ...prev, driver: null }));
+                }}
+                error={!!routeErrors.driver}
+                errorMessage={routeErrors.driver}
                 wrapText={true}
               />
             </div>
@@ -1049,7 +1222,12 @@ export const TransportRoutes = () => {
                 label="Chọn Xe hàng"
                 options={[...vehicles]}
                 value={currentRoute.transportVehicle}
-                onChange={(e) => setCurrentRoute({ ...currentRoute, transportVehicle: e.target.value })}
+                onChange={(e) => {
+                  setCurrentRoute({ ...currentRoute, transportVehicle: e.target.value });
+                  if (routeErrors.transportVehicle) setRouteErrors(prev => ({ ...prev, transportVehicle: null }));
+                }}
+                error={!!routeErrors.transportVehicle}
+                errorMessage={routeErrors.transportVehicle}
                 wrapText={true}
               />
             </div>

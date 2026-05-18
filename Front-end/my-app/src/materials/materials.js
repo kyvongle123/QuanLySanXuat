@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Plus, FileDown, ChevronDown, FileUp, ChevronRight, Trash2 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -42,6 +43,9 @@ export const Material = () => {
   // States cho quản lý Nhà kho
   const [warehouses, setWarehouses] = useState([]);
   const [openLocationMenuId, setOpenLocationMenuId] = useState(null);
+  const [openLocationMenuAnchorKey, setOpenLocationMenuAnchorKey] = useState(null);
+  const [locationMenuRect, setLocationMenuRect] = useState(null);
+  const locationMenuAnchorRefs = useRef({});
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [openTypeMenuId, setOpenTypeMenuId] = useState(null);
   const [typeMenuSearchQuery, setTypeMenuSearchQuery] = useState('');
@@ -88,6 +92,8 @@ export const Material = () => {
   useEffect(() => {
     const handleGlobalClick = () => {
       setOpenLocationMenuId(null);
+      setOpenLocationMenuAnchorKey(null);
+      setLocationMenuRect(null);
       setOpenTypeMenuId(null);
       setMenuSearchQuery('');
       setTypeMenuSearchQuery('');
@@ -95,6 +101,31 @@ export const Material = () => {
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
   }, []);
+
+  useEffect(() => {
+    if (!openLocationMenuId || !openLocationMenuAnchorKey) return;
+
+    const updateLocationMenuRect = () => {
+      const anchor = locationMenuAnchorRefs.current[openLocationMenuAnchorKey];
+      if (!anchor) return;
+
+      const rect = anchor.getBoundingClientRect();
+      setLocationMenuRect({
+        left: rect.left,
+        top: rect.bottom + 4,
+        width: rect.width,
+      });
+    };
+
+    updateLocationMenuRect();
+    window.addEventListener('resize', updateLocationMenuRect);
+    window.addEventListener('scroll', updateLocationMenuRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateLocationMenuRect);
+      window.removeEventListener('scroll', updateLocationMenuRect, true);
+    };
+  }, [openLocationMenuId, openLocationMenuAnchorKey]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -233,6 +264,8 @@ export const Material = () => {
       const updated = await updateMaterial(material.id, { ...material, location: updatedValue });
       setMaterials(prev => prev.map(m => m.id === updated.id ? updated : m));
       setOpenLocationMenuId(null);
+      setOpenLocationMenuAnchorKey(null);
+      setLocationMenuRect(null);
       showNotification("Cập nhật vị trí thành công!");
     } catch (err) {
       console.error("Error updating location:", err);
@@ -963,6 +996,72 @@ export const Material = () => {
     }
   ];
 
+  const toggleMaterialLocationMenu = (e, rowId, anchorKey) => {
+    e.stopPropagation();
+    const isSameMenuOpen = openLocationMenuId === rowId && openLocationMenuAnchorKey === anchorKey;
+
+    if (isSameMenuOpen) {
+      setOpenLocationMenuId(null);
+      setOpenLocationMenuAnchorKey(null);
+      setLocationMenuRect(null);
+      return;
+    }
+
+    setMenuSearchQuery('');
+    setOpenLocationMenuId(rowId);
+    setOpenLocationMenuAnchorKey(anchorKey);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    setLocationMenuRect({
+      left: rect.left,
+      top: rect.bottom + 4,
+      width: rect.width,
+    });
+  };
+
+  const renderMaterialLocationMenu = (row, anchorKey, maxHeightClassName = 'max-h-40') => {
+    if (openLocationMenuId !== row.id || openLocationMenuAnchorKey !== anchorKey || !locationMenuRect) return null;
+
+    return createPortal(
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fixed bg-white rounded-md shadow-2xl z-[9999] border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal"
+        style={{
+          left: locationMenuRect.left,
+          top: locationMenuRect.top,
+          width: locationMenuRect.width,
+        }}
+      >
+        <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+          <div className="relative">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+              placeholder="Lọc vị trí"
+              value={menuSearchQuery}
+              onChange={(e) => setMenuSearchQuery(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className={`${maxHeightClassName} overflow-y-auto flex flex-col gap-0.5`}>
+          {warehouses.filter(w => w.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
+            <button
+              key={w.value}
+              onClick={() => handleLocationChange(row, w.value)}
+              className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location) === String(w.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              <span className="block w-full !whitespace-normal break-words leading-tight">{w.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
   const columns = [
     {
       header: '',
@@ -1029,10 +1128,9 @@ export const Material = () => {
             hiệu chỉnh
           </button>
           <button
+            ref={(el) => { locationMenuAnchorRefs.current[`material-desktop-${row.id}`] = el; }}
             onClick={(e) => {
-              e.stopPropagation();
-              if (openLocationMenuId !== row.id) setMenuSearchQuery('');
-              setOpenLocationMenuId(openLocationMenuId === row.id ? null : row.id);
+              toggleMaterialLocationMenu(e, row.id, `material-desktop-${row.id}`);
             }}
             className="text-[11px] font-bold block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors text-blue-600"
           >
@@ -1044,7 +1142,9 @@ export const Material = () => {
             </div>
           </button>
 
-          {openLocationMenuId === row.id && (
+          {renderMaterialLocationMenu(row, `material-desktop-${row.id}`)}
+
+          {false && openLocationMenuId === row.id && openLocationMenuAnchorKey !== `material-desktop-${row.id}` && (
             <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
               <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                 <div className="relative">
@@ -1171,10 +1271,9 @@ export const Material = () => {
                       hiệu chỉnh
                     </button>
                     <button
+                      ref={(el) => { locationMenuAnchorRefs.current[`material-mobile-${row.id}`] = el; }}
                       onClick={(e) => {
-                        e.stopPropagation();
-                        if (openLocationMenuId !== row.id) setMenuSearchQuery('');
-                        setOpenLocationMenuId(openLocationMenuId === row.id ? null : row.id);
+                        toggleMaterialLocationMenu(e, row.id, `material-mobile-${row.id}`);
                       }}
                       className="text-[11px] font-bold block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors text-blue-600"
                     >
@@ -1186,7 +1285,9 @@ export const Material = () => {
                       </div>
                     </button>
 
-                    {openLocationMenuId === row.id && (
+                    {renderMaterialLocationMenu(row, `material-mobile-${row.id}`)}
+
+                    {false && openLocationMenuId === row.id && openLocationMenuAnchorKey !== `material-mobile-${row.id}` && (
                       <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
                         <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                           <div className="relative">

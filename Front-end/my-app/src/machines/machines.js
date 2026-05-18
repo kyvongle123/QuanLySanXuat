@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Plus, ChevronDown, FileDown, FileUp, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -32,12 +33,17 @@ import {
 const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", className, disabled = false, error = false, errorMessage = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [menuRect, setMenuRect] = useState(null);
   const selectRef = useRef(null);
+  const menuRef = useRef(null);
 
   // Logic lắng nghe click bên ngoài để đóng menu
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (selectRef.current && !selectRef.current.contains(event.target)) {
+      const isInsideSelect = selectRef.current && selectRef.current.contains(event.target);
+      const isInsideMenu = menuRef.current && menuRef.current.contains(event.target);
+
+      if (!isInsideSelect && !isInsideMenu) {
         setIsOpen(false);
         setSearch('');
       }
@@ -47,6 +53,30 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const updateMenuRect = () => {
+      if (!selectRef.current) return;
+
+      const rect = selectRef.current.getBoundingClientRect();
+      setMenuRect({
+        left: rect.left,
+        top: rect.bottom + 4,
+        width: Math.max(rect.width, 180),
+      });
+    };
+
+    updateMenuRect();
+    window.addEventListener('resize', updateMenuRect);
+    window.addEventListener('scroll', updateMenuRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateMenuRect);
+      window.removeEventListener('scroll', updateMenuRect, true);
+    };
+  }, [isOpen]);
 
   const selectedOption = options.find(opt => String(opt.value) === String(value));
   const filteredOptions = options.filter(opt =>
@@ -70,8 +100,18 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
         </div>
       </div>
 
-      {isOpen && (
-        <div className="absolute z-[70] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-2xl overflow-hidden min-w-[180px] left-0 top-full origin-top animate-in fade-in slide-in-from-top-1 duration-200">
+      {isOpen && menuRect && createPortal(
+        <div
+          ref={menuRef}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          className="fixed z-[9999] bg-white border border-gray-300 rounded-lg shadow-2xl overflow-hidden origin-top animate-in fade-in slide-in-from-top-1 duration-200"
+          style={{
+            left: menuRect.left,
+            top: menuRect.top,
+            width: menuRect.width,
+          }}
+        >
           <div className="p-1.5 border-b bg-gray-50 sticky top-0 z-10">
             <div className="relative group">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
@@ -93,7 +133,8 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
               </div>
             )) : <div className="p-3 text-xs text-gray-400 italic text-center">Không có kết quả</div>}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {errorMessage && <p className="text-red-500 text-[10px] mt-1 font-medium">{errorMessage}</p>}
     </div>
@@ -616,7 +657,7 @@ export const Machines = () => {
         </button>
       ),
     },
-    { header: 'STT', className: 'w-[50px] text-center hidden sm:table-cell', render: (_, { index }) => index + 1 },
+    { header: 'STT', className: 'w-[50px] text-center hidden sm:table-cell', render: (_, { index }) => index },
     { header: 'Mã máy', accessor: 'machineCode', className: 'font-bold text-blue-700 min-w-[120px] !px-2' },
     {
       header: 'Loại máy',
@@ -685,7 +726,7 @@ export const Machines = () => {
   ];
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
+    <div className="p-2 lg:p-6">
       <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Danh sách máy</h2>
 
       <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">

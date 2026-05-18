@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Plus, FileDown, Trash2, ChevronDown, FileUp } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -23,6 +24,9 @@ export const WarehouseLocations = () => {
   const [isModalMaximized, setIsModalMaximized] = useState(false);
 
   const [openRackMenuId, setOpenRackMenuId] = useState(null);
+  const [openRackMenuAnchorKey, setOpenRackMenuAnchorKey] = useState(null);
+  const [rackMenuRect, setRackMenuRect] = useState(null);
+  const rackMenuAnchorRefs = useRef({});
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
 
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
@@ -73,6 +77,8 @@ export const WarehouseLocations = () => {
 
     const handleGlobalClick = () => {
       setOpenRackMenuId(null);
+      setOpenRackMenuAnchorKey(null);
+      setRackMenuRect(null);
       setMenuSearchQuery('');
     };
 
@@ -81,6 +87,31 @@ export const WarehouseLocations = () => {
       document.removeEventListener('click', handleGlobalClick);
     };
   }, []);
+
+  useEffect(() => {
+    if (!openRackMenuId || !openRackMenuAnchorKey) return;
+
+    const updateRackMenuRect = () => {
+      const anchor = rackMenuAnchorRefs.current[openRackMenuAnchorKey];
+      if (!anchor) return;
+
+      const rect = anchor.getBoundingClientRect();
+      setRackMenuRect({
+        left: rect.left,
+        top: rect.bottom + 4,
+        width: Math.max(rect.width, 200),
+      });
+    };
+
+    updateRackMenuRect();
+    window.addEventListener('resize', updateRackMenuRect);
+    window.addEventListener('scroll', updateRackMenuRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateRackMenuRect);
+      window.removeEventListener('scroll', updateRackMenuRect, true);
+    };
+  }, [openRackMenuId, openRackMenuAnchorKey]);
 
   const filteredData = useMemo(() => {
     return locations.filter(l => {
@@ -168,10 +199,80 @@ export const WarehouseLocations = () => {
     try {
       await updateWarehouseLocation(location.id, payload);
       setLocations(prev => prev.map(l => l.id === location.id ? { ...l, racks: parseInt(newRackId), Racks: parseInt(newRackId) } : l));
+      setOpenRackMenuId(null);
+      setOpenRackMenuAnchorKey(null);
+      setRackMenuRect(null);
       showNotification("Cập nhật kệ thành công!");
     } catch (err) {
       showNotification("Lỗi khi cập nhật kệ.", "error");
     }
+  };
+
+  const toggleRackMenu = (e, rowId, anchorKey) => {
+    e.stopPropagation();
+    const isSameMenuOpen = openRackMenuId === rowId && openRackMenuAnchorKey === anchorKey;
+
+    if (isSameMenuOpen) {
+      setOpenRackMenuId(null);
+      setOpenRackMenuAnchorKey(null);
+      setRackMenuRect(null);
+      return;
+    }
+
+    setMenuSearchQuery('');
+    setOpenRackMenuId(rowId);
+    setOpenRackMenuAnchorKey(anchorKey);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    setRackMenuRect({
+      left: rect.left,
+      top: rect.bottom + 4,
+      width: Math.max(rect.width, 200),
+    });
+  };
+
+  const renderRackMenu = (row, anchorKey) => {
+    if (openRackMenuId !== row.id || openRackMenuAnchorKey !== anchorKey || !rackMenuRect) return null;
+
+    return createPortal(
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fixed bg-white rounded-md shadow-2xl z-[9999] border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal"
+        style={{
+          left: rackMenuRect.left,
+          top: rackMenuRect.top,
+          width: rackMenuRect.width,
+        }}
+      >
+        <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+          <div className="relative">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+              placeholder="Tìm nhanh..."
+              value={menuSearchQuery}
+              onChange={(e) => setMenuSearchQuery(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="max-h-[160px] overflow-y-auto flex flex-col gap-0.5">
+          {racks.filter(r => r.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((r) => (
+            <button
+              key={r.value}
+              onClick={() => handleRackChange(row, r.value)}
+              className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.racks || row.Racks) === String(r.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+              <span className="block w-full !whitespace-normal break-words leading-tight">{r.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body
+    );
   };
 
   const binColumns = [
@@ -448,10 +549,9 @@ export const WarehouseLocations = () => {
             hiệu chỉnh
           </button>
           <button
+            ref={(el) => { rackMenuAnchorRefs.current[`rack-${row.id}`] = el; }}
             onClick={(e) => {
-              e.stopPropagation();
-              if (openRackMenuId !== row.id) setMenuSearchQuery('');
-              setOpenRackMenuId(openRackMenuId === row.id ? null : row.id);
+              toggleRackMenu(e, row.id, `rack-${row.id}`);
             }}
             className="bg-gray-50 border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[26px] font-bold text-blue-600 transition-all"
           >
@@ -463,7 +563,9 @@ export const WarehouseLocations = () => {
             </div>
           </button>
 
-          {openRackMenuId === row.id && (
+          {renderRackMenu(row, `rack-${row.id}`)}
+
+          {false && openRackMenuId === row.id && (
             <div className="absolute left-0 top-full mt-1 w-full min-w-[200px] bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
               <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                 <div className="relative">

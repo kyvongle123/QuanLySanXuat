@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { Search, Plus, ChevronDown, FileDown, FileUp } from 'lucide-react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { Search, Plus, ChevronDown, FileDown, FileUp, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, Modal, CustomSelect, AppNotification, CustomConfirm } from '../customComponent/customComponent';
@@ -21,6 +22,9 @@ export const ProductionSections = () => {
   const [currentEditingSection, setCurrentEditingSection] = useState(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [openDropdownAnchorKey, setOpenDropdownAnchorKey] = useState(null);
+  const [dropdownRect, setDropdownRect] = useState(null);
+  const dropdownAnchorRefs = useRef({});
   const [searchTerm, setSearchTerm] = useState('');
   const [dropdownSearch, setDropdownSearch] = useState('');
   const [errors, setErrors] = useState({});
@@ -109,6 +113,8 @@ export const ProductionSections = () => {
   useEffect(() => {
     const handleGlobalClick = () => {
       setOpenDropdownId(null);
+      setOpenDropdownAnchorKey(null);
+      setDropdownRect(null);
     };
 
     document.addEventListener('click', handleGlobalClick);
@@ -121,6 +127,31 @@ export const ProductionSections = () => {
   useEffect(() => {
     setDropdownSearch('');
   }, [openDropdownId]);
+
+  useEffect(() => {
+    if (!openDropdownId || !openDropdownAnchorKey) return;
+
+    const updateDropdownRect = () => {
+      const anchor = dropdownAnchorRefs.current[openDropdownAnchorKey];
+      if (!anchor) return;
+
+      const rect = anchor.getBoundingClientRect();
+      setDropdownRect({
+        left: rect.left,
+        top: rect.bottom + 4,
+        width: Math.max(rect.width, 190),
+      });
+    };
+
+    updateDropdownRect();
+    window.addEventListener('resize', updateDropdownRect);
+    window.addEventListener('scroll', updateDropdownRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateDropdownRect);
+      window.removeEventListener('scroll', updateDropdownRect, true);
+    };
+  }, [openDropdownId, openDropdownAnchorKey]);
 
   // State cho thông báo và xác nhận
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
@@ -231,6 +262,9 @@ export const ProductionSections = () => {
         };
         const updatedItem = await updateProductionSection(id, payload);
         setSections(prev => prev.map(s => (s.id || s.ID) === id ? updatedItem : s));
+        setOpenDropdownId(null);
+        setOpenDropdownAnchorKey(null);
+        setDropdownRect(null);
         showNotification("Cập nhật tổ trưởng thành công!");
         return;
       }
@@ -241,6 +275,9 @@ export const ProductionSections = () => {
       };
       const updatedItem = await updateProductionSection(id, payload);
       setSections(prev => prev.map(s => (s.id || s.ID) === id ? updatedItem : s));
+      setOpenDropdownId(null);
+      setOpenDropdownAnchorKey(null);
+      setDropdownRect(null);
       showNotification("Cập nhật tổ trưởng thành công!");
     } catch (err) {
       showNotification("Có lỗi xảy ra khi cập nhật tổ trưởng.", "error");
@@ -285,7 +322,119 @@ export const ProductionSections = () => {
     }
   };
 
+  const toggleLeaderDropdown = (e, rowId, anchorKey) => {
+    e.stopPropagation();
+    const isSameDropdownOpen = openDropdownId === rowId && openDropdownAnchorKey === anchorKey;
+
+    if (isSameDropdownOpen) {
+      setOpenDropdownId(null);
+      setOpenDropdownAnchorKey(null);
+      setDropdownRect(null);
+      return;
+    }
+
+    setDropdownSearch('');
+    setOpenDropdownId(rowId);
+    setOpenDropdownAnchorKey(anchorKey);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDropdownRect({
+      left: rect.left,
+      top: rect.bottom + 4,
+      width: Math.max(rect.width, 190),
+    });
+  };
+
+  const renderLeaderMenu = (row, rowId, anchorKey) => {
+    if (openDropdownId !== rowId || openDropdownAnchorKey !== anchorKey || !dropdownRect) return null;
+
+    const filteredUsersForDropdown = users.filter(u =>
+      u.name?.toLowerCase().includes(dropdownSearch.toLowerCase())
+    );
+
+    return createPortal(
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fixed z-[9999] bg-white border border-gray-300 rounded-lg shadow-xl overflow-hidden anim-fade-down"
+        style={{
+          left: dropdownRect.left,
+          top: dropdownRect.top,
+          width: dropdownRect.width,
+        }}
+      >
+        <div className="p-1.5 border-b border-gray-100 bg-gray-50">
+          <div className="relative">
+            <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Tìm nhân viên..."
+              className="w-full pl-7 pr-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"
+              value={dropdownSearch}
+              onChange={(e) => setDropdownSearch(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+        </div>
+
+        <div className="max-h-[140px] overflow-y-auto">
+          {filteredUsersForDropdown.length > 0 ? (
+            filteredUsersForDropdown.map((u) => (
+              <button
+                key={u.id || u.ID}
+                type="button"
+                onClick={() => handleLeaderChange(row, u.id || u.ID)}
+                className={`block w-full px-3 py-1 text-sm hover:bg-blue-600 hover:text-white cursor-pointer transition-colors text-left ${String(row.leader) === String(u.id || u.ID) ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700'}`}
+              >
+                {u.name}
+              </button>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-xs text-gray-400 italic text-center">Không tìm thấy kết quả</div>
+          )}
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  const renderLeaderSelect = (row, anchorKey, className = '') => {
+    const rowId = row.id || row.ID;
+    const isOpen = openDropdownId === rowId && openDropdownAnchorKey === anchorKey;
+    const currentLeader = users.find(u => String(u.id || u.ID) === String(row.leader));
+
+    return (
+      <div className={`relative ${className}`} onClick={(e) => e.stopPropagation()}>
+        <button
+          ref={(el) => { dropdownAnchorRefs.current[anchorKey] = el; }}
+          type="button"
+          onClick={(e) => toggleLeaderDropdown(e, rowId, anchorKey)}
+          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 block w-full p-1 px-2.5 text-left focus:outline-none transition-all cursor-pointer flex justify-between items-center min-h-[30px]"
+        >
+          <span className="truncate">{currentLeader ? currentLeader.name : '-- Chưa phân công --'}</span>
+          <ChevronDown size={14} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {renderLeaderMenu(row, rowId, anchorKey)}
+      </div>
+    );
+  };
+
   const columns = [
+    {
+      header: '',
+      className: 'w-[20px] sm:w-[40px] !px-2 sm:!px-6 text-center',
+      render: (row, { isExpanded, toggleExpand }) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
+          className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
+        >
+          <ChevronRight
+            size={18}
+            className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`}
+          />
+        </button>
+      ),
+    },
     { header: 'STT', className: 'w-[50px] text-center !px-1 sm:!px-4', render: (row, { index }) => index },
     { header: 'Mã tổ', accessor: 'productionSectionCode', className: 'font-medium text-blue-600 min-w-[120px] hidden sm:table-cell' },
     { header: 'Tên tổ', accessor: 'name', className: 'min-w-[150px] !px-1 sm:!px-4' },
@@ -304,10 +453,10 @@ export const ProductionSections = () => {
         return (
           <div className="relative">
             <button
+              ref={(el) => { dropdownAnchorRefs.current[`leader-desktop-${rowId}`] = el; }}
               type="button"
               onClick={(e) => {
-                e.stopPropagation();
-                setOpenDropdownId(isOpen ? null : rowId);
+                toggleLeaderDropdown(e, rowId, `leader-desktop-${rowId}`);
               }}
               className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 block w-full p-1 px-2.5 text-left focus:outline-none transition-all cursor-pointer flex justify-between items-center"
             >
@@ -315,7 +464,9 @@ export const ProductionSections = () => {
               <ChevronDown size={14} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {isOpen && (
+            {renderLeaderMenu(row, rowId, `leader-desktop-${rowId}`)}
+
+            {false && isOpen && (
               <div onClick={(e) => e.stopPropagation()}>
                 {/* Menu Dropdown - Thêm stopPropagation để click bên trong menu không làm đóng dropdown */}
                 <div className="absolute left-0 top-full mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl z-20 overflow-hidden anim-fade-down">
@@ -448,7 +599,7 @@ export const ProductionSections = () => {
   );
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
+    <div className="p-2 lg:p-6">
       <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Danh sách tổ sản xuất</h2>
 
       <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
@@ -465,21 +616,21 @@ export const ProductionSections = () => {
           />
         </div>
         <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
           <button
             onClick={handleRequestExportExcel}
-            className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm"
+            className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm"
           >
             <FileDown size={18} /> Xuất Excel
           </button>
           <button
             onClick={handleAdd}
-            className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg whitespace-nowrap transition-all active:scale-95 shadow-md text-sm"
+            className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm"
           >
-            + Thêm mới
+            Thêm mới
           </button>
         </div>
       </div>
@@ -499,16 +650,17 @@ export const ProductionSections = () => {
             <CustomDatatable
               columns={columns}
               data={filteredSections}
+              bodyCellClassName="!py-2 sm:!py-3"
               renderExpansion={(row) => {
-                const leader = users.find(u => String(u.id || u.ID) === String(row.leader));
+                const rowId = row.id || row.ID;
                 return (
                   <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-sm">
-                      <div className="flex flex-col gap-1 md:hidden"> {/* Show leader on mobile if hidden in main table */}
+                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-y-4 gap-x-4 sm:gap-x-8 text-sm">
+                      <div className="flex flex-col gap-1 md:hidden min-w-0"> {/* Show leader on mobile if hidden in main table */}
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tổ trưởng</span>
-                        <span className="text-gray-900 font-medium">{leader ? leader.name : 'Chưa phân công'}</span>
+                        {renderLeaderSelect(row, `leader-mobile-${rowId}`, 'w-full min-w-0')}
                       </div>
-                      <div className="flex flex-col gap-1 lg:hidden"> {/* Show baseUnitCost on mobile if hidden in main table */}
+                      <div className="flex flex-col gap-1 lg:hidden min-w-0"> {/* Show baseUnitCost on mobile if hidden in main table */}
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Chi phí cơ bản (VNĐ)</span>
                         <span className="text-gray-900 font-medium">{row.baseUnitCost?.toLocaleString() + ' VNĐ' || '---'}</span>
                       </div>

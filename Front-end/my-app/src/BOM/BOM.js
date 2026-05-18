@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, FileDown, FileUp, ChevronDown, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -128,10 +129,16 @@ export const BOM = () => {
   const [isMaterialEditMaximized, setIsMaterialEditMaximized] = useState(false);
 
   const [openItemMenuId, setOpenItemMenuId] = useState(null);
+  const [openItemMenuAnchorKey, setOpenItemMenuAnchorKey] = useState(null);
+  const [itemMenuRect, setItemMenuRect] = useState(null);
+  const itemMenuAnchorRefs = useRef({});
   const [itemMenuSearchQuery, setItemMenuSearchQuery] = useState('');
   const [focusedMaterialId, setFocusedMaterialId] = useState(null);
   const [tempQuantity, setTempQuantity] = useState('');
   const [openMaterialMenuId, setOpenMaterialMenuId] = useState(null);
+  const [openMaterialMenuAnchorKey, setOpenMaterialMenuAnchorKey] = useState(null);
+  const [materialMenuRect, setMaterialMenuRect] = useState(null);
+  const materialMenuAnchorRefs = useRef({});
   const [materialMenuSearchQuery, setMaterialMenuSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [materialFormErrors, setMaterialFormErrors] = useState({});
@@ -148,8 +155,12 @@ export const BOM = () => {
   useEffect(() => {
     const handleGlobalClick = () => {
       setOpenItemMenuId(null);
+      setOpenItemMenuAnchorKey(null);
+      setItemMenuRect(null);
       setItemMenuSearchQuery('');
       setOpenMaterialMenuId(null);
+      setOpenMaterialMenuAnchorKey(null);
+      setMaterialMenuRect(null);
       setMaterialMenuSearchQuery('');
       setFocusedMaterialId(null);
       setOpenCategoryMenuId(null);
@@ -163,6 +174,56 @@ export const BOM = () => {
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
   }, []);
+
+  useEffect(() => {
+    if (!openItemMenuId || !openItemMenuAnchorKey) return;
+
+    const updateItemMenuRect = () => {
+      const anchor = itemMenuAnchorRefs.current[openItemMenuAnchorKey];
+      if (!anchor) return;
+
+      const rect = anchor.getBoundingClientRect();
+      setItemMenuRect({
+        left: rect.left,
+        top: rect.bottom + 4,
+        width: Math.max(rect.width, 200),
+      });
+    };
+
+    updateItemMenuRect();
+    window.addEventListener('resize', updateItemMenuRect);
+    window.addEventListener('scroll', updateItemMenuRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateItemMenuRect);
+      window.removeEventListener('scroll', updateItemMenuRect, true);
+    };
+  }, [openItemMenuId, openItemMenuAnchorKey]);
+
+  useEffect(() => {
+    if (!openMaterialMenuId || !openMaterialMenuAnchorKey) return;
+
+    const updateMaterialMenuRect = () => {
+      const anchor = materialMenuAnchorRefs.current[openMaterialMenuAnchorKey];
+      if (!anchor) return;
+
+      const rect = anchor.getBoundingClientRect();
+      setMaterialMenuRect({
+        left: rect.left,
+        top: rect.bottom + 8,
+        width: rect.width,
+      });
+    };
+
+    updateMaterialMenuRect();
+    window.addEventListener('resize', updateMaterialMenuRect);
+    window.addEventListener('scroll', updateMaterialMenuRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateMaterialMenuRect);
+      window.removeEventListener('scroll', updateMaterialMenuRect, true);
+    };
+  }, [openMaterialMenuId, openMaterialMenuAnchorKey]);
 
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
@@ -586,6 +647,8 @@ export const BOM = () => {
       const updated = await updateBOM(bom.id, payload);
       setBoms(prev => prev.map(b => b.id === updated.id ? updated : b));
       setOpenMaterialMenuId(null);
+      setOpenMaterialMenuAnchorKey(null);
+      setMaterialMenuRect(null);
       showNotification("Cập nhật nguyên liệu thành công!");
     } catch (err) {
       showNotification("Lỗi khi cập nhật nguyên liệu.", "error");
@@ -602,6 +665,8 @@ export const BOM = () => {
       const updated = await updateBOM(bom.id, payload);
       setBoms(prev => prev.map(b => b.id === updated.id ? updated : b));
       setOpenMaterialMenuId(null);
+      setOpenMaterialMenuAnchorKey(null);
+      setMaterialMenuRect(null);
       setFocusedMaterialId(null);
       showNotification("Cập nhật định mức thành công!");
     } catch (err) {
@@ -618,6 +683,8 @@ export const BOM = () => {
       const updated = await updateBOM(bom.id, payload);
       setBoms(prev => prev.map(b => b.id === updated.id ? updated : b));
       setOpenItemMenuId(null);
+      setOpenItemMenuAnchorKey(null);
+      setItemMenuRect(null);
       showNotification("Cập nhật sản phẩm thành công!");
     } catch (err) {
       showNotification("Lỗi khi cập nhật sản phẩm.", "error");
@@ -1736,6 +1803,189 @@ export const BOM = () => {
     }
   ];
 
+  const toggleItemMenu = (e, rowId, anchorKey) => {
+    e.stopPropagation();
+    const isSameMenuOpen = openItemMenuId === rowId && openItemMenuAnchorKey === anchorKey;
+
+    if (isSameMenuOpen) {
+      setOpenItemMenuId(null);
+      setOpenItemMenuAnchorKey(null);
+      setItemMenuRect(null);
+      return;
+    }
+
+    setItemMenuSearchQuery('');
+    setOpenItemMenuId(rowId);
+    setOpenItemMenuAnchorKey(anchorKey);
+    setOpenMaterialMenuId(null);
+    setOpenMaterialMenuAnchorKey(null);
+    setMaterialMenuRect(null);
+    setFocusedMaterialId(null);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    setItemMenuRect({
+      left: rect.left,
+      top: rect.bottom + 4,
+      width: Math.max(rect.width, 200),
+    });
+  };
+
+  const renderItemMenu = (row, anchorKey) => {
+    if (openItemMenuId !== row.id || openItemMenuAnchorKey !== anchorKey || !itemMenuRect) return null;
+
+    return createPortal(
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fixed bg-white rounded-md shadow-2xl z-[9999] border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal"
+        style={{
+          left: itemMenuRect.left,
+          top: itemMenuRect.top,
+          width: itemMenuRect.width,
+        }}
+      >
+        <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+          <div className="relative">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+              placeholder="Tìm sản phẩm..."
+              value={itemMenuSearchQuery}
+              onChange={(e) => setItemMenuSearchQuery(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="max-h-52 overflow-y-auto flex flex-col gap-0.5">
+          {items.filter(i => i.label.toLowerCase().includes(itemMenuSearchQuery.toLowerCase())).map((i) => (
+            <button
+              key={i.value}
+              onClick={() => handleBOMItemChange(row, i.value)}
+              className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.item) === String(i.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              <span className="block w-full truncate">{i.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  const toggleMaterialMenu = (e, rowId, anchorKey) => {
+    e.stopPropagation();
+    const isSameMenuOpen = openMaterialMenuId === rowId && openMaterialMenuAnchorKey === anchorKey;
+
+    if (isSameMenuOpen) {
+      setOpenMaterialMenuId(null);
+      setOpenMaterialMenuAnchorKey(null);
+      setMaterialMenuRect(null);
+      setFocusedMaterialId(null);
+      return;
+    }
+
+    setMaterialMenuSearchQuery('');
+    setOpenMaterialMenuId(rowId);
+    setOpenMaterialMenuAnchorKey(anchorKey);
+    setOpenItemMenuId(null);
+    setOpenItemMenuAnchorKey(null);
+    setItemMenuRect(null);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMaterialMenuRect({
+      left: rect.left,
+      top: rect.bottom + 8,
+      width: rect.width,
+    });
+  };
+
+  const renderMaterialMenu = (row, anchorKey) => {
+    if (openMaterialMenuId !== row.id || openMaterialMenuAnchorKey !== anchorKey || !materialMenuRect) return null;
+
+    return createPortal(
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fixed bg-white rounded-xl shadow-2xl z-[9999] border border-gray-100 p-1.5 flex flex-col animate-in fade-in zoom-in duration-300 origin-top whitespace-normal"
+        style={{
+          left: materialMenuRect.left,
+          top: materialMenuRect.top,
+          width: materialMenuRect.width,
+        }}
+      >
+        <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+          <div className="relative group">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+            <input
+              type="text"
+              className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50/50 text-gray-900"
+              placeholder="Tìm nhanh nguyên liệu..."
+              value={materialMenuSearchQuery}
+              onChange={(e) => setMaterialMenuSearchQuery(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+        </div>
+
+        <div className="sm:hidden max-h-60 overflow-y-auto flex flex-col gap-1 px-1">
+          {materials.filter(m => (m.label || '').toLowerCase().includes(materialMenuSearchQuery.toLowerCase())).map((m) => (
+            <button
+              key={m.value}
+              onClick={(e) => {
+                e.stopPropagation();
+                const isCurrentlyFocused = focusedMaterialId === m.value;
+                setFocusedMaterialId(isCurrentlyFocused ? null : m.value);
+                setTempQuantity(row.requiredQuantity);
+              }}
+              className={`px-2 py-2.5 text-[11px] rounded-lg transition-colors text-left flex items-center min-w-0 group ${String(row.materialCategory) === String(m.value) || focusedMaterialId === m.value ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              <span className="truncate">{m.label}</span>
+              <div className={`${focusedMaterialId === m.value ? 'flex' : 'hidden'} items-center gap-1.5 ml-1.5 shrink-0 animate-in fade-in duration-200`}>
+                <span className="text-gray-400 font-normal whitespace-nowrap">SL:</span>
+                <input
+                  type="number"
+                  className="w-10 border border-gray-300 rounded px-1 py-0 text-black font-normal outline-none focus:ring-1 focus:ring-blue-500 bg-white h-5 text-[10px]"
+                  value={focusedMaterialId === m.value ? tempQuantity : row.requiredQuantity}
+                  onChange={(e) => setTempQuantity(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                />
+                <span className="text-gray-400 font-normal text-[9px]">{m.unit}</span>
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const qty = focusedMaterialId === m.value ? tempQuantity : row.requiredQuantity;
+                    handleBOMQuickUpdate(row, m.value, qty);
+                  }}
+                  className="ml-0.5 bg-green-600 text-white px-2 py-0.5 rounded text-[9px] hover:bg-green-700 active:scale-95 transition-all cursor-pointer"
+                >
+                  Lưu
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="hidden sm:flex flex-col gap-0.5 max-h-52 overflow-y-auto custom-scrollbar px-1">
+          {materials.filter(m => (m.label || '').toLowerCase().includes(materialMenuSearchQuery.toLowerCase())).map((m) => (
+            <button
+              key={m.value}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleBOMMaterialChange(row, m.value);
+              }}
+              className={`px-2 py-1.5 text-[11px] rounded-lg transition-all text-left flex items-center min-w-0 group ${String(row.materialCategory) === String(m.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-blue-50 hover:pl-4'}`}
+            >
+              <span className="truncate flex-1">{m.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
   const columns = [
     { header: 'STT', className: 'w-[30px] sm:w-[50px] !px-1 sm:!px-6 text-center', headerCellClassName: 'text-[10px] sm:text-sm', render: (row, { index }) => index },
     {
@@ -1754,10 +2004,9 @@ export const BOM = () => {
               hiệu chỉnh
             </button>
             <button
+              ref={(el) => { itemMenuAnchorRefs.current[`bom-item-${row.id}`] = el; }}
               onClick={(e) => {
-                e.stopPropagation();
-                if (openItemMenuId !== row.id) setItemMenuSearchQuery('');
-                setOpenItemMenuId(isOpen ? null : row.id);
+                toggleItemMenu(e, row.id, `bom-item-${row.id}`);
               }}
               className="bg-white border border-gray-300 text-blue-600 text-[11px] sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[26px] font-bold hover:border-blue-400 transition-colors"
             >
@@ -1769,7 +2018,9 @@ export const BOM = () => {
               </div>
             </button>
 
-            {isOpen && (
+            {renderItemMenu(row, `bom-item-${row.id}`)}
+
+            {false && isOpen && (
               <div className="absolute left-0 top-full mt-1 w-full min-w-[200px] bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
                 <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                   <div className="relative">
@@ -1821,10 +2072,9 @@ export const BOM = () => {
               hiệu chỉnh
             </button>
             <button
+              ref={(el) => { materialMenuAnchorRefs.current[`bom-material-${row.id}`] = el; }}
               onClick={(e) => {
-                e.stopPropagation();
-                if (openMaterialMenuId !== row.id) setMaterialMenuSearchQuery('');
-                setOpenMaterialMenuId(isOpen ? null : row.id);
+                toggleMaterialMenu(e, row.id, `bom-material-${row.id}`);
               }}
               className="w-full text-left outline-none transition-all p-0"
             >
@@ -1841,7 +2091,9 @@ export const BOM = () => {
               </div>
             </button>
 
-            {isOpen && (
+            {renderMaterialMenu(row, `bom-material-${row.id}`)}
+
+            {false && isOpen && (
               <div className="absolute left-0 top-full mt-2 w-full bg-white rounded-xl shadow-2xl z-30 border border-gray-100 p-1.5 flex flex-col animate-in fade-in zoom-in duration-300 origin-top whitespace-normal">
                 <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                   <div className="relative group">
