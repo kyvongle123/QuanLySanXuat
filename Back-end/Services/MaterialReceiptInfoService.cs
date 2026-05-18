@@ -403,7 +403,9 @@ namespace MyProject.Service
             try
             {
                 // Đường dẫn đến file JSON bạn vừa tải về
-                string credentialPath = Path.Combine(_environment.ContentRootPath, "firebase-key.json");
+                string credentialPath =
+    Environment.GetEnvironmentVariable("FIREBASE_CREDENTIAL_PATH")
+    ?? Path.Combine(_environment.ContentRootPath, "firebase-key.json");
                 
                 // Khởi tạo thông tin xác thực từ file
                 var credential = GoogleCredential.FromFile(credentialPath);
