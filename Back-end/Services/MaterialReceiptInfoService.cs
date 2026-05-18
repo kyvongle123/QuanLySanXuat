@@ -381,7 +381,7 @@ namespace MyProject.Service
             string prefix = "/api/MaterialReceipts/files/";
             string objectName = apiPath.StartsWith(prefix) ? apiPath.Substring(prefix.Length) : apiPath;
 
-            string credentialPath = Path.Combine(_environment.ContentRootPath, "firebase-key.json");
+            string credentialPath = ResolveFirebaseCredentialPath();
             var credential = GoogleCredential.FromFile(credentialPath);
             var storage = StorageClient.Create(credential);
 
@@ -403,9 +403,7 @@ namespace MyProject.Service
             try
             {
                 // Đường dẫn đến file JSON bạn vừa tải về
-                string credentialPath =
-    Environment.GetEnvironmentVariable("FIREBASE_CREDENTIAL_PATH")
-    ?? Path.Combine(_environment.ContentRootPath, "firebase-key.json");
+                string credentialPath = ResolveFirebaseCredentialPath();
                 
                 // Khởi tạo thông tin xác thực từ file
                 var credential = GoogleCredential.FromFile(credentialPath);
@@ -427,6 +425,23 @@ namespace MyProject.Service
                 Console.WriteLine($"[ERROR] SaveUploadedFile to Firebase: {ex.Message}");
                 return null;
             }
+        }
+
+        private string ResolveFirebaseCredentialPath()
+        {
+            var configuredPath = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIAL_PATH");
+            if (!string.IsNullOrWhiteSpace(configuredPath))
+            {
+                return configuredPath;
+            }
+
+            var renderSecretPath = Path.Combine("/etc/secrets", "firebase-key.json");
+            if (File.Exists(renderSecretPath))
+            {
+                return renderSecretPath;
+            }
+
+            return Path.Combine(_environment.ContentRootPath, "firebase-key.json");
         }
     }
 }
