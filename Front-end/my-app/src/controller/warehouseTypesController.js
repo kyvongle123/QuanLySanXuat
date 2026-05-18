@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://quanlysanxuat-back-end.onrender.com/api/WarehouseTypes';
+const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/WarehouseTypes';
 
 const normalizeWarehouseTypeData = (data) => {
     if (!data) return null;

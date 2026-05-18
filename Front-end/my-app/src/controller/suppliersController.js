@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://quanlysanxuat-back-end.onrender.com/api/Suppliers'; // Thay đổi port nếu cần thiết và đảm bảo khớp với Back-end
+const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/Suppliers'; // Thay đổi port nếu cần thiết và đảm bảo khớp với Back-end
 
 // Hàm chuẩn hóa dữ liệu để đảm bảo nhất quán giữa camelCase và PascalCase từ Back-end
 const normalizeSupplierData = (data) => {

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://quanlysanxuat-back-end.onrender.com/api/vehicleBrands';
+const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/vehicleBrands';
 
 export const getVehicleBrands = async () => {
     try {

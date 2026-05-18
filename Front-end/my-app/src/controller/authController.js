@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://quanlysanxuat-back-end.onrender.com/api/Auth';
+const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/Auth';
 
 export const login = async (credentials) => {
     try {
