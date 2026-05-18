@@ -14,7 +14,9 @@ import {
   createMaterialReceipt,
   updateMaterialReceipt,
   deleteMaterialReceipt,
-  exportInspectionReport
+  exportInspectionReport,
+  downloadReceiptFile,
+  handleRequestDownload
 } from '../controller/materialReceiptsController';
 import { getWarehouses, getWarehouse, createWarehouse, updateWarehouse, deleteWarehouse } from '../controller/warehousesController';
 import { getWarehouseLocations, getWarehouseLocation, createWarehouseLocation, updateWarehouseLocation, deleteWarehouseLocation } from '../controller/warehouseLocationsController';
@@ -631,16 +633,6 @@ export const MaterialReceipts = () => {
     });
   };
 
-  const handleRequestDownload = (url) => {
-    setConfirmModal({
-      isOpen: true,
-      id: url,
-      type: 'download',
-      title: 'Xác nhận tải file',
-      message: 'Bạn có chắc chắn muốn tải tập tin này về máy không?'
-    });
-  };
-
   const handleConfirmAction = async () => {
     if (confirmModal.type === 'export') {
       await handleExportExcel();
@@ -650,29 +642,14 @@ export const MaterialReceipts = () => {
         showNotification("Đã xóa phiếu thành công!");
         fetchData();
       } catch (err) {
-        // Log the error for debugging purposes
         console.error("Error deleting material receipt:", err);
         showNotification("Lỗi khi xóa phiếu", "error");
       }
     } else if (confirmModal.type === 'download') {
       try {
-        const response = await fetch(confirmModal.id);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const blob = await response.blob();
-
-        // Trích xuất tên file từ URL
-        const urlParts = confirmModal.id.split('/');
-        const filename = urlParts[urlParts.length - 1];
-
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.setAttribute('download', filename); // Đặt tên file cho thuộc tính download
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(link.href); // Giải phóng URL đối tượng
+        const { code, type } = confirmModal.id;
+        await downloadReceiptFile(code, type);
+        showNotification("Tải tệp tin thành công!");
       } catch (error) {
         console.error("Error downloading file:", error);
         showNotification("Lỗi khi tải file: " + error.message, "error");
@@ -1034,20 +1011,20 @@ export const MaterialReceipts = () => {
         </button>
       ),
     },
-    { header: 'STT', className: 'w-[25px] text-center !px-1', render: (_, { index }) => index },
+    { header: 'STT', className: 'w-[25px] text-center !px-1 sm:!px-2', render: (_, { index }) => index },
     {
       header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Mã phiếu</div>
-      , accessor: 'materialReceiptCode', className: 'font-medium text-blue-600 !px-2 w-[40px]'
+      , accessor: 'materialReceiptCode', className: 'font-medium text-blue-600 !px-1 sm:!px-6 w-[50px] sm:w-[120px]'
     },
     {
       header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Ngày nhận</div>,
-      className: 'w-[35px] sm:w-40 !px-2', // Hiển thị trên mobile, điều chỉnh chiều rộng
+      className: 'w-[35px] sm:w-40 !px-1 sm:!px-6', // Hiển thị trên mobile, điều chỉnh chiều rộng
       render: (row) => <span>{row.receivingDate ? new Date(row.receivingDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
     },
     { header: 'Số vận đơn', accessor: 'deliveryNoteNumber', className: 'hidden sm:table-cell' },
     {
       header: 'Kho lưu trữ',
-      className: 'hidden lg:table-cell w-64',
+      className: 'hidden lg:table-cell w-68',
       render: (row) => (
         <div className="relative w-full">
           <button
@@ -1353,7 +1330,7 @@ export const MaterialReceipts = () => {
                     {currentReceipt?.certificateOfOrigin && typeof currentReceipt.certificateOfOrigin === 'string' && (
                       <button
                         type="button"
-                        onClick={() => handleRequestDownload(`https://quanlysanxuat-back-end.onrender.com${currentReceipt.certificateOfOrigin}`)}
+                        onClick={() => handleRequestDownload(currentReceipt.materialReceiptCode, 'CertificateOfOrigin', setConfirmModal)}
                         className="p-2 bg-blue-50 text-blue-600 rounded-r-lg hover:bg-blue-100 transition-colors border border-blue-200 shadow-sm h-full flex items-center"
                         title="Tải file hiện tại"
                       >
@@ -1391,7 +1368,7 @@ export const MaterialReceipts = () => {
                     {currentReceipt?.certificateOfQuality && typeof currentReceipt.certificateOfQuality === 'string' && (
                       <button
                         type="button"
-                        onClick={() => handleRequestDownload(`https://quanlysanxuat-back-end.onrender.com${currentReceipt.certificateOfQuality}`)}
+                        onClick={() => handleRequestDownload(currentReceipt.materialReceiptCode, 'CertificateOfQuality', setConfirmModal)}
                         className="p-2.5 bg-blue-50 text-blue-600 rounded-r-lg hover:bg-blue-100 transition-colors border border-blue-200 shadow-sm h-full flex items-center"
                         title="Tải file hiện tại"
                       >
@@ -1427,7 +1404,7 @@ export const MaterialReceipts = () => {
                     {currentReceipt?.inspectationReport && typeof currentReceipt.inspectationReport === 'string' && (
                       <button
                         type="button"
-                        onClick={() => handleRequestDownload(`https://quanlysanxuat-back-end.onrender.com${currentReceipt.inspectationReport}`)}
+                        onClick={() => handleRequestDownload(currentReceipt.materialReceiptCode, 'InspectationReport', setConfirmModal)}
                         className="p-2.5 bg-blue-50 text-blue-600 rounded-r-lg hover:bg-blue-100 transition-colors border border-blue-200 shadow-sm h-full flex items-center"
                         title="Tải file hiện tại"
                       >

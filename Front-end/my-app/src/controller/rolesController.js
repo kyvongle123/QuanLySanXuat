@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'http://localhost:10000/api';
 
 const normalizeRoleData = (data) => {
   if (!data) return null;

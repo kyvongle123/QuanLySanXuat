@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/itemStatuses'; // Đã đồng bộ port với các controller khác
+const API_URL = 'http://localhost:10000/api/itemStatuses'; // Đã đồng bộ port với các controller khác
 
 export const getItemStatuses = async () => {
     const response = await axios.get(API_URL);

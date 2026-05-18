@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, Fragment, useRef } from 'react';
+import React, { useState, useEffect, useMemo, Fragment, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check, ChevronDown, ArrowUp, ArrowDown, CheckCircle, XCircle, Search, Maximize, Minimize, Calendar, X } from 'lucide-react';
 
 export const CustomDatatable = ({ columns, data, renderExpansion, paginationClassName, headerCellClassName, bodyCellClassName }) => {
@@ -501,17 +502,54 @@ const CustomCalendar = ({ selectedDate, onSelect }) => {
 
 export const DateInput = ({ label, value, onChange, name, isModalMaximized = false, placement = 'bottom', className, error = false, errorMessage = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [calendarStyle, setCalendarStyle] = useState({});
   const containerRef = useRef(null);
+  const calendarRef = useRef(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const handleClickOutside = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target) &&
+        (!calendarRef.current || !calendarRef.current.contains(event.target))
+      ) {
         setIsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+
+    const updateCalendarPosition = () => {
+      if (!containerRef.current) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const calendarHeight = 292;
+      const gap = 4;
+      const top = placement === 'top'
+        ? Math.max(gap, rect.top - calendarHeight - gap)
+        : rect.bottom + gap;
+
+      setCalendarStyle({
+        position: 'fixed',
+        top: `${top}px`,
+        left: `${rect.left}px`,
+        minWidth: `${rect.width}px`,
+      });
+    };
+
+    updateCalendarPosition();
+    window.addEventListener('resize', updateCalendarPosition);
+    window.addEventListener('scroll', updateCalendarPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateCalendarPosition);
+      window.removeEventListener('scroll', updateCalendarPosition, true);
+    };
+  }, [isOpen, placement]);
 
   const formattedValue = value ? new Date(value).toLocaleDateString('vi-VN') : '--/--/----';
 
@@ -530,11 +568,15 @@ export const DateInput = ({ label, value, onChange, name, isModalMaximized = fal
           </div>
         </button>
 
-        {isOpen && (
-          <div className={`absolute left-0 ${placement === 'top' ? 'bottom-full mb-1 origin-bottom' : 'top-full mt-1 origin-top'
-            } bg-white border border-gray-200 rounded-md shadow-2xl z-[100] p-3 animate-in fade-in zoom-in duration-200`}>
+        {isOpen && createPortal(
+          <div
+            ref={calendarRef}
+            style={calendarStyle}
+            className={`bg-white border border-gray-200 rounded-md shadow-2xl z-[100] p-3 animate-in fade-in zoom-in duration-200 ${placement === 'top' ? 'origin-bottom' : 'origin-top'}`}
+          >
             <CustomCalendar selectedDate={value} onSelect={(date) => { onChange({ target: { value: date, name } }); setIsOpen(false); }} />
-          </div>
+          </div>,
+          document.body
         )}
       </div>
       {errorMessage && <p className="text-red-500 text-[10px] mt-1 font-medium">{errorMessage}</p>}

@@ -5,6 +5,7 @@
 .user
 .suo
 .vsidx
+firebase-key.json
 
 # Node.js (cho Front-end)
 node_modules

@@ -70,6 +70,20 @@ namespace MyProject.Backend.Controller
             return File(pdfBytes, "application/pdf", "Bien_ban_kiem_nghiem.pdf");
         }
 
+        [HttpGet("files/{materialReceiptCode}/{type}")]
+        public async Task<IActionResult> GetFile(string materialReceiptCode, string type)
+        {
+            try
+            {
+                var (stream, contentType) = await _receiptService.GetFirebaseFileAsync(materialReceiptCode, type);
+                return File(stream, contentType);
+            }
+            catch (Exception ex)
+            {
+                return NotFound(new { message = "Không tìm thấy file trên Firebase", error = ex.Message });
+            }
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteMaterialReceipt(int id)
         {

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Sử dụng port 49851 thống nhất với các controller khác trong dự án
-const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/MaterialReceipts';
+const API_URL = 'http://localhost:10000/api/MaterialReceipts';
 
 // Hàm chuẩn hóa dữ liệu để xử lý sự khác biệt giữa camelCase và PascalCase từ API
 const normalizeReceiptData = (data) => {
@@ -169,4 +169,34 @@ export const exportInspectionReport = async (id) => {
         console.error(`Error exporting inspection report ${id}:`, error);
         throw error;
     }
+};
+
+export const downloadReceiptFile = async (materialReceiptCode, type) => {
+    try {
+        const response = await axios.get(`${API_URL}/files/${materialReceiptCode}/${type}`, {
+            responseType: 'blob',
+        });
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        // Đặt tên file mặc định dựa trên mã phiếu và loại tệp
+        link.setAttribute('download', `${materialReceiptCode}_${type}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error(`Error downloading ${type} for receipt ${materialReceiptCode}:`, error);
+        throw error;
+    }
+};
+
+export const handleRequestDownload = (materialReceiptCode, type, setConfirmModal) => {
+    setConfirmModal({
+        isOpen: true,
+        id: { code: materialReceiptCode, type },
+        type: 'download',
+        title: 'Xác nhận tải file',
+        message: 'Bạn có chắc chắn muốn tải tập tin này về máy không?'
+    });
 };

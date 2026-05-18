@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Search, ChevronDown, ChevronRight, FileUp, FileDown, Trash2, ToggleLeft, ToggleRight, Plus } from 'lucide-react';
@@ -16,6 +17,76 @@ import { VscLayoutSidebarLeftDock, VscLayoutSidebarRightDock } from "react-icons
 import { RxDrawingPinFilled } from "react-icons/rx";
 import { LuSquarePen } from "react-icons/lu";
 import { getWarehouseBins } from '../controller/warehouseBinsController';
+
+const AnchoredPortalMenu = ({ isOpen, onClose, trigger, children, className = '', anchorClassName = '' }) => {
+  const anchorRef = useRef(null);
+  const menuRef = useRef(null);
+  const [menuStyle, setMenuStyle] = useState({});
+  const [isPositioned, setIsPositioned] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setIsPositioned(false);
+      return;
+    }
+
+    const updateMenuPosition = () => {
+      if (!anchorRef.current) return;
+
+      const rect = anchorRef.current.getBoundingClientRect();
+      setMenuStyle({
+        position: 'fixed',
+        top: `${rect.bottom + 4}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+      });
+      setIsPositioned(true);
+    };
+
+    updateMenuPosition();
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event) => {
+      if (
+        anchorRef.current &&
+        !anchorRef.current.contains(event.target) &&
+        (!menuRef.current || !menuRef.current.contains(event.target))
+      ) {
+        onClose?.();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, onClose]);
+
+  return (
+    <div ref={anchorRef} className={`relative ${anchorClassName}`}>
+      {trigger}
+      {isOpen && createPortal(
+        <div
+          ref={menuRef}
+          style={menuStyle}
+          onClick={(e) => e.stopPropagation()}
+          className={`bg-white rounded-md shadow-2xl border border-gray-100 p-1 flex flex-col origin-top whitespace-normal z-[1000] transition-all duration-150 ease-out ${isPositioned ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-1 scale-[0.98] pointer-events-none'} ${className}`}
+        >
+          {children}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
 
 export const Items = () => {
   const [items, setItems] = useState([]);
@@ -1109,62 +1180,68 @@ export const Items = () => {
       headerCellClassName: 'hidden lg:table-cell text-[10px] sm:text-sm lg:relative lg:left-[-80px]',
       render: (row) => (
         <div className="relative">
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setIsCategoryMgmtModalOpen(true) }}
-            className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+          <AnchoredPortalMenu
+            isOpen={openCategoryMenuId === row.id}
+            onClose={() => setOpenCategoryMenuId(null)}
+            trigger={(
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setIsCategoryMgmtModalOpen(true) }}
+                  className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+                >
+                  hiệu chỉnh
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (openCategoryMenuId !== row.id) setMenuSearchQuery('');
+                    setOpenCategoryMenuId(openCategoryMenuId === row.id ? null : row.id);
+                    setOpenStatusMenuId(null);
+                    setOpenManufactoryMenuId(null);
+                    setOpenLocationMenuId(null);
+                  }}
+                  className="bg-white border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none font-medium text-left relative min-h-[30px] hover:border-blue-400 transition-colors"
+                >
+                  <span className="truncate block">
+                    {categories.find(c => String(c.value) === String(row.category))?.label || '-- Chọn --'}
+                  </span>
+                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                    <ChevronDown size={14} />
+                  </div>
+                </button>
+              </>
+            )}
+            anchorClassName="w-40"
           >
-            hiệu chỉnh
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (openCategoryMenuId !== row.id) setMenuSearchQuery('');
-              setOpenCategoryMenuId(openCategoryMenuId === row.id ? null : row.id);
-              setOpenStatusMenuId(null);
-              setOpenManufactoryMenuId(null);
-              setOpenLocationMenuId(null);
-            }}
-            className="bg-gray-50 border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none font-medium text-left relative min-h-[26px] hover:border-blue-400 transition-colors"
-          >
-            <span className="truncate block">
-              {categories.find(c => String(c.value) === String(row.category))?.label || '-- Chọn --'}
-            </span>
-            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
-              <ChevronDown size={14} />
-            </div>
-          </button>
 
-          {openCategoryMenuId === row.id && (
-            <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal z-[1000]">
-              <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
-                <div className="relative">
-                  <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
-                    placeholder="Lọc danh mục"
-                    value={menuSearchQuery}
-                    onChange={(e) => setMenuSearchQuery(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    autoFocus
-                  />
-                </div>
-              </div>
-              <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
-                {categories.filter(cat => cat.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((cat) => (
-                  <button
-                    key={cat.value}
-                    onClick={() => handleCategoryChange(row, cat.value)}
-                    className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.category) === String(cat.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                  >
-                    <span className="block w-full !whitespace-normal break-words leading-tight">{cat.label}</span>
-                  </button>
-                ))}
+            <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+              <div className="relative">
+                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
+                  placeholder="Lọc danh mục"
+                  value={menuSearchQuery}
+                  onChange={(e) => setMenuSearchQuery(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  autoFocus
+                />
               </div>
             </div>
-          )}
+            <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
+              {categories.filter(cat => cat.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => handleCategoryChange(row, cat.value)}
+                  className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.category) === String(cat.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                >
+                  <span className="block w-full !whitespace-normal break-words leading-tight">{cat.label}</span>
+                </button>
+              ))}
+            </div>
+          </AnchoredPortalMenu>
         </div>
       )
     },
@@ -1422,64 +1499,7 @@ export const Items = () => {
                     {/* Thông tin hiển thị khi bị ẩn ở bảng chính trên Mobile */}
                     <div className="flex flex-col gap-1 lg:hidden flex-none">
                       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Danh mục</span>
-                      <div className="relative w-40">
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setIsCategoryMgmtModalOpen(true) }}
-                          className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
-                        >
-                          hiệu chỉnh
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (openCategoryMenuId !== row.id) setMenuSearchQuery('');
-                            setOpenCategoryMenuId(openCategoryMenuId === row.id ? null : row.id);
-                            setOpenStatusMenuId(null);
-                            setOpenManufactoryMenuId(null);
-                            setOpenLocationMenuId(null);
-                          }}
-                          className="bg-white border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none font-medium text-left relative min-h-[30px] hover:border-blue-400 transition-colors"
-                        >
-                          <span className="truncate block">
-                            {categories.find(c => String(c.value) === String(row.category))?.label || '-- Chọn --'}
-                          </span>
-                          <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
-                            <ChevronDown size={14} />
-                          </div>
-                        </button>
 
-                        {openCategoryMenuId === row.id && (
-                          <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal z-[1000]">
-                            <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
-                              <div className="relative">
-                                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                  type="text"
-                                  className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
-                                  placeholder="Lọc danh mục"
-                                  value={menuSearchQuery}
-                                  onChange={(e) => setMenuSearchQuery(e.target.value)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  autoFocus
-                                />
-                              </div>
-                            </div>
-                            <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
-                              {categories.filter(cat => cat.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((cat) => (
-                                <button
-                                  key={cat.value}
-                                  onClick={() => handleCategoryChange(row, cat.value)}
-                                  className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.category) === String(cat.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
-                                    }`}
-                                >
-                                  <span className="block w-full !whitespace-normal break-words leading-tight">{cat.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
                     </div>
 
                     <div className="flex flex-col gap-1 sm:hidden flex-none">
@@ -1490,63 +1510,66 @@ export const Items = () => {
                     {/* Cột 1: Vị trí */}
                     <div className="flex flex-col gap-1 w-full md:w-64 flex-none">
                       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Vị trí</span>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setIsWarehousesModalOpen(true); }}
-                          className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
-                        >
-                          hiệu chỉnh
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (openLocationMenuId !== row.id) setMenuSearchQuery('');
-                            setOpenLocationMenuId(openLocationMenuId === row.id ? null : row.id);
-                            setOpenStatusMenuId(null);
-                            setOpenManufactoryMenuId(null);
-                            setOpenCategoryMenuId(null);
-                          }}
-                          className="text-xs block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors"
-                        >
-                          <span className="truncate block">
-                            {warehouses.find(w => String(w.value) === String(row.location))?.label || '-- Chọn --'}
-                          </span>
-                          <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
-                            <ChevronDown size={14} />
-                          </div>
-                        </button>
-
-                        {openLocationMenuId === row.id && (
-                          <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal z-[1000]">
-                            <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
-                              <div className="relative">
-                                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                  type="text"
-                                  className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
-                                  placeholder="Lọc vị trí"
-                                  value={menuSearchQuery}
-                                  onChange={(e) => setMenuSearchQuery(e.target.value)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  autoFocus
-                                />
+                      <AnchoredPortalMenu
+                        isOpen={openLocationMenuId === row.id}
+                        onClose={() => setOpenLocationMenuId(null)}
+                        trigger={(
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setIsWarehousesModalOpen(true); }}
+                              className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+                            >
+                              hiệu chỉnh
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (openLocationMenuId !== row.id) setMenuSearchQuery('');
+                                setOpenLocationMenuId(openLocationMenuId === row.id ? null : row.id);
+                                setOpenStatusMenuId(null);
+                                setOpenManufactoryMenuId(null);
+                                setOpenCategoryMenuId(null);
+                              }}
+                              className="text-xs block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors"
+                            >
+                              <span className="truncate block">
+                                {warehouses.find(w => String(w.value) === String(row.location))?.label || '-- Chọn --'}
+                              </span>
+                              <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                                <ChevronDown size={14} />
                               </div>
-                            </div>
-                            <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
-                              {warehouses.filter(w => w.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
-                                <button
-                                  key={w.value}
-                                  onClick={() => handleLocationChange(row, w.value)}
-                                  className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location) === String(w.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
-                                >
-                                  <span className="block w-full !whitespace-normal break-words leading-tight">{w.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
+                            </button>
+                          </>
                         )}
-                      </div>
+                      >
+
+                        <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                          <div className="relative">
+                            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                              type="text"
+                              className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+                              placeholder="Lọc vị trí"
+                              value={menuSearchQuery}
+                              onChange={(e) => setMenuSearchQuery(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              autoFocus
+                            />
+                          </div>
+                        </div>
+                        <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
+                          {warehouses.filter(w => w.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
+                            <button
+                              key={w.value}
+                              onClick={() => handleLocationChange(row, w.value)}
+                              className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location) === String(w.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                            >
+                              <span className="block w-full !whitespace-normal break-words leading-tight">{w.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </AnchoredPortalMenu>
                     </div>
 
                     {/* Cột 2: Cân nặng */}

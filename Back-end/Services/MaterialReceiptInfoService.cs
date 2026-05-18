@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Google.Cloud.Storage.V1;
+using Google.Apis.Auth.OAuth2;
 using Aspose.Words;
 using MiniSoftware;
 using MyProject.Backend.Data;
@@ -17,6 +18,8 @@ namespace MyProject.Service
     {
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _environment; // Thêm dòng này
+        private const string FirebaseBucketName = "quanlysanxuat-cb353.firebasestorage.app";
+
         public MaterialReceiptInfoService(AppDbContext context, IWebHostEnvironment environment)
         {
             _context = context;
@@ -83,6 +86,18 @@ namespace MyProject.Service
 
         public async Task<MaterialReceiptInfoDto> CreateReceiptAsync(CreateMaterialReceiptDto dto)
         {
+            // 1. Xử lý upload tệp tin trước để lấy đường dẫn API lưu trữ
+            string? certificateOfOriginPath = null;
+            string? certificateOfQualityPath = null;
+            string? inspectationReportPath = null;
+
+            if (dto.CertificateOfOriginFile != null)
+                certificateOfOriginPath = SaveUploadedFile(dto.MaterialReceiptCode, dto.CertificateOfOriginFile, "CertificateOfOrigin", "CO");
+            if (dto.CertificateOfQualityFile != null)
+                certificateOfQualityPath = SaveUploadedFile(dto.MaterialReceiptCode, dto.CertificateOfQualityFile, "CertificateOfQuality", "CQ");
+            if (dto.InspectationReportFile != null)
+                inspectationReportPath = SaveUploadedFile(dto.MaterialReceiptCode, dto.InspectationReportFile, "InspectationReports", "IR");
+
             var receipt = new MaterialReceipt
             {
                 MaterialReceiptCode = dto.MaterialReceiptCode,
@@ -94,20 +109,12 @@ namespace MyProject.Service
                 Supplier = dto.Supplier,
                 SpecialStorageCondition = dto.SpecialStorageCondition,
                 Receiver = dto.Receiver,
+                CertificateOfOrigin = certificateOfOriginPath, // Gán đường dẫn đã upload
+                CertificateOfQuality = certificateOfQualityPath, // Gán đường dẫn đã upload
+                InspectationReport = inspectationReportPath,   // Gán đường dẫn đã upload
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             };
-
-            // Xử lý lưu tệp tin nếu có
-            if (dto.CertificateOfOriginFile != null)
-                receipt.CertificateOfOrigin = SaveUploadedFile(dto.MaterialReceiptCode, dto.CertificateOfOriginFile, "CertificateOfOrigin", "CO");
-
-            if (dto.CertificateOfQualityFile != null)
-                receipt.CertificateOfQuality = SaveUploadedFile(dto.MaterialReceiptCode, dto.CertificateOfQualityFile, "CertificateOfQuality", "CQ");
-
-            if (dto.InspectationReportFile != null)
-                receipt.InspectationReport = SaveUploadedFile(dto.MaterialReceiptCode, dto.InspectationReportFile, "InspectationReports", "IR");
-
             _context.MaterialReceipts.Add(receipt);
             await _context.SaveChangesAsync();
 
@@ -348,12 +355,46 @@ namespace MyProject.Service
             }
         }
 
+        public async Task<(Stream stream, string contentType)> GetFirebaseFileAsync(string materialReceiptCode, string type)
+        {
+            // 1. Tìm thông tin phiếu nhập trong DB dựa trên MaterialReceiptCode
+            var receipt = await _context.MaterialReceipts
+                .FirstOrDefaultAsync(r => r.MaterialReceiptCode == materialReceiptCode);
+
+            if (receipt == null) throw new Exception("Không tìm thấy phiếu nhập với mã được cung cấp.");
+
+            // 2. Xác định cột chứa đường dẫn tệp dựa trên Type yêu cầu
+            string? apiPath = type switch
+            {
+                "CertificateOfOrigin" => receipt.CertificateOfOrigin,
+                "CertificateOfQuality" => receipt.CertificateOfQuality,
+                "InspectationReport" => receipt.InspectationReport,
+                _ => throw new Exception("Loại tệp tin yêu cầu không hợp lệ.")
+            };
+
+
+
+            if (string.IsNullOrEmpty(apiPath)) throw new Exception("Phiếu nhập này không đính kèm tệp tin yêu cầu.");
+
+            // 3. Trích xuất ObjectName (đường dẫn trên Firebase) từ chuỗi API Path lưu trong DB
+            // Chuỗi lưu có dạng: "/api/MaterialReceipts/files/MaterialReceipts/SubFolder/FileName"
+            string prefix = "/api/MaterialReceipts/files/";
+            string objectName = apiPath.StartsWith(prefix) ? apiPath.Substring(prefix.Length) : apiPath;
+
+            string credentialPath = Path.Combine(_environment.ContentRootPath, "firebase-key.json");
+            var credential = GoogleCredential.FromFile(credentialPath);
+            var storage = StorageClient.Create(credential);
+
+            var stream = new MemoryStream();
+            var obj = await storage.GetObjectAsync(FirebaseBucketName, objectName);
+            await storage.DownloadObjectAsync(FirebaseBucketName, objectName, stream);
+            stream.Position = 0;
+            return (stream, obj.ContentType);
+        }
+
         private string SaveUploadedFile(string materialReceiptCode, IFormFile file, string subFolder, string suffix)
         {
             if (file == null || file.Length == 0) return null;
-
-            // Tên bucket từ Firebase của bạn (đã bỏ gs://)
-            string bucketName = "quanlysanxuat-cb353.firebasestorage.app";
 
             // Tạo tên file và đường dẫn (Object Name) trên Firebase Storage
             string fileName = $"{materialReceiptCode} - {suffix}{Path.GetExtension(file.FileName)}";
@@ -361,19 +402,23 @@ namespace MyProject.Service
 
             try
             {
-                // Khởi tạo StorageClient (Yêu cầu file JSON Service Account đã được cấu hình)
-                var storage = StorageClient.Create();
+                // Đường dẫn đến file JSON bạn vừa tải về
+                string credentialPath = Path.Combine(_environment.ContentRootPath, "firebase-key.json");
+                
+                // Khởi tạo thông tin xác thực từ file
+                var credential = GoogleCredential.FromFile(credentialPath);
+
+                // Khởi tạo StorageClient với credential đã nạp
+                var storage = StorageClient.Create(credential);
 
                 using (var stream = file.OpenReadStream())
                 {
                     // Tải file lên Firebase
-                    storage.UploadObject(bucketName, objectName, file.ContentType, stream);
+                    storage.UploadObject(FirebaseBucketName, objectName, file.ContentType, stream);
                 }
 
-                // Trả về URL dạng media để Frontend có thể hiển thị hoặc tải về trực tiếp
-                // Lưu ý: Cần phân quyền Public Read trên Firebase nếu muốn truy cập trực tiếp qua link này
-                string encodedPath = Uri.EscapeDataString(objectName);
-                return $"https://firebasestorage.googleapis.com/v0/b/{bucketName}/o/{encodedPath}?alt=media";
+                // Trả về đường dẫn API Backend của bạn. Frontend sẽ gọi vào đây để lấy file.
+                return $"/api/MaterialReceipts/files/{objectName}";
             }
             catch (Exception ex)
             {

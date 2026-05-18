@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Định nghĩa URL cơ sở cho API của bạn
 // Đảm bảo rằng endpoint này khớp với tên controller của bạn ở Back-end (ví dụ: ProductionPlanItemsController)
-const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/ProductionPlanItems';
+const API_URL = 'http://localhost:10000/api/ProductionPlanItems';
 
 /**
  * Lấy tất cả các mục chi tiết kế hoạch sản xuất, hoặc lọc theo productionPlanId nếu được cung cấp.
