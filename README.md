@@ -21,32 +21,138 @@ https://quanlysanxuat.onrender.com
 ## 🧭 Luồng sử dụng cơ bản
 
 Người dùng có thể tiếp cận hệ thống theo luồng sau:
-### Nhập nguyên liệu và Lên kế hoạch sản xuất:
+### Nhập nguyên liệu và Lên kế hoạch sản xuất
 
 ```text
 Đăng nhập
-→ Tạo nhân viên và chức vụ: 
-- Vào mục nhân viên, chức vụ để tạo, phải đảm bảo phải có những nhân viên với chức vụ:
-+ Nhân viên mua hàng
-+ Nhân viên kho
-+ Trưởng ban kiểm nghiệm
-+ Ủy ban kiểm nghiệm
-
+→ Tạo nhân viên và chức vụ
 → Khai báo thành phẩm
-→ Khai báo nguyên vật liệu cần thiết để sản xuất các thành phẩm trên
+→ Khai báo nguyên vật liệu
 → Tạo BOM / định mức sản xuất
-
-→ Tạo phiếu nhập nguyên vật liệu: 
-- Đăng nhập vào tài khoản Nhân viên mua hàng (tài khoản tên admin), tạo phiếu mua các nguyên vật liệu cần thiết.
-- Đăng nhập vào tài khoản nhân viên kho, vào mục Đơn hàng -> Phiếu nhập nguyên liệu, chọn Nhận nguyên liệu, nếu có sai sót thông tin hoặc số nguyên liệu thì đánh dấu báo lỗi cho Phiếu nhập nguyên liệu đó.
-- Nếu có Phiếu nhập nguyên liệu bị sai thông tin thì Nhân viên mua hàng vào chỉnh sửa lại thông tin
-
-→ Tính toán khả năng sản xuất:
-- Vào mục Tiến hành sản xuất -> Khả năng sản xuất, chọn các thành phẩm để xem 
-
+→ Tạo phiếu nhập nguyên liệu
+→ Nhận nguyên liệu
+→ Tính toán khả năng sản xuất
 → Tạo kế hoạch sản xuất
 → Tạo lệnh sản xuất
 ```
+
+---
+
+### Bước 1: Tạo nhân viên và chức vụ
+
+Vào mục:
+
+```text
+Nhân viên / Chức vụ
+```
+
+Tạo các nhân viên với những chức vụ cần thiết:
+
+- Nhân viên mua hàng
+- Nhân viên kho
+- Trưởng ban kiểm nghiệm
+- Ủy ban kiểm nghiệm
+
+---
+
+### Bước 2: Khai báo thành phẩm
+
+Tạo các thành phẩm cần sản xuất, ví dụ:
+
+- Nón bảo hộ
+- Quần áo bảo hộ
+- Giày bảo hộ
+
+---
+
+### Bước 3: Khai báo nguyên vật liệu
+
+Khai báo các nguyên liệu cần thiết để sản xuất thành phẩm:
+
+Ví dụ:
+
+- Nhựa ABS
+- Vải kaki
+- Cao su
+- Chỉ may
+- Khóa kéo
+
+---
+
+### Bước 4: Tạo BOM / Định mức sản xuất
+
+Khai báo định mức nguyên vật liệu cho từng thành phẩm.
+
+Ví dụ:
+
+```text
+1 nón bảo hộ = 1.5kg nhựa + 1 dây cài + 1 khóa
+```
+
+---
+
+### Bước 5: Tạo phiếu nhập nguyên vật liệu
+
+#### Nhân viên mua hàng
+
+- Đăng nhập bằng tài khoản nhân viên mua hàng
+- Tạo phiếu mua nguyên vật liệu cần thiết
+
+> Tài khoản demo hiện tại sử dụng tài khoản admin
+
+---
+
+#### Nhân viên kho nhận nguyên liệu
+
+Vào mục:
+
+```text
+Đơn hàng → Phiếu nhập nguyên liệu
+```
+
+Thực hiện:
+
+- Nhận nguyên liệu
+- Kiểm tra số lượng
+- Kiểm tra thông tin nguyên liệu
+- Đánh dấu báo lỗi nếu có sai sót
+
+---
+
+#### Chỉnh sửa phiếu nhập nguyên liệu
+
+Nếu phiếu có sai sót:
+
+- Nhân viên mua hàng chỉnh sửa lại thông tin
+- Sau đó tiến hành nhận nguyên liệu lại
+
+---
+
+### Bước 6: Tính toán khả năng sản xuất
+
+Vào mục:
+
+```text
+Tiến hành sản xuất → Khả năng sản xuất
+```
+
+Người dùng có thể:
+
+- Chọn thành phẩm
+- Xem số lượng có thể sản xuất
+- Kiểm tra nguyên liệu còn thiếu
+
+---
+
+### Bước 7: Tạo kế hoạch sản xuất
+
+Sau khi kiểm tra nguyên liệu:
+
+- Lập kế hoạch sản xuất
+- Chọn thành phẩm cần sản xuất
+- Nhập số lượng dự kiến
+
+---
 
 ### Lên kế hoạch sản xuất, tạo đơn hàng, đơn sản xuất và thực hiện lệnh sản xuất:
 ```
