@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, Fragment, useRef, useLayoutEffect 
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check, ChevronDown, ArrowUp, ArrowDown, CheckCircle, XCircle, Search, Maximize, Minimize, Calendar, X } from 'lucide-react';
 
-export const CustomDatatable = ({ columns, data, renderExpansion, paginationClassName, headerCellClassName, bodyCellClassName }) => {
+export const CustomDatatable = ({ columns, data, renderExpansion, paginationClassName, headerCellClassName, bodyCellClassName, rowClassName }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [animate, setAnimate] = useState(true);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
@@ -111,9 +111,12 @@ export const CustomDatatable = ({ columns, data, renderExpansion, paginationClas
           >
             {currentRows.map((row, rowIndex) => {
               const isExpanded = !!expandedRows[row.id];
+              const customRowClassName = typeof rowClassName === 'function'
+                ? rowClassName(row, { rowIndex, index: indexOfFirstRow + rowIndex + 1 })
+                : rowClassName;
               return (
                 <Fragment key={row.id || rowIndex}>
-                  <tr className="hover:bg-gray-50 transition-colors">
+                  <tr className={`${customRowClassName || ''} hover:bg-gray-50 transition-colors`}>
                     {columns.map((column, colIndex) => (
                       <td key={colIndex} className={`px-6 py-4 ${bodyCellClassName || ''} whitespace-nowrap text-sm text-gray-900 ${column.className || ''}`}>
                         {column.render
@@ -381,7 +384,7 @@ export const CustomSelect = ({ label, options, value, onChange, name, isModalMax
   );
 };
 
-const CustomCalendar = ({ selectedDate, onSelect }) => {
+const CustomCalendar = ({ selectedDate, onSelect, compact = false }) => {
   const initialDate = selectedDate ? new Date(selectedDate) : new Date();
   const [viewDate, setViewDate] = useState(new Date(initialDate.getFullYear(), initialDate.getMonth(), 1));
   const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
@@ -439,10 +442,10 @@ const CustomCalendar = ({ selectedDate, onSelect }) => {
   };
 
   return (
-    <div className="select-none min-w-[250px] z-10">
-      <div className="flex justify-between items-center mb-4 px-1">
-        <button type="button" onClick={() => changeMonth(-1)} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><ChevronLeft size={18} /></button>
-        <div className="flex gap-1 items-center font-bold text-gray-800 text-sm relative" ref={yearDropdownRef}>
+    <div className={`select-none z-10 ${compact ? 'w-[256px]' : 'min-w-[250px]'}`}>
+      <div className={`flex justify-between items-center ${compact ? 'mb-1 px-0' : 'mb-4 px-1'}`}>
+        <button type="button" onClick={() => changeMonth(-1)} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><ChevronLeft size={compact ? 18 : 18} /></button>
+        <div className={`flex items-center font-bold text-gray-800 relative ${compact ? 'gap-1 text-xs' : 'gap-1 text-sm'}`} ref={yearDropdownRef}>
           <span>{monthNames[currentMonth]}</span>
           {/* Thay thế select mặc định bằng Custom Year Dropdown */}
           <button
@@ -451,7 +454,7 @@ const CustomCalendar = ({ selectedDate, onSelect }) => {
             className="flex items-center gap-0.5 hover:text-blue-600 transition-colors focus:outline-none"
           >
             {currentYear}
-            <ChevronDown size={14} className={`transition-transform duration-200 ${isYearDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown size={compact ? 14 : 14} className={`transition-transform duration-200 ${isYearDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isYearDropdownOpen && (
@@ -469,21 +472,21 @@ const CustomCalendar = ({ selectedDate, onSelect }) => {
             </div>
           )}
         </div>
-        <button type="button" onClick={() => changeMonth(1)} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><ChevronRight size={18} /></button>
+        <button type="button" onClick={() => changeMonth(1)} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><ChevronRight size={compact ? 18 : 18} /></button>
       </div>
-      <div className="grid grid-cols-7 gap-1 mb-1">
+      <div className={`grid grid-cols-7 mb-1 ${compact ? 'gap-0' : 'gap-1'}`}>
         {dayNames.map(d => (
-          <div key={d} className="text-center text-[10px] font-bold text-gray-400 uppercase">{d}</div>
+          <div key={d} className={`text-center font-bold text-gray-400 uppercase ${compact ? 'text-[10px]' : 'text-[10px]'}`}>{d}</div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className={`grid grid-cols-7 ${compact ? 'gap-0' : 'gap-1'}`}>
         {days.map((date, i) => (
           <div key={i} className="aspect-square flex items-center justify-center">
             {date ? (
               <button
                 type="button"
                 onClick={() => onSelect(formatDate(date))}
-                className={`w-7 h-7 rounded-full text-xs flex items-center justify-center transition-all ${isSelected(date)
+                className={`${compact ? 'w-5 h-5 text-[10px]' : 'w-7 h-7 text-xs'} rounded-full flex items-center justify-center transition-all ${isSelected(date)
                   ? 'bg-blue-600 text-white font-bold'
                   : isToday(date)
                     ? 'bg-blue-50 text-blue-600 font-bold border border-blue-100'
@@ -492,7 +495,7 @@ const CustomCalendar = ({ selectedDate, onSelect }) => {
               >
                 {date.getDate()}
               </button>
-            ) : <div className="w-7 h-7" />}
+            ) : <div className={compact ? "w-5 h-5" : "w-7 h-7"} />}
           </div>
         ))}
       </div>
@@ -500,7 +503,7 @@ const CustomCalendar = ({ selectedDate, onSelect }) => {
   );
 };
 
-export const DateInput = ({ label, value, onChange, name, isModalMaximized = false, placement = 'bottom', className, error = false, errorMessage = '' }) => {
+export const DateInput = ({ label, value, onChange, name, isModalMaximized = false, placement = 'bottom', className, error = false, errorMessage = '', compactCalendar = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [calendarStyle, setCalendarStyle] = useState({});
   const containerRef = useRef(null);
@@ -527,7 +530,7 @@ export const DateInput = ({ label, value, onChange, name, isModalMaximized = fal
       if (!containerRef.current) return;
 
       const rect = containerRef.current.getBoundingClientRect();
-      const calendarHeight = 292;
+      const calendarHeight = compactCalendar ? 168 : 292;
       const gap = 4;
       const top = placement === 'top'
         ? Math.max(gap, rect.top - calendarHeight - gap)
@@ -537,7 +540,7 @@ export const DateInput = ({ label, value, onChange, name, isModalMaximized = fal
         position: 'fixed',
         top: `${top}px`,
         left: `${rect.left}px`,
-        minWidth: `${rect.width}px`,
+        ...(compactCalendar ? { width: '288px' } : { minWidth: `${rect.width}px` }),
       });
     };
 
@@ -549,7 +552,7 @@ export const DateInput = ({ label, value, onChange, name, isModalMaximized = fal
       window.removeEventListener('resize', updateCalendarPosition);
       window.removeEventListener('scroll', updateCalendarPosition, true);
     };
-  }, [isOpen, placement]);
+  }, [isOpen, placement, compactCalendar]);
 
   const formattedValue = value ? new Date(value).toLocaleDateString('vi-VN') : '--/--/----';
 
@@ -572,9 +575,9 @@ export const DateInput = ({ label, value, onChange, name, isModalMaximized = fal
           <div
             ref={calendarRef}
             style={calendarStyle}
-            className={`bg-white border border-gray-200 rounded-md shadow-2xl z-[100] p-3 animate-in fade-in zoom-in duration-200 ${placement === 'top' ? 'origin-bottom' : 'origin-top'}`}
+            className={`bg-white border border-gray-200 rounded-md shadow-2xl z-[100] animate-in fade-in zoom-in duration-200 ${compactCalendar ? 'p-1.5' : 'p-3'} ${placement === 'top' ? 'origin-bottom' : 'origin-top'}`}
           >
-            <CustomCalendar selectedDate={value} onSelect={(date) => { onChange({ target: { value: date, name } }); setIsOpen(false); }} />
+            <CustomCalendar compact={compactCalendar} selectedDate={value} onSelect={(date) => { onChange({ target: { value: date, name } }); setIsOpen(false); }} />
           </div>,
           document.body
         )}

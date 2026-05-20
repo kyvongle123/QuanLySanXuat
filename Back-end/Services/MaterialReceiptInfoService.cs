@@ -104,7 +104,7 @@ namespace MyProject.Service
                 DeliveryNoteNumber = dto.DeliveryNoteNumber,
                 ReceivingDate = dto.ReceivingDate,
                 ExpiredDate = dto.ExpiredDate,
-                QualityStatus = dto.QualityStatus,
+                Status = dto.Status,
                 Warehouse = dto.Warehouse,
                 Supplier = dto.Supplier,
                 SpecialStorageCondition = dto.SpecialStorageCondition,
@@ -174,7 +174,7 @@ namespace MyProject.Service
             receipt.DeliveryNoteNumber = dto.DeliveryNoteNumber;
             receipt.ReceivingDate = dto.ReceivingDate;
             receipt.ExpiredDate = dto.ExpiredDate;
-            receipt.QualityStatus = dto.QualityStatus;
+            receipt.Status = dto.Status;
             receipt.Warehouse = dto.Warehouse;
             receipt.Supplier = dto.Supplier;
             receipt.SpecialStorageCondition = dto.SpecialStorageCondition;
@@ -232,6 +232,68 @@ namespace MyProject.Service
             return result;
         }
 
+        public async Task<MaterialReceiptInfoDto?> ReceiveReceiptAsync(int id, ReceiveMaterialReceiptDto dto)
+        {
+            var receipt = await _context.MaterialReceipts
+                .Include(r => r.MaterialReceiptBatches)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (receipt == null) return null;
+
+            var receivedByMaterial = dto.Items.ToDictionary(i => i.MaterialId, i => i.DeliveredQuantity);
+            var hasPartialReceivedQuantity = false;
+
+            foreach (var batch in receipt.MaterialReceiptBatches)
+            {
+                if (!receivedByMaterial.TryGetValue(batch.MaterialId, out var deliveredQuantity))
+                    throw new InvalidOperationException("Thiếu số lượng nhận cho một nguyên liệu trong phiếu.");
+
+                if (deliveredQuantity < 0)
+                    throw new InvalidOperationException("Số lượng nhận không được nhỏ hơn 0.");
+
+                if (deliveredQuantity > batch.ShippedQuantity)
+                    throw new InvalidOperationException("Số lượng nhận không được vượt quá số lượng trên phiếu.");
+
+                if (deliveredQuantity < batch.ShippedQuantity)
+                    hasPartialReceivedQuantity = true;
+
+                var additionalQuantity = deliveredQuantity - batch.DeliveredQuantity;
+                if (additionalQuantity < 0)
+                    throw new InvalidOperationException("Sá»‘ lÆ°á»£ng nháº­n má»›i khÃ´ng Ä‘Æ°á»£c nhá» hÆ¡n sá»‘ lÆ°á»£ng Ä‘Ã£ nháº­n trÆ°á»›c Ä‘Ã³.");
+
+                batch.DeliveredQuantity = deliveredQuantity;
+                batch.UpdatedAt = DateTime.Now;
+
+                var material = await _context.Materials.FindAsync(batch.MaterialId);
+                if (material == null)
+                    throw new InvalidOperationException($"Không tìm thấy nguyên liệu ID {batch.MaterialId}.");
+
+                material.Quantity += additionalQuantity;
+                material.UpdatedAt = DateTime.Now;
+            }
+
+            receipt.Status = hasPartialReceivedQuantity ? 3 : 4;
+            receipt.UpdatedAt = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+            return MapToInfoDto(receipt);
+        }
+
+        public async Task<MaterialReceiptInfoDto?> MarkWrongInfoAsync(int id)
+        {
+            var receipt = await _context.MaterialReceipts
+                .Include(r => r.MaterialReceiptBatches)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (receipt == null) return null;
+
+            receipt.Status = 2;
+            receipt.UpdatedAt = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+            return MapToInfoDto(receipt);
+        }
+
         public MaterialReceiptInfoDto MapToInfoDto(MaterialReceipt r) => new MaterialReceiptInfoDto
         {
             Id = r.Id,
@@ -239,7 +301,7 @@ namespace MyProject.Service
             DeliveryNoteNumber = r.DeliveryNoteNumber,
             ReceivingDate = r.ReceivingDate,
             ExpiredDate = r.ExpiredDate,
-            QualityStatus = r.QualityStatus,
+            Status = r.Status,
             Warehouse = r.Warehouse,
             Supplier = r.Supplier,
             SpecialStorageCondition = r.SpecialStorageCondition,

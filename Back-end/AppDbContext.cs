@@ -93,6 +93,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<MaterialReceipt> MaterialReceipts { get; set; }
 
     public virtual DbSet<MaterialReceiptBatch> MaterialReceiptBatches { get; set; }
+
+    public virtual DbSet<MaterialReceiptStatus> MaterialReceiptStatuses { get; set; }
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         // Chỉ cấu hình ở đây nếu optionsBuilder chưa được cấu hình từ Program.cs
@@ -250,6 +252,19 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("ID");
 
             entity.Property(e => e.Name).HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<MaterialReceiptStatus>(entity =>
+        {
+            entity.ToTable("MaterialReceipt_Statuses").HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("ID");
+
+            entity.Property(e => e.Name)
+                .HasMaxLength(255)
+                .IsRequired();
         });
 
         modelBuilder.Entity<Role>(entity =>

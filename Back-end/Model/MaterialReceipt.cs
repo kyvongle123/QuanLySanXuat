@@ -20,7 +20,7 @@ namespace MyProject.Backend.Model
 
         public DateTime? ExpiredDate { get; set; }
 
-        public int? QualityStatus { get; set; }
+        public int? Status { get; set; }
 
         public int? Warehouse { get; set; }
 

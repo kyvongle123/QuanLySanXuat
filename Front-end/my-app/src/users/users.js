@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, ChevronDown, ChevronRight, FileUp, FileDown, Trash2, Plus, Edit2 } from 'lucide-react';
 import { CustomDatatable, Modal, CustomSelect, AppNotification, CustomConfirm } from '../customComponent/customComponent'; // Thêm CustomSelect vào import
 import { getUsers, deleteUser, createUser, updateUser } from '../controller/usersController'; // Sửa đường dẫn thành số nhiều
@@ -23,6 +24,9 @@ export const Users = () => {
   const [openRoleMenuId, setOpenRoleMenuId] = useState(null);
   const [openDepartmentMenuId, setOpenDepartmentMenuId] = useState(null);
   const [openBranchMenuId, setOpenBranchMenuId] = useState(null);
+  const [openRoleMenuAnchorKey, setOpenRoleMenuAnchorKey] = useState(null);
+  const [roleMenuRect, setRoleMenuRect] = useState(null);
+  const roleMenuAnchorRefs = useRef({});
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
@@ -77,6 +81,8 @@ export const Users = () => {
       setOpenRoleMenuId(null);
       setOpenDepartmentMenuId(null);
       setOpenBranchMenuId(null);
+      setOpenRoleMenuAnchorKey(null);
+      setRoleMenuRect(null);
       setMenuSearchQuery('');
     };
 
@@ -85,6 +91,31 @@ export const Users = () => {
       document.removeEventListener('click', handleGlobalClick);
     };
   }, []);
+
+  useEffect(() => {
+    if (!openRoleMenuId || !openRoleMenuAnchorKey) return;
+
+    const updateRoleMenuRect = () => {
+      const anchor = roleMenuAnchorRefs.current[openRoleMenuAnchorKey];
+      if (!anchor) return;
+
+      const rect = anchor.getBoundingClientRect();
+      setRoleMenuRect({
+        left: rect.left,
+        top: rect.bottom + 4,
+        width: Math.max(rect.width, 150),
+      });
+    };
+
+    updateRoleMenuRect();
+    window.addEventListener('resize', updateRoleMenuRect);
+    window.addEventListener('scroll', updateRoleMenuRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateRoleMenuRect);
+      window.removeEventListener('scroll', updateRoleMenuRect, true);
+    };
+  }, [openRoleMenuId, openRoleMenuAnchorKey]);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ isOpen: true, message, type });
@@ -342,6 +373,8 @@ export const Users = () => {
       // Cập nhật lại danh sách users trong state để giao diện đồng bộ
       setUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
       setOpenRoleMenuId(null);
+      setOpenRoleMenuAnchorKey(null);
+      setRoleMenuRect(null);
       showNotification("Cập nhật chức vụ thành công!");
     } catch (err) {
       console.error("Error updating role:", err);
@@ -487,6 +520,77 @@ export const Users = () => {
     </form>
   );
 
+  const toggleRoleMenu = (e, row, anchorKey) => {
+    e.stopPropagation();
+    const isSameMenuOpen = openRoleMenuId === row.id && openRoleMenuAnchorKey === anchorKey;
+
+    if (isSameMenuOpen) {
+      setOpenRoleMenuId(null);
+      setOpenRoleMenuAnchorKey(null);
+      setRoleMenuRect(null);
+      setMenuSearchQuery('');
+      return;
+    }
+
+    if (openRoleMenuId !== row.id) setMenuSearchQuery('');
+    setOpenRoleMenuId(row.id);
+    setOpenRoleMenuAnchorKey(anchorKey);
+    setOpenStatusMenuId(null);
+    setOpenDepartmentMenuId(null);
+    setOpenBranchMenuId(null);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    setRoleMenuRect({
+      left: rect.left,
+      top: rect.bottom + 4,
+      width: Math.max(rect.width, 150),
+    });
+  };
+
+  const renderRoleMenu = (row, anchorKey) => {
+    if (openRoleMenuId !== row.id || openRoleMenuAnchorKey !== anchorKey || !roleMenuRect) return null;
+
+    return createPortal(
+      <div
+        className="fixed bg-white rounded-md shadow-2xl z-[9999] border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal max-h-48"
+        style={{ left: roleMenuRect.left, top: roleMenuRect.top, width: roleMenuRect.width }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+          <div className="relative">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
+              placeholder="Loc chuc vu..."
+              value={menuSearchQuery}
+              onChange={(e) => setMenuSearchQuery(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-0.5 overflow-y-auto">
+          {roles.filter(role => role.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((role) => (
+            <button
+              key={role.value}
+              onClick={() => handleRoleChange(row, role.value)}
+              className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.role) === String(role.value)
+                ? 'bg-blue-50 text-blue-700 font-bold'
+                : 'text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+              <span className="block w-full !whitespace-normal break-words leading-tight">
+                {role.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
   const userColumns = [
     {
       header: '',
@@ -505,11 +609,11 @@ export const Users = () => {
     },
     { header: 'STT', className: 'sm:table-cell w-[50px] text-center !px-1 sm:px-4', render: (row, { index }) => index },
     { header: 'Tên', accessor: 'name', className: 'font-bold text-blue-600 min-w-[140px] !px-1 sm:!px-4' },
-    { header: 'Email', accessor: 'email', className: 'hidden md:table-cell' },
+    { header: 'Email', accessor: 'email', className: 'hidden sm:table-cell' },
     {
       header: 'Chức vụ',
       accessor: 'role',
-      className: 'hidden lg:table-cell w-48',
+      className: 'hidden lg:table-cell w-48 hidden sm:table-cell',
       render: (row) => {
         const roleObj = roles.find(r => String(r.value) === String(row.role));
         const label = roleObj ? roleObj.label : '-- Chọn --';
@@ -525,11 +629,9 @@ export const Users = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation(); // Ngăn sự kiện click lan ra ngoài document làm menu bị đóng ngay lập tức
-                if (openRoleMenuId !== row.id) setMenuSearchQuery('');
-                setOpenRoleMenuId(openRoleMenuId === row.id ? null : row.id);
-                setOpenStatusMenuId(null);
-                setOpenBranchMenuId(null);
+                toggleRoleMenu(e, row, `table-${row.id}`);
               }}
+              ref={(el) => { roleMenuAnchorRefs.current[`table-${row.id}`] = el; }}
               className="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 focus:outline-none transition-all cursor-pointer appearance-none text-left relative"
             >
               <span className="truncate block">{label}</span>
@@ -538,7 +640,9 @@ export const Users = () => {
               </div>
             </button>
 
-            {openRoleMenuId === row.id && (
+            {renderRoleMenu(row, `table-${row.id}`)}
+
+            {false && openRoleMenuId === row.id && (
               <div className="absolute inset-x-0 top-full mt-1 bg-white rounded-md shadow-2xl z-[999] border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal overflow-y-auto max-h-44">
                 <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                   <div className="relative">
@@ -614,7 +718,7 @@ export const Users = () => {
   const roleTableColumns = useMemo(() => [
     { header: 'STT', render: (_, { index }) => index, className: '!px-1 sm:px-4 !flex !justify-center' },
     {
-      header: 'Tên chức vụ', className: '!px-1 sm:!px-4',
+      header: 'Tên chức vụ', className: '!px-1 sm:!px-4 sm:hidden',
       render: (row) => <span className="font-bold text-gray-700">{row.label}</span>
     },
     {
@@ -743,13 +847,9 @@ export const Users = () => {
                           </button>
                           <button
                             onClick={(e) => {
-                              e.stopPropagation();
-                              if (openRoleMenuId !== row.id) setMenuSearchQuery('');
-                              setOpenRoleMenuId(openRoleMenuId === row.id ? null : row.id);
-                              setOpenStatusMenuId(null);
-                              setOpenDepartmentMenuId(null);
-                              setOpenBranchMenuId(null);
+                              toggleRoleMenu(e, row, `expansion-${row.id}`);
                             }}
+                            ref={(el) => { roleMenuAnchorRefs.current[`expansion-${row.id}`] = el; }}
                             className="bg-white border border-gray-300 text-gray-900 text-xs rounded-lg p-1 pr-8 appearance-none cursor-pointer outline-none font-medium text-left relative min-h-[30px] w-full block hover:border-blue-400 transition-colors shadow-sm"
                           >
                             <span className="truncate block">{roleObj?.label || '---'}</span>
@@ -758,7 +858,9 @@ export const Users = () => {
                             </div>
                           </button>
 
-                          {openRoleMenuId === row.id && (
+                          {renderRoleMenu(row, `expansion-${row.id}`)}
+
+                          {false && openRoleMenuId === row.id && (
                             <div className="absolute inset-x-0 top-full mt-1 bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal overflow-y-auto max-h-48">
                               <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                                 <div className="relative">

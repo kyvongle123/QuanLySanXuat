@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Plus, ChevronDown, FileText, Eye, Edit2, Trash2, FileDown, X, Upload, Maximize, Minimize, ChevronRight, FileUp, Calendar } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -14,6 +15,8 @@ import {
   createMaterialReceipt,
   updateMaterialReceipt,
   deleteMaterialReceipt,
+  receiveMaterialReceipt,
+  markMaterialReceiptWrongInfo,
   exportInspectionReport,
   downloadReceiptFile,
   handleRequestDownload
@@ -21,7 +24,7 @@ import {
 import { getWarehouses, getWarehouse, createWarehouse, updateWarehouse, deleteWarehouse } from '../controller/warehousesController';
 import { getWarehouseLocations, getWarehouseLocation, createWarehouseLocation, updateWarehouseLocation, deleteWarehouseLocation } from '../controller/warehouseLocationsController';
 import { getWarehouseRacks, getWarehouseRack, createWarehouseRack, updateWarehouseRack, deleteWarehouseRack } from '../controller/warehouseRacksController';
-import { getUsers } from '../controller/usersController';
+import { getUsers, getUser } from '../controller/usersController';
 import { getSuppliers, getSupplier, createSupplier, updateSupplier, deleteSupplier } from '../controller/suppliersController';
 import { getMaterials } from '../controller/materialsController';
 import { getMaterialCategories } from '../controller/materialCategoriesController';
@@ -104,14 +107,20 @@ const InlineCalendar = ({ value, onChange }) => {
 };
 
 // Component Searchable Select tùy chỉnh (Tương tự machines.js)
-const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", className, disabled = false, placement = "bottom" }) => {
+const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", className, disabled = false, placement = "bottom", usePortal = false, error = false, errorMessage = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [dropdownRect, setDropdownRect] = useState(null);
   const selectRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (selectRef.current && !selectRef.current.contains(event.target)) {
+      if (
+        selectRef.current &&
+        !selectRef.current.contains(event.target) &&
+        (!dropdownRef.current || !dropdownRef.current.contains(event.target))
+      ) {
         setIsOpen(false);
         setSearch('');
       }
@@ -120,9 +129,72 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen || !usePortal) return;
+
+    const updateDropdownRect = () => {
+      if (!selectRef.current) return;
+
+      const rect = selectRef.current.getBoundingClientRect();
+      setDropdownRect({
+        left: rect.left,
+        top: placement === 'top' ? rect.top - 4 : rect.bottom + 4,
+        width: Math.max(rect.width, 200),
+      });
+    };
+
+    updateDropdownRect();
+    window.addEventListener('resize', updateDropdownRect);
+    window.addEventListener('scroll', updateDropdownRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateDropdownRect);
+      window.removeEventListener('scroll', updateDropdownRect, true);
+    };
+  }, [isOpen, placement, usePortal]);
+
   const selectedOption = options.find(opt => String(opt.value) === String(value));
   const filteredOptions = options.filter(opt =>
     String(opt.label || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const dropdownMenu = (
+    <div
+      ref={dropdownRef}
+      className={`${usePortal ? 'fixed z-[9999]' : `absolute z-[100] w-full left-0 ${placement === 'top'
+        ? 'bottom-full mb-1 slide-in-from-bottom-1'
+        : 'mt-1 slide-in-from-top-1'
+        }`} bg-white border border-gray-300 rounded-lg shadow-2xl overflow-hidden min-w-[200px] animate-in fade-in duration-200`}
+      style={usePortal && dropdownRect ? {
+        left: dropdownRect.left,
+        top: placement === 'top' ? 'auto' : dropdownRect.top,
+        bottom: placement === 'top' ? window.innerHeight - dropdownRect.top : 'auto',
+        width: dropdownRect.width,
+      } : undefined}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="p-2 border-b bg-gray-50 sticky top-0 z-10">
+        <div className="relative group">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+          <input
+            type="text"
+            autoFocus
+            placeholder={placeholder}
+            className="w-full text-[11px] pl-8 pr-2 py-1.5 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent leading-tight bg-white transition-all shadow-sm"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      </div>
+      <div className="max-h-44 overflow-y-auto custom-scrollbar">
+        {filteredOptions.length > 0 ? filteredOptions.map(opt => (
+          <div key={opt.value} onClick={(e) => { e.stopPropagation(); onChange(opt.value); setIsOpen(false); setSearch(''); }} className={`p-2.5 text-xs hover:bg-blue-50 cursor-pointer transition-colors ${String(opt.value) === String(value) ? 'bg-blue-100 text-blue-700 font-bold' : 'text-gray-700'}`}>
+            {opt.label}
+          </div>
+        )) : <div className="p-3 text-xs text-gray-400 italic text-center">Không có kết quả</div>}
+      </div>
+    </div>
   );
 
   return (
@@ -133,7 +205,7 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        className={className || "bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-md p-1.5 pr-7 cursor-pointer font-medium flex justify-between items-center min-h-[38px] hover:border-blue-400 transition-all shadow-sm"}
+        className={`${className || `relative bg-gray-50 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} text-gray-900 text-sm rounded-md p-1.5 pr-7 font-medium flex justify-between items-center min-h-[38px] hover:border-blue-400 transition-all shadow-sm`} ${disabled ? '!bg-gray-100 !text-gray-500 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         <span className="truncate pl-2">{selectedOption ? selectedOption.label : '-- Chọn --'}</span>
         <div className="absolute inset-y-0 right-2.5 flex items-center pointer-events-none text-gray-600">
@@ -141,7 +213,7 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
         </div>
       </div>
 
-      {isOpen && (
+      {isOpen && !usePortal && (
         <div className={`absolute z-[100] w-full bg-white border border-gray-300 rounded-lg shadow-2xl overflow-hidden min-w-[200px] left-0 animate-in fade-in duration-200 ${placement === 'top'
           ? 'bottom-full mb-1 slide-in-from-bottom-1'
           : 'mt-1 slide-in-from-top-1'
@@ -169,12 +241,14 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
           </div>
         </div>
       )}
+      {isOpen && usePortal && dropdownRect && createPortal(dropdownMenu, document.body)}
+      {errorMessage && <p className="text-red-500 text-[10px] mt-1 font-medium">{errorMessage}</p>}
     </div>
   );
 };
 
 // Component Multi Searchable Select
-const MultiSearchableSelect = ({ selectedValues = [], options, onChange, placeholder = "Chọn nguyên liệu..." }) => {
+const MultiSearchableSelect = ({ selectedValues = [], options, onChange, placeholder = "Chọn nguyên liệu...", error = false, errorMessage = '', disabled = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const selectRef = useRef(null);
@@ -194,20 +268,23 @@ const MultiSearchableSelect = ({ selectedValues = [], options, onChange, placeho
   return (
     <div className="relative w-full" ref={selectRef}>
       <div
-        onClick={() => setIsOpen(!isOpen)}
-        className="bg-white border border-gray-300 text-gray-900 text-xs rounded-lg p-2 cursor-pointer flex flex-wrap gap-1 min-h-[38px] hover:border-blue-400 transition-all shadow-sm"
+        onClick={() => {
+          if (disabled) return;
+          setIsOpen(!isOpen);
+        }}
+        className={`bg-white border ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} text-gray-900 text-xs rounded-lg p-2 flex flex-wrap gap-1 min-h-[38px] hover:border-blue-400 transition-all shadow-sm ${disabled ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         {selectedValues.length > 0 ? (
           options.filter(o => selectedValues.includes(o.value)).map(o => (
             <span key={o.value} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded flex items-center gap-1 font-medium">
               {o.label}
-              <X size={12} className="hover:text-red-500" onClick={(e) => { e.stopPropagation(); onChange(selectedValues.filter(v => v !== o.value)); }} />
+              {!disabled && <X size={12} className="hover:text-red-500" onClick={(e) => { e.stopPropagation(); onChange(selectedValues.filter(v => v !== o.value)); }} />}
             </span>
           ))
         ) : <span className="text-gray-400 pl-1">{placeholder}</span>}
       </div>
 
-      {isOpen && (
+      {isOpen && !disabled && (
         <div className="absolute z-[110] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-2xl overflow-hidden min-w-[250px]">
           <div className="p-2 border-b bg-gray-50">
             <div className="relative">
@@ -235,6 +312,7 @@ const MultiSearchableSelect = ({ selectedValues = [], options, onChange, placeho
           </div>
         </div>
       )}
+      {errorMessage && <p className="text-red-500 text-[10px] mt-1 font-medium">{errorMessage}</p>}
     </div>
   );
 };
@@ -254,7 +332,48 @@ export const MaterialReceipts = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentReceipt, setCurrentReceipt] = useState(null);
+  const [receiptErrors, setReceiptErrors] = useState({});
   const [isModalMaximized, setIsModalMaximized] = useState(false);
+  const currentUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || 'null');
+    } catch {
+      return null;
+    }
+  }, []);
+  const [currentUserDetail, setCurrentUserDetail] = useState(null);
+
+  useEffect(() => {
+    const fetchCurrentUserDetail = async () => {
+      const userId = currentUser?.id || currentUser?.Id || currentUser?.ID;
+      if (!userId) {
+        setCurrentUserDetail(null);
+        return;
+      }
+
+      try {
+        const user = await getUser(userId);
+        setCurrentUserDetail(user);
+      } catch (error) {
+        console.error("Error fetching current user detail:", error);
+        setCurrentUserDetail(null);
+      }
+    };
+
+    fetchCurrentUserDetail();
+  }, [currentUser]);
+
+  const currentUserRoleName = useMemo(() => {
+    const directRoleName = currentUserDetail?.roleName || currentUserDetail?.RoleName || currentUserDetail?.role?.name || currentUserDetail?.Role?.Name || currentUserDetail?.role?.Name;
+    if (directRoleName) return directRoleName;
+
+    const roleId = currentUserDetail?.role || currentUserDetail?.Role || currentUserDetail?.roleId || currentUserDetail?.RoleId;
+    return roles.find(role => String(role.id || role.Id) === String(roleId))?.name || '';
+  }, [currentUserDetail, roles]);
+  const currentUserRoleId = currentUserDetail?.role || currentUserDetail?.Role || currentUserDetail?.roleId || currentUserDetail?.RoleId;
+  const isWarehouseEmployee = String(currentUserRoleId) === '1' || currentUserRoleName === 'Nhân viên kho';
+  const isPurchasingEmployee = currentUserRoleName === 'Nhân viên mua hàng';
+  const getReceiptStatus = (receipt) => String(receipt?.status || receipt?.Status || receipt?.qualityStatus || receipt?.QualityStatus || '');
 
   // States cho quản lý Nhà cung cấp (Suppliers)
   const [isSuppliersModalOpen, setIsSuppliersModalOpen] = useState(false);
@@ -439,18 +558,20 @@ export const MaterialReceipts = () => {
     if (ubknCount > 2) return showNotification("Chỉ được chọn tối đa 2 Ủy ban kiểm nghiệm", "error");
 
     setCurrentReceipt(prev => ({ ...prev, inspectorPanel: newIds }));
+    if (receiptErrors.inspectorPanel) setReceiptErrors(prev => ({ ...prev, inspectorPanel: null }));
   };
 
   const handleOpenModal = (mode, receipt = null) => {
     setModalMode(mode);
     setActiveTab(1);
+    setReceiptErrors({});
     if (mode === 'add') {
       setCurrentReceipt({
         materialReceiptCode: '',
         supplier: '',
         deliveryNoteNumber: '',
-        receivingDate: new Date().toISOString().split('T')[0],
-        qualityStatus: 1,
+        receivingDate: '',
+        status: 1,
         warehouse: '',
         items: [], // { materialId, shippedQuantity, mfgDate, expiredDate }
         specialStorageCondition: '',
@@ -470,8 +591,11 @@ export const MaterialReceipts = () => {
       if (receipt.materialReceiptBatchList) {
         formatted.items = receipt.materialReceiptBatchList.map(item => ({
           ...item,
+          materialId: item.materialId ?? item.MaterialId,
+          shippedQuantity: item.shippedQuantity ?? item.ShippedQuantity ?? 0,
           mfgDate: item.mfgDate ? item.mfgDate.split('T')[0] : '',
-          expiredDate: item.expiredDate ? item.expiredDate.split('T')[0] : ''
+          expiredDate: item.expiredDate ? item.expiredDate.split('T')[0] : '',
+          deliveredQuantity: item.deliveredQuantity ?? item.DeliveredQuantity ?? ''
         }));
       }
 
@@ -502,13 +626,13 @@ export const MaterialReceipts = () => {
         { header: 'Số vận đơn', key: 'deliveryNoteNumber', width: 20 },
         { header: 'Ngày nhận', key: 'receivingDate', width: 15 },
         { header: 'Kho', key: 'warehouse', width: 25 },
-        { header: 'Chất lượng', key: 'qualityStatus', width: 20 },
+        { header: 'Chất lượng', key: 'status', width: 20 },
         { header: 'Người nhận', key: 'receiver', width: 20 },
       ];
 
       filteredData.forEach((receipt, index) => {
         const warehouseLabel = warehouses.find(w => w.value === receipt.warehouse)?.label || 'N/A';
-        const qualityLabel = qualityOptions.find(q => q.value === receipt.qualityStatus)?.label || 'N/A';
+        const qualityLabel = qualityOptions.find(q => q.value === receipt.status)?.label || 'N/A';
         const receiverLabel = users.find(u => u.value === receipt.receiver)?.label || 'N/A';
 
         worksheet.addRow({
@@ -517,7 +641,7 @@ export const MaterialReceipts = () => {
           deliveryNoteNumber: receipt.deliveryNoteNumber,
           receivingDate: receipt.receivingDate ? new Date(receipt.receivingDate).toLocaleDateString('vi-VN') : 'N/A',
           warehouse: warehouseLabel,
-          qualityStatus: qualityLabel,
+          status: qualityLabel,
           receiver: receiverLabel,
         });
       });
@@ -551,6 +675,7 @@ export const MaterialReceipts = () => {
     setIsModalOpen(false);
     setIsMaterialInfoModalOpen(false);
     setCurrentReceipt(null);
+    setReceiptErrors({});
     setIsModalMaximized(false);
   };
 
@@ -559,6 +684,7 @@ export const MaterialReceipts = () => {
     const name = nameFromSelect || eOrVal.target.name;
     const value = nameFromSelect ? eOrVal : eOrVal.target.value;
     setCurrentReceipt(prev => ({ ...prev, [name]: value }));
+    if (receiptErrors[name]) setReceiptErrors(prev => ({ ...prev, [name]: null }));
   };
 
   const handleItemFieldChange = (materialId, field, value) => {
@@ -568,6 +694,59 @@ export const MaterialReceipts = () => {
         item.materialId === materialId ? { ...item, [field]: value } : item
       )
     }));
+  };
+
+  const isReceiveMode = modalMode === 'receive';
+  const currentReceiptStatus = String(
+    getReceiptStatus(currentReceipt)
+  );
+  const isWarehouseMaterialInfoMode = isWarehouseEmployee && isMaterialInfoModalOpen;
+  const isCompletedMaterialInfoMode = isMaterialInfoModalOpen && currentReceiptStatus === '4';
+  const isMaterialInfoReadOnlyMode = isWarehouseMaterialInfoMode || isCompletedMaterialInfoMode;
+  const isReadOnlyReceiptItemField = isReceiveMode || isMaterialInfoReadOnlyMode;
+  const showDeliveredQuantityColumn = isReceiveMode || isWarehouseMaterialInfoMode || isCompletedMaterialInfoMode;
+  const canEditDeliveredQuantity = isReceiveMode || (isWarehouseMaterialInfoMode && currentReceiptStatus === '1');
+
+  const handleReceiveWrongInfo = async () => {
+    try {
+      await markMaterialReceiptWrongInfo(currentReceipt.id || currentReceipt.Id);
+      showNotification("Đã ghi nhận phiếu nhập sai thông tin.", "error");
+      fetchData();
+      handleCloseModal();
+    } catch (err) {
+      showNotification("Lỗi khi ghi nhận sai thông tin", "error");
+    }
+  };
+
+  const handleReceiveConfirm = async () => {
+    try {
+      const invalidItem = (currentReceipt.items || []).find(item => {
+        const hasDeliveredQuantity = item.deliveredQuantity !== '' && item.deliveredQuantity !== null && item.deliveredQuantity !== undefined;
+        const deliveredQuantity = Number(item.deliveredQuantity);
+        const shippedQuantity = Number(item.shippedQuantity);
+        return !hasDeliveredQuantity || Number.isNaN(deliveredQuantity) || deliveredQuantity < 0 || deliveredQuantity > shippedQuantity;
+      });
+
+      if (invalidItem) {
+        showNotification("Số lượng nhận không được bỏ trống, nhỏ hơn 0 hoặc vượt quá Số lượng cùng dòng.", "error");
+        setActiveTab(2);
+        return;
+      }
+
+      await receiveMaterialReceipt(
+        currentReceipt.id || currentReceipt.Id,
+        (currentReceipt.items || []).map(item => ({
+          materialId: item.materialId,
+          deliveredQuantity: Number(item.deliveredQuantity) || 0
+        }))
+      );
+      showNotification("Nhận nguyên liệu thành công!");
+      fetchData();
+      handleCloseModal();
+    } catch (err) {
+      const message = err?.response?.data?.message || "Lỗi khi nhận nguyên liệu";
+      showNotification(message, "error");
+    }
   };
 
   const handleFileUpload = (e, field) => {
@@ -580,6 +759,24 @@ export const MaterialReceipts = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const newErrors = {};
+    if (!currentReceipt?.materialReceiptCode?.trim()) newErrors.materialReceiptCode = "Bắt buộc nhập Mã phiếu nhập";
+    if (!currentReceipt?.supplier) newErrors.supplier = "Bắt buộc nhập Nhà cung cấp";
+    if (!currentReceipt?.deliveryNoteNumber?.trim()) newErrors.deliveryNoteNumber = "Bắt buộc nhập Số vận đơn";
+    if (!currentReceipt?.receivingDate) newErrors.receivingDate = "Bắt buộc nhập Ngày nhận hàng";
+    if (!currentReceipt?.items?.length) newErrors.items = "Bắt buộc nhập nguyên liệu nhập";
+    if (!currentReceipt?.receiver) newErrors.receiver = "Bắt buộc nhập Người nhận hàng";
+    if (!currentReceipt?.inspectorPanel?.length) newErrors.inspectorPanel = "Bắt buộc nhập Ban kiểm nghiệm sản phẩm";
+
+    if (Object.keys(newErrors).length > 0) {
+      setReceiptErrors(newErrors);
+      if (newErrors.materialReceiptCode || newErrors.supplier || newErrors.deliveryNoteNumber || newErrors.receivingDate) setActiveTab(1);
+      else if (newErrors.items) setActiveTab(2);
+      else setActiveTab(3);
+      return;
+    }
+    setReceiptErrors({});
+
     try {
       // Xây dựng payload sạch sẽ theo cấu trúc DTO ở Back-end
       const payload = {
@@ -588,7 +785,7 @@ export const MaterialReceipts = () => {
         supplier: currentReceipt.supplier,
         deliveryNoteNumber: currentReceipt.deliveryNoteNumber,
         receivingDate: currentReceipt.receivingDate,
-        qualityStatus: currentReceipt.qualityStatus,
+        status: modalMode === 'edit' && isPurchasingEmployee ? 5 : currentReceipt.status,
         warehouse: currentReceipt.warehouse,
         specialStorageCondition: currentReceipt.specialStorageCondition || "", // Giữ nguyên nội dung textarea bao gồm cả xuống dòng
         receiver: currentReceipt.receiver,
@@ -596,7 +793,7 @@ export const MaterialReceipts = () => {
         materialReceiptBatchList: (currentReceipt.items || []).map(item => ({
           MaterialId: item.materialId,
           ShippedQuantity: parseFloat(item.shippedQuantity) || 0,
-          DeliveredQuantity: parseFloat(item.shippedQuantity) || 0, // Mặc định số lượng thực nhận bằng số lượng vận đơn
+          DeliveredQuantity: parseFloat(item.deliveredQuantity ?? item.shippedQuantity) || 0, // Mặc định số lượng thực nhận bằng số lượng vận đơn
           MFGDate: item.mfgDate || null, // Sử dụng PascalCase để khớp chính xác với Service logic
           ExpiredDate: item.expiredDate || null, // Sử dụng PascalCase để khớp chính xác với Service logic
           BatchCode: item.batchCode || ""
@@ -665,6 +862,9 @@ export const MaterialReceipts = () => {
     if (receipt.materialReceiptBatchList) {
       formatted.items = receipt.materialReceiptBatchList.map(item => ({
         ...item,
+        materialId: item.materialId ?? item.MaterialId,
+        shippedQuantity: item.shippedQuantity ?? item.ShippedQuantity ?? 0,
+        deliveredQuantity: item.deliveredQuantity ?? item.DeliveredQuantity ?? '',
         mfgDate: item.mfgDate ? item.mfgDate.split('T')[0] : '',
         expiredDate: item.expiredDate ? item.expiredDate.split('T')[0] : ''
       }));
@@ -783,9 +983,11 @@ export const MaterialReceipts = () => {
             type="number"
             value={item.shippedQuantity}
             onChange={(e) => handleItemFieldChange(item.materialId, 'shippedQuantity', e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+            disabled={isReadOnlyReceiptItemField}
+            className={`w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 outline-none ${isReadOnlyReceiptItemField ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
             min="0"
             onFocus={(e) => {
+              if (isReadOnlyReceiptItemField) return;
               e.stopPropagation();
               setOpenInventoryMenuId(openInventoryMenuId === item.materialId ? null : item.materialId);
             }}
@@ -811,6 +1013,26 @@ export const MaterialReceipts = () => {
       ),
       className: 'min-w-[120px]' // Ép chiều rộng tối thiểu 180px để thấy rõ số lượng và đơn vị
     },
+    ...(showDeliveredQuantityColumn ? [{
+      header: 'Số lượng nhận',
+      render: (item) => (
+        <input
+          type="number"
+          value={item.deliveredQuantity ?? ''}
+          onChange={(e) => {
+            const shippedQuantity = Number(item.shippedQuantity) || 0;
+            const nextValue = Math.min(Number(e.target.value) || 0, shippedQuantity);
+            handleItemFieldChange(item.materialId, 'deliveredQuantity', nextValue);
+          }}
+          disabled={!canEditDeliveredQuantity}
+          className={`w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 outline-none ${canEditDeliveredQuantity ? 'bg-white' : 'bg-gray-100 text-gray-500 cursor-not-allowed'}`}
+          min="0"
+          max={Number(item.shippedQuantity) || 0}
+          placeholder="Nhập SL nhận"
+        />
+      ),
+      className: 'min-w-[130px]'
+    }] : []),
     {
       header: 'Ngày sản xuất',
       render: (item, { rowIndex }) => {
@@ -821,9 +1043,9 @@ export const MaterialReceipts = () => {
               <input
                 readOnly
                 value={item.mfgDate ? new Date(item.mfgDate).toLocaleDateString('vi-VN') : ''}
-                onClick={() => setMobileDateModal({ isOpen: true, value: item.mfgDate || '', label: 'Ngày sản xuất', field: 'mfgDate', materialId: item.materialId })}
+                onClick={() => !isReadOnlyReceiptItemField && setMobileDateModal({ isOpen: true, value: item.mfgDate || '', label: 'Ngày sản xuất', field: 'mfgDate', materialId: item.materialId })}
                 placeholder="Chọn..."
-                className="w-full border border-gray-300 rounded-md px-2 py-1 text-[11px] bg-white h-[30px] pr-8 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500 font-medium"
+                className={`w-full border border-gray-300 rounded-md px-2 py-1 text-[11px] h-[30px] pr-8 outline-none focus:ring-1 focus:ring-blue-500 font-medium ${isReadOnlyReceiptItemField ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white cursor-pointer'}`}
               />
               <Calendar size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none" />
             </div>
@@ -835,7 +1057,7 @@ export const MaterialReceipts = () => {
             label=""
             value={item.mfgDate || ''}
             onChange={(e) => handleItemFieldChange(item.materialId, 'mfgDate', e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-2 py-1 text-xs text-left focus:ring-1 focus:ring-blue-500 outline-none relative z-10"
+            className={`w-full border border-gray-300 rounded-md px-2 py-1 text-xs text-left focus:ring-1 focus:ring-blue-500 outline-none relative z-10 ${isReadOnlyReceiptItemField ? 'bg-gray-100 text-gray-500 pointer-events-none' : ''}`}
             placement={isNearBottom ? "top" : "bottom"}
           />
         );
@@ -852,9 +1074,9 @@ export const MaterialReceipts = () => {
               <input
                 readOnly
                 value={item.expiredDate ? new Date(item.expiredDate).toLocaleDateString('vi-VN') : ''}
-                onClick={() => setMobileDateModal({ isOpen: true, value: item.expiredDate || '', label: 'Ngày hết hạn', field: 'expiredDate', materialId: item.materialId })}
+                onClick={() => !isReadOnlyReceiptItemField && setMobileDateModal({ isOpen: true, value: item.expiredDate || '', label: 'Ngày hết hạn', field: 'expiredDate', materialId: item.materialId })}
                 placeholder="Chọn..."
-                className="w-full border border-gray-300 rounded-md px-2 py-1 text-[11px] bg-white h-[30px] pr-8 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500 font-medium"
+                className={`w-full border border-gray-300 rounded-md px-2 py-1 text-[11px] h-[30px] pr-8 outline-none focus:ring-1 focus:ring-blue-500 font-medium ${isReadOnlyReceiptItemField ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white cursor-pointer'}`}
               />
               <Calendar size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none" />
             </div>
@@ -866,7 +1088,7 @@ export const MaterialReceipts = () => {
             label=""
             value={item.expiredDate || ''}
             onChange={(e) => handleItemFieldChange(item.materialId, 'expiredDate', e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-2 py-1 text-xs text-left focus:ring-1 focus:ring-blue-500 outline-none relative z-10"
+            className={`w-full border border-gray-300 rounded-md px-2 py-1 text-xs text-left focus:ring-1 focus:ring-blue-500 outline-none relative z-10 ${isReadOnlyReceiptItemField ? 'bg-gray-100 text-gray-500 pointer-events-none' : ''}`}
             placement={isNearBottom ? "top" : "bottom"}
           />
         );
@@ -875,13 +1097,19 @@ export const MaterialReceipts = () => {
     },
     {
       header: 'Xóa',
+      hiddenInReceive: true,
       className: 'w-16 text-center !px-2',
       headerCellClassName: 'text-center',
       render: (item) => (
         <button type="button" onClick={() => setCurrentReceipt(prev => ({ ...prev, items: prev.items.filter(i => i.materialId !== item.materialId) }))} className="text-red-500 hover:text-red-700 active:scale-95"><Trash2 size={16} /></button>
       )
     }
-  ], [allMaterials, currentReceipt, handleItemFieldChange]); // Thêm currentReceipt vào dependencies
+  ], [allMaterials, currentReceipt, handleItemFieldChange, isReadOnlyReceiptItemField, showDeliveredQuantityColumn, canEditDeliveredQuantity, openInventoryMenuId]);
+
+  const receiptItemColumns = useMemo(
+    () => isReadOnlyReceiptItemField ? itemColumns.filter(column => !column.hiddenInReceive) : itemColumns,
+    [isReadOnlyReceiptItemField, itemColumns]
+  );
 
   // Định nghĩa cột cho bảng danh sách Nhà cung cấp
   const supplierTableColumns = useMemo(() => [
@@ -1025,33 +1253,144 @@ export const MaterialReceipts = () => {
     {
       header: 'Kho lưu trữ',
       className: 'hidden lg:table-cell w-68',
-      render: (row) => (
-        <div className="relative w-full">
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); handleOpenWarehousesModal(); }}
-            className="absolute right-1 top-[-10px] text-blue-600 hover:text-blue-800 text-[10px] font-bold underline z-20 leading-none bg-white px-1 rounded border border-blue-50 transition-colors"
-          >
-            hiệu chỉnh
-          </button>
-          <SearchableSelect
-            value={row.warehouse}
-            options={warehouses} // Use the 'warehouses' state which now contains all mapped options
-            onChange={(val) => handleWarehouseChange(row, val)}
-            className="w-full flex items-center border border-gray-300 rounded-md px-2 !bg-white !text-xs !min-h-[30px]"
-          />
-        </div>
-      )
+      render: (row) => {
+        const isCompletedReceipt = getReceiptStatus(row) === "4";
+        const isRowSelectDisabled = isWarehouseEmployee || isCompletedReceipt;
+
+        return (
+          <div className="relative w-full">
+            {!isRowSelectDisabled && <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleOpenWarehousesModal(); }}
+              className="absolute right-1 top-[-10px] text-blue-600 hover:text-blue-800 text-[10px] font-bold underline z-20 leading-none bg-white px-1 rounded border border-blue-50 transition-colors"
+            >
+              hiệu chỉnh
+            </button>}
+            <SearchableSelect
+              value={row.warehouse}
+              options={warehouses} // Use the 'warehouses' state which now contains all mapped options
+              onChange={(val) => handleWarehouseChange(row, val)}
+              disabled={isRowSelectDisabled}
+              className="w-full flex items-center border border-gray-300 rounded-md px-2 !bg-white !text-xs !min-h-[30px]"
+            />
+          </div>
+        );
+      }
     },
     {
       header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm" > Hành động</div>,
       className: 'text-right pr-2 sm:pr-4 w-[60px] sm:w-[150px]',
-      render: (row) => (
-        <div className="flex gap-1.5 justify-end">
-          <button onClick={() => handleOpenModal('edit', row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
-          <button onClick={() => handleDeleteRequest(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95">Xóa</button>
-        </div>
-      ),
+      render: (row) => {
+        const rowStatus = getReceiptStatus(row);
+
+        if (rowStatus === "4") {
+          return (
+            <div className="flex gap-1.5 justify-end">
+              <button
+                type="button"
+                disabled
+                className="bg-gray-200 text-gray-500 font-bold py-1 px-2 rounded text-[11px] sm:text-xs cursor-not-allowed whitespace-nowrap"
+              >
+                Đã nhận
+              </button>
+              <button
+                onClick={() => handleDeleteRequest(row.id || row.Id)}
+                className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95"
+              >
+                Xóa
+              </button>
+            </div>
+          );
+        }
+
+        if (isWarehouseEmployee) {
+          if (rowStatus === "5") {
+            return (
+              <div className="flex gap-1.5 justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleOpenModal('receive', row);
+                    setActiveTab(2);
+                  }}
+                  className="bg-pink-100 hover:bg-pink-200 text-red-600 border border-pink-200 font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95 whitespace-nowrap"
+                >
+                  Đã sửa thông tin
+                </button>
+                <button
+                  onClick={() => handleDeleteRequest(row.id || row.Id)}
+                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95"
+                >
+                  Xóa
+                </button>
+              </div>
+            );
+          }
+
+          if (rowStatus === "2") {
+            return (
+              <div className="flex gap-1.5 justify-end">
+                <button
+                  type="button"
+                  disabled
+                  className="bg-red-100 text-red-500 border border-red-200 font-bold py-1 px-2 rounded text-[11px] sm:text-xs cursor-not-allowed whitespace-nowrap"
+                >
+                  Sai thông tin
+                </button>
+                <button
+                  onClick={() => handleDeleteRequest(row.id || row.Id)}
+                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95"
+                >
+                  Xóa
+                </button>
+              </div>
+            );
+          }
+
+          if (rowStatus === "3") {
+            return (
+              <div className="flex gap-1.5 justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleOpenModal('receive', row);
+                    setActiveTab(2);
+                  }}
+                  className="bg-pink-100 hover:bg-pink-200 text-red-600 border border-pink-200 font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95 whitespace-nowrap"
+                >
+                  Thiếu nguyên liệu
+                </button>
+                <button
+                  onClick={() => handleDeleteRequest(row.id || row.Id)}
+                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95"
+                >
+                  Xóa
+                </button>
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex gap-1.5 justify-end">
+              <button
+                onClick={() => handleOpenModal('receive', row)}
+                className="bg-[#F8A11F] hover:bg-[#e89418] text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95 whitespace-nowrap"
+              >
+                Nhận nguyên liệu
+              </button>
+            </div>
+          );
+        }
+
+        return (
+          <div className="flex gap-1.5 justify-end">
+            <button onClick={() => handleOpenModal('edit', row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95">
+              {isPurchasingEmployee && getReceiptStatus(row) === "2" ? "Sửa thông tin" : "Sửa"}
+            </button>
+            <button onClick={() => handleDeleteRequest(row.id || row.Id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95">Xóa</button>
+          </div>
+        );
+      },
     }
   ];
 
@@ -1074,7 +1413,7 @@ export const MaterialReceipts = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
+        {!isWarehouseEmployee && <div className="flex flex-col sm:flex-row gap-2">
           <div className="flex flex-row gap-2 w-full sm:w-auto">
             <button className="flex-1 sm:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
               <FileUp size={16} /> Nhập Excel
@@ -1092,7 +1431,7 @@ export const MaterialReceipts = () => {
           >
             <Plus size={18} /> Thêm phiếu mới
           </button>
-        </div>
+        </div>}
       </div>
 
       {loading ? (
@@ -1106,6 +1445,7 @@ export const MaterialReceipts = () => {
             columns={columns}
             data={filteredData}
             bodyCellClassName="!py-2 sm:!py-3"
+            rowClassName={(row) => isPurchasingEmployee && getReceiptStatus(row) === "2" ? "!bg-pink-100 hover:!bg-pink-120" : ""}
             renderExpansion={(row) => (
               <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-y-6 gap-x-8 text-sm">
@@ -1119,7 +1459,7 @@ export const MaterialReceipts = () => {
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">Người nhận hàng</span>
                         <div className="relative w-full"> {/* Rút gọn chiều rộng */}
-                          <SearchableSelect value={row.receiver} options={users} onChange={(val) => handleReceiverChange(row, val)} placeholder="Chọn người nhận..." className="w-full flex items-center border border-gray-300 rounded-md px-2 bg-white text-xs min-h-[34px]" />
+                          <SearchableSelect value={row.receiver} options={users} onChange={(val) => handleReceiverChange(row, val)} placeholder="Chọn người nhận..." disabled={isWarehouseEmployee || getReceiptStatus(row) === "4"} className="w-full flex items-center border border-gray-300 rounded-md px-2 bg-white text-xs min-h-[34px]" />
                         </div>
                       </div>
 
@@ -1128,19 +1468,18 @@ export const MaterialReceipts = () => {
                     <div className="flex flex-col gap-1 lg:hidden">
                       <span className="text-[10px] font-bold text-gray-400 uppercase">Kho lưu trữ</span>
                       <div className="relative w-full">
-                        <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenWarehousesModal(); }} className="absolute right-1 top-[-10px] text-blue-600 text-[9px] font-bold underline z-20 leading-none bg-white/80 px-1 rounded">hiệu chỉnh</button>
-                        <SearchableSelect value={row.warehouse} options={warehouses} onChange={(val) => handleWarehouseChange(row, val)} className="w-full flex items-center border border-gray-300 rounded-md px-2 bg-white text-xs min-h-[34px]" />
+                        {!(isWarehouseEmployee || getReceiptStatus(row) === "4") && <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenWarehousesModal(); }} className="absolute right-1 top-[-10px] text-blue-600 text-[9px] font-bold underline z-20 leading-none bg-white/80 px-1 rounded">hiệu chỉnh</button>}
+                        <SearchableSelect value={row.warehouse} options={warehouses} onChange={(val) => handleWarehouseChange(row, val)} disabled={isWarehouseEmployee || getReceiptStatus(row) === "4"} className="w-full flex items-center border border-gray-300 rounded-md px-2 bg-white text-xs min-h-[34px]" />
                       </div>
                     </div>
 
                     <div className="flex flex-col gap-1">
                       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Nhà cung cấp</span>
                       <div className="relative w-full max-w-[400px]">
-                        <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenSuppliersModal(); }} className="absolute right-1 top-[-10px] text-blue-600 text-[9px] font-bold underline z-20 leading-none bg-white/80 px-1 rounded">hiệu chỉnh</button>
-                        <SearchableSelect value={row.supplier} options={suppliers} onChange={(val) => handleSupplierChange(row, val)} placeholder="Chọn nhà cung cấp..." className="w-full flex items-center border border-gray-300 rounded-md px-2 bg-white text-xs min-h-[34px]" />
+                        {!(isWarehouseEmployee || getReceiptStatus(row) === "4") && <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenSuppliersModal(); }} className="absolute right-1 top-[-10px] text-blue-600 text-[9px] font-bold underline z-20 leading-none bg-white/80 px-1 rounded">hiệu chỉnh</button>}
+                        <SearchableSelect value={row.supplier} options={suppliers} onChange={(val) => handleSupplierChange(row, val)} placeholder="Chọn nhà cung cấp..." disabled={isWarehouseEmployee || getReceiptStatus(row) === "4"} className="w-full flex items-center border border-gray-300 rounded-md px-2 bg-white text-xs min-h-[34px]" usePortal />
                       </div>
                     </div>
-
                   </div>
 
                   <div className="flex flex-col gap-1 lg:col-span-2">
@@ -1170,7 +1509,7 @@ export const MaterialReceipts = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title={<span className="text-lg sm:text-xl">{modalMode === 'add' ? 'Tạo phiếu nhập mới' : modalMode === 'edit' ? 'Cập nhật phiếu nhập' : 'Chi tiết phiếu nhập'}</span>}
+        title={<span className="text-lg sm:text-xl">{modalMode === 'add' ? 'Tạo phiếu nhập mới' : modalMode === 'edit' ? 'Cập nhật phiếu nhập' : modalMode === 'receive' ? 'Nhận nguyên liệu' : 'Chi tiết phiếu nhập'}</span>}
         maxWidth={isModalMaximized ? "max-w-full" : "max-w-5xl"}
         isMaximized={isModalMaximized}
         onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}
@@ -1200,14 +1539,15 @@ export const MaterialReceipts = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in duration-300">
                 {/* Dòng 1: Mã phiếu nhập chiếm 1/2 */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Mã phiếu nhập <span className="text-red-500">*</span></label>
-                  <input type="text" name="materialReceiptCode" value={currentReceipt?.materialReceiptCode || ''} onChange={handleInputChange} className="w-full border border-gray-300 rounded-md p-1.5 h-[38px] text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="VD: PN-2024-001" required />
+                  <label className={`text-sm font-semibold ${receiptErrors.materialReceiptCode ? 'text-red-500' : 'text-gray-700'}`}>Mã phiếu nhập <span className="text-red-500">*</span></label>
+                  <input type="text" name="materialReceiptCode" value={currentReceipt?.materialReceiptCode || ''} onChange={handleInputChange} disabled={isReceiveMode} className={`w-full border ${receiptErrors.materialReceiptCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-1.5 h-[38px] text-sm focus:ring-2 outline-none ${isReceiveMode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} placeholder="VD: PN-2024-001" />
+                  {receiptErrors.materialReceiptCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{receiptErrors.materialReceiptCode}</p>}
                 </div>
                 <div className="hidden md:block"></div>
 
                 {/* Dòng 2: Nhà cung cấp và Số vận đơn */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Nhà cung cấp</label>
+                  <label className={`text-sm font-semibold ${receiptErrors.supplier ? 'text-red-500' : 'text-gray-700'}`}>Nhà cung cấp</label>
                   <div className="relative">
                     <button
                       type="button"
@@ -1216,12 +1556,13 @@ export const MaterialReceipts = () => {
                     >
                       hiệu chỉnh
                     </button>
-                    <SearchableSelect value={currentReceipt?.supplier || ''} options={suppliers} onChange={(val) => handleInputChange(val, 'supplier')} placeholder="Chọn nhà cung cấp..." />
+                    <SearchableSelect value={currentReceipt?.supplier || ''} options={suppliers} onChange={(val) => handleInputChange(val, 'supplier')} placeholder="Chọn nhà cung cấp..." error={!!receiptErrors.supplier} errorMessage={receiptErrors.supplier} disabled={isReceiveMode} />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Số vận đơn</label>
-                  <input type="text" name="deliveryNoteNumber" value={currentReceipt?.deliveryNoteNumber || ''} onChange={handleInputChange} className="w-full border border-gray-300 rounded-md p-1.5 h-[38px] text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nhập số vận đơn" />
+                  <label className={`text-sm font-semibold ${receiptErrors.deliveryNoteNumber ? 'text-red-500' : 'text-gray-700'}`}>Số vận đơn</label>
+                  <input type="text" name="deliveryNoteNumber" value={currentReceipt?.deliveryNoteNumber || ''} onChange={handleInputChange} disabled={isReceiveMode} className={`w-full border ${receiptErrors.deliveryNoteNumber ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-1.5 h-[38px] text-sm focus:ring-2 outline-none ${isReceiveMode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} placeholder="Nhập số vận đơn" />
+                  {receiptErrors.deliveryNoteNumber && <p className="text-red-500 text-[10px] mt-1 font-medium">{receiptErrors.deliveryNoteNumber}</p>}
                 </div>
 
                 {/* Dòng 3: Kho lưu trữ và Ngày nhận hàng */}
@@ -1241,6 +1582,7 @@ export const MaterialReceipts = () => {
                       onChange={(val) => handleInputChange(val, 'warehouse')}
                       placeholder="Chọn kho..."
                       placement={window.innerWidth < 768 ? "top" : "bottom"}
+                      disabled={isReceiveMode}
                     />
                   </div>
                 </div>
@@ -1250,6 +1592,10 @@ export const MaterialReceipts = () => {
                   value={currentReceipt?.receivingDate || ''}
                   onChange={handleInputChange}
                   placement={window.innerWidth < 768 ? "top" : "bottom"}
+                  error={!!receiptErrors.receivingDate}
+                  errorMessage={receiptErrors.receivingDate}
+                  compactCalendar
+                  className={`w-full pr-10 border ${receiptErrors.receivingDate ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md focus:outline-none focus:ring-2 transition-all text-left flex items-center p-1.5 min-h-[38px] text-sm ${isReceiveMode ? 'bg-gray-100 text-gray-500 pointer-events-none cursor-not-allowed' : 'bg-white cursor-pointer'}`}
                 />
               </div>
             )}
@@ -1258,7 +1604,7 @@ export const MaterialReceipts = () => {
             {activeTab === 2 && ( /* This is the div for Tab 2 content */
               <div className="flex flex-col gap-5 animate-in fade-in duration-300">
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Nguyên liệu nhập</label>
+                  <label className={`text-sm font-semibold ${receiptErrors.items ? 'text-red-500' : 'text-gray-700'}`}>Nguyên liệu nhập</label>
                   <MultiSearchableSelect
                     selectedValues={currentReceipt?.items?.map(i => i.materialId) || []}
                     options={allMaterials}
@@ -1269,13 +1615,17 @@ export const MaterialReceipts = () => {
                         return existing || { materialId: id, shippedQuantity: 0, deliveredQuantity: 0, mfgDate: '', expiredDate: '', batchCode: '' };
                       });
                       setCurrentReceipt(prev => ({ ...prev, items: updatedItems }));
+                      if (receiptErrors.items) setReceiptErrors(prev => ({ ...prev, items: null }));
                     }}
+                    error={!!receiptErrors.items}
+                    errorMessage={receiptErrors.items}
+                    disabled={isReceiveMode}
                   />
                 </div>
 
                 {/* CustomDatatable đã thay thế bảng thủ công */}
                 <div className="overflow-x-auto overflow-y-auto max-h-[350px] sm:max-h-none sm:overflow-visible custom-scrollbar border border-gray-100 sm:border-none rounded-lg">
-                  <CustomDatatable columns={itemColumns} data={currentReceipt?.items || []} paginationClassName="!py-1 !px-4" headerCellClassName="!py-1" bodyCellClassName="!py-2" />
+                  <CustomDatatable columns={receiptItemColumns} data={currentReceipt?.items || []} paginationClassName="!py-1 !px-4" headerCellClassName="!py-1" bodyCellClassName="!py-2" />
                 </div>
               </div>
             )}
@@ -1285,19 +1635,22 @@ export const MaterialReceipts = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in duration-300">
                 {/* Hàng 1: Người nhận hàng chiếm 1/2 màn hình, nằm riêng một hàng */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Người nhận hàng</label>
-                  <SearchableSelect value={currentReceipt?.receiver || ''} options={users} onChange={(val) => handleInputChange(val, 'receiver')} placeholder="Chọn nhân viên..." />
+                  <label className={`text-sm font-semibold ${receiptErrors.receiver ? 'text-red-500' : 'text-gray-700'}`}>Người nhận hàng</label>
+                  <SearchableSelect value={currentReceipt?.receiver || ''} options={users} onChange={(val) => handleInputChange(val, 'receiver')} placeholder="Chọn nhân viên..." error={!!receiptErrors.receiver} errorMessage={receiptErrors.receiver} disabled={isReceiveMode} />
                 </div>
                 <div className="hidden md:block"></div>
 
                 {/* Thành phần mới: Ban kiểm nghiệm sản phẩm */}
                 <div className="md:col-span-2 flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Ban kiểm nghiệm sản phẩm</label>
+                  <label className={`text-sm font-semibold ${receiptErrors.inspectorPanel ? 'text-red-500' : 'text-gray-700'}`}>Ban kiểm nghiệm sản phẩm</label>
                   <MultiSearchableSelect
                     placeholder="Chọn thành viên ban kiểm nghiệm (1 Trưởng ban, tối đa 2 Ủy ban)..."
                     selectedValues={currentReceipt?.inspectorPanel || []}
                     options={inspectorOptions}
                     onChange={handleInspectorChange}
+                    error={!!receiptErrors.inspectorPanel}
+                    errorMessage={receiptErrors.inspectorPanel}
+                    disabled={isReceiveMode}
                   />
                   <p className="text-[10px] text-gray-500 italic mt-0.5">* Quy định: 1 Trưởng ban và tối đa 2 Ủy ban kiểm nghiệm</p>
                 </div>
@@ -1308,7 +1661,7 @@ export const MaterialReceipts = () => {
                   </label>
                   <div className="flex items-center">
                     <div className="relative flex-1 group">
-                      <input type="file" onChange={(e) => handleFileUpload(e, 'certificateOfOrigin')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf" />
+                      <input type="file" onChange={(e) => handleFileUpload(e, 'certificateOfOrigin')} disabled={isReceiveMode} className={`absolute inset-0 w-full h-full opacity-0 z-10 ${isReceiveMode ? 'cursor-not-allowed' : 'cursor-pointer'}`} accept=".pdf" />
                       <div className={`w-full border-2 border-dashed border-gray-300 rounded-l-lg p-2 flex items-center justify-center gap-2 bg-gray-50 group-hover:border-blue-400 transition-all ${currentReceipt?.certificateOfOrigin && typeof currentReceipt.certificateOfOrigin === 'string'
                         ? 'border-r-0'
                         : ''
@@ -1346,7 +1699,7 @@ export const MaterialReceipts = () => {
                   </label>
                   <div className="flex items-center">
                     <div className="relative flex-1 group"> {/* This is the div (lines 747-763) */}
-                      <input type="file" onChange={(e) => handleFileUpload(e, 'certificateOfQuality')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,image/*" />
+                      <input type="file" onChange={(e) => handleFileUpload(e, 'certificateOfQuality')} disabled={isReceiveMode} className={`absolute inset-0 w-full h-full opacity-0 z-10 ${isReceiveMode ? 'cursor-not-allowed' : 'cursor-pointer'}`} accept=".pdf,image/*" />
                       <div className={`w-full border-2 border-dashed border-gray-300 rounded-l-lg p-2 flex items-center justify-center gap-2 bg-gray-50 group-hover:border-blue-400 transition-all ${currentReceipt?.certificateOfQuality && typeof currentReceipt.certificateOfQuality === 'string'
                         ? 'border-r-0'
                         : ''
@@ -1382,7 +1735,7 @@ export const MaterialReceipts = () => {
                   <label className="text-sm font-semibold text-gray-700">Biên bản giám định</label>
                   <div className="flex items-center"> {/* This is the div (lines 778-794) */}
                     <div className="relative flex-1 group">
-                      <input type="file" onChange={(e) => handleFileUpload(e, 'inspectationReport')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,image/*" />
+                      <input type="file" onChange={(e) => handleFileUpload(e, 'inspectationReport')} disabled={isReceiveMode} className={`absolute inset-0 w-full h-full opacity-0 z-10 ${isReceiveMode ? 'cursor-not-allowed' : 'cursor-pointer'}`} accept=".pdf,image/*" />
                       <div className={`w-full border-2 border-dashed border-gray-300 rounded-l-lg p-2.5 flex items-center justify-center gap-2 bg-gray-50 group-hover:border-blue-400 transition-all ${currentReceipt?.inspectationReport && typeof currentReceipt.inspectationReport === 'string'
                         ? 'border-r-0'
                         : ''
@@ -1417,14 +1770,14 @@ export const MaterialReceipts = () => {
 
                 <div className="md:col-span-2 flex flex-col gap-1">
                   <label className="text-sm font-semibold text-gray-700">Điều kiện bảo quản đặc biệt</label>
-                  <textarea name="specialStorageCondition" value={currentReceipt?.specialStorageCondition || ''} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[40px] sm:min-h-[40px]" ></textarea>
+                  <textarea name="specialStorageCondition" value={currentReceipt?.specialStorageCondition || ''} onChange={handleInputChange} disabled={isReceiveMode} className={`w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[40px] sm:min-h-[40px] ${isReceiveMode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} ></textarea>
                 </div>
               </div>
             )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t sm:justify-end sm:items-center">
-            {activeTab === 3 && (
+            {activeTab === 3 && !isReceiveMode && (
               <button
                 type="button"
                 disabled={!canExportInspectionReport}
@@ -1438,15 +1791,42 @@ export const MaterialReceipts = () => {
                 <FileText size={18} /> Biên bản giám định
               </button>
             )}
-            <div className="flex gap-3 w-full sm:w-auto order-2 sm:order-1">
+            <div className={`flex gap-3 w-full sm:w-auto order-2 sm:order-1 ${currentReceiptStatus === "3" ? "justify-center" : ""}`}>
+              {isReceiveMode && (
+                <>
+                  {currentReceiptStatus !== '3' && (
+                    <button
+                      type="button"
+                      onClick={handleReceiveWrongInfo}
+                      className="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-6 py-2.5 rounded-lg font-bold transition-colors text-sm"
+                    >
+                      Sai thông tin
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleReceiveConfirm}
+                    className="hidden sm:flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm"
+                  >
+                    Nhận nguyên liệu
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReceiveConfirm}
+                    className="sm:hidden sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-8 py-1.5 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm"
+                  >
+                    Nhận
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg font-medium transition-colors text-sm"
+                className={`flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg font-medium transition-colors text-sm ${isReceiveMode ? 'hidden' : ''}`}
               >
                 {modalMode === 'view' ? 'Đóng' : 'Hủy bỏ'}
               </button>
-              {modalMode !== 'view' && (
+              {modalMode !== 'view' && !isReceiveMode && (
                 <button type="submit" className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm">
                   Lưu dữ liệu
                 </button>
@@ -1620,13 +2000,14 @@ export const MaterialReceipts = () => {
                   });
                   setCurrentReceipt(prev => ({ ...prev, items: updatedItems }));
                 }}
+                disabled={isMaterialInfoReadOnlyMode}
               />
             </div>
 
             {/* Bảng danh sách nguyên liệu y hệt Tab 2 */}
             <div className="overflow-x-auto overflow-y-auto max-h-[400px] sm:max-h-none sm:overflow-visible custom-scrollbar border border-gray-100 sm:border-none rounded-lg">
               <CustomDatatable
-                columns={itemColumns}
+                columns={receiptItemColumns}
                 data={currentReceipt?.items || []}
                 paginationClassName="!py-1 !px-4"
                 headerCellClassName="!py-1"
@@ -1639,9 +2020,11 @@ export const MaterialReceipts = () => {
             <button type="button" onClick={() => setIsMaterialInfoModalOpen(false)} className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-medium transition-colors text-sm">
               Đóng
             </button>
-            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-2 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm">
-              Lưu thông tin
-            </button>
+            {currentReceiptStatus !== '4' && (
+              <button type="submit" disabled={isWarehouseMaterialInfoMode && currentReceiptStatus !== '1'} className={`px-10 py-2 rounded-lg font-bold shadow-lg transition-all active:scale-95 text-sm ${isWarehouseMaterialInfoMode && currentReceiptStatus !== '1' ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100'}`}>
+                Lưu thông tin
+              </button>
+            )}
           </div>
         </form>
       </Modal>
@@ -1673,6 +2056,6 @@ export const MaterialReceipts = () => {
         type={(confirmModal.type === 'export' || confirmModal.type === 'download') ? 'export' : 'danger'}
       />
       <AppNotification isOpen={notification.isOpen} message={notification.message} type={notification.type} onClose={() => setNotification({ ...notification, isOpen: false })} />
-    </div>
+    </div >
   );
 };

@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { MapPin, Truck, Package, Plus, Trash2, Edit3, ArrowRight, Search, MapPinned, FileDown, FileUp, ChevronRight, User } from 'lucide-react';
+import { MapPin, Truck, Package, Plus, Trash2, Edit3, ArrowRight, Search, MapPinned, FileDown, FileUp, ChevronRight } from 'lucide-react';
 import { TbSortDescending } from "react-icons/tb";
 import { Modal, CustomSelect, AppNotification, CustomConfirm, CustomDatatable } from '../customComponent/customComponent';
 import { getTransportRoutes, createTransportRoute, updateTransportRoute, deleteTransportRoute } from '../controller/transportRoutesController';
@@ -73,6 +73,12 @@ export const TransportRoutes = () => {
   const [sortMenu, setSortMenu] = useState({ isOpen: false, activeField: null });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [routeSelectionModal, setRouteSelectionModal] = useState({
+    isOpen: false,
+    type: null,
+    route: null,
+    search: '',
+  });
 
   // Lắng nghe sự kiện click toàn cục để đóng menu khi bấm ra ngoài
   useEffect(() => {
@@ -220,6 +226,7 @@ export const TransportRoutes = () => {
       const updated = await updateTransportRoute(route.id, { ...route, transportVehicle: parseInt(newVehicleId) });
       setRoutes(prev => prev.map(r => r.id === updated.id ? updated : r));
       setOpenVehicleMenuId(null);
+      setRouteSelectionModal({ isOpen: false, type: null, route: null, search: '' });
       showNotification("Cập nhật xe hàng thành công!");
     } catch (err) {
       showNotification("Lỗi khi cập nhật xe hàng.", "error");
@@ -233,10 +240,36 @@ export const TransportRoutes = () => {
       setOpenToMenuId(null);
       setOpenRouteMenuAnchorKey(null);
       setRouteMenuRect(null);
+      setRouteSelectionModal({ isOpen: false, type: null, route: null, search: '' });
       showNotification("Cập nhật điểm đến thành công!");
     } catch (err) {
       showNotification("Lỗi khi cập nhật điểm đến.", "error");
     }
+  };
+
+  const handleDriverChange = async (route, newDriverId) => {
+    try {
+      const updated = await updateTransportRoute(route.id, { ...route, driver: parseInt(newDriverId) });
+      setRoutes(prev => prev.map(r => r.id === updated.id ? updated : r));
+      setRouteSelectionModal({ isOpen: false, type: null, route: null, search: '' });
+      showNotification("Cập nhật tài xế thành công!");
+    } catch (err) {
+      showNotification("Lỗi khi cập nhật tài xế.", "error");
+    }
+  };
+
+  const openRouteSelectionModal = (route, type) => {
+    setOpenFromMenuId(null);
+    setOpenToMenuId(null);
+    setOpenVehicleMenuId(null);
+    setOpenRouteMenuAnchorKey(null);
+    setRouteMenuRect(null);
+    setMenuSearchQuery('');
+    setRouteSelectionModal({ isOpen: true, type, route, search: '' });
+  };
+
+  const closeRouteSelectionModal = () => {
+    setRouteSelectionModal({ isOpen: false, type: null, route: null, search: '' });
   };
 
   const handleRequestExportExcel = () => {
@@ -245,35 +278,6 @@ export const TransportRoutes = () => {
       type: 'export',
       title: 'Xác nhận xuất Excel',
       message: 'Bạn có chắc chắn muốn xuất danh sách chuyến hàng ra tệp Excel không?'
-    });
-  };
-
-  const toggleRouteMenu = (e, routeId, menuType) => {
-    e.stopPropagation();
-    const anchorKey = `${menuType}-${routeId}`;
-    const isVehicleMenu = menuType === 'vehicle';
-    const isSameMenuOpen = isVehicleMenu ? openVehicleMenuId === routeId : openToMenuId === routeId;
-
-    if (isSameMenuOpen && openRouteMenuAnchorKey === anchorKey) {
-      if (isVehicleMenu) setOpenVehicleMenuId(null);
-      else setOpenToMenuId(null);
-      setOpenRouteMenuAnchorKey(null);
-      setRouteMenuRect(null);
-      setMenuSearchQuery('');
-      return;
-    }
-
-    setOpenFromMenuId(null);
-    setOpenVehicleMenuId(isVehicleMenu ? routeId : null);
-    setOpenToMenuId(isVehicleMenu ? null : routeId);
-    setOpenRouteMenuAnchorKey(anchorKey);
-    setMenuSearchQuery('');
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    setRouteMenuRect({
-      left: rect.left + (rect.width / 2) - 112,
-      top: rect.bottom + 4,
-      width: 224,
     });
   };
 
@@ -846,6 +850,16 @@ export const TransportRoutes = () => {
     }
   };
 
+  const routeSelectionSearch = routeSelectionModal.search.toLowerCase();
+  const routeSelectionItems = routeSelectionModal.type === 'vehicle'
+    ? vehicles.filter(v =>
+      v.label.toLowerCase().includes(routeSelectionSearch) ||
+      (v.vehicleCode || '').toLowerCase().includes(routeSelectionSearch)
+    )
+    : routeSelectionModal.type === 'customer'
+      ? customers.filter(c => c.label.toLowerCase().includes(routeSelectionSearch))
+      : drivers.filter(d => d.label.toLowerCase().includes(routeSelectionSearch));
+
   return (
     <div className="p-2 lg:p-6">
       <div className="mb-6 sm:mb-8">
@@ -1014,9 +1028,10 @@ export const TransportRoutes = () => {
                       <button
                         ref={(el) => { routeMenuAnchorRefs.current[`vehicle-${route.id}`] = el; }}
                         onClick={(e) => {
-                          toggleRouteMenu(e, route.id, 'vehicle');
+                          e.stopPropagation();
+                          openRouteSelectionModal(route, 'vehicle');
                         }}
-                        className={`p-1.5 rounded-lg transition-colors ${openVehicleMenuId === route.id ? 'bg-blue-600 text-white shadow-md' : 'text-blue-500 hover:bg-blue-50'}`}
+                        className={`p-1.5 rounded-lg transition-colors ${routeSelectionModal.isOpen && routeSelectionModal.type === 'vehicle' && routeSelectionModal.route?.id === route.id ? 'bg-blue-600 text-white shadow-md' : 'text-blue-500 hover:bg-blue-50'}`}
                         title="Thay đổi xe hàng"
                       >
                         <Truck size={20} />
@@ -1065,9 +1080,10 @@ export const TransportRoutes = () => {
                       <button
                         ref={(el) => { routeMenuAnchorRefs.current[`to-${route.id}`] = el; }}
                         onClick={(e) => {
-                          toggleRouteMenu(e, route.id, 'to');
+                          e.stopPropagation();
+                          openRouteSelectionModal(route, 'customer');
                         }}
-                        className={`p-3 rounded-xl mb-2 transition-colors ${openToMenuId === route.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
+                        className={`p-3 rounded-xl mb-2 transition-colors ${routeSelectionModal.isOpen && routeSelectionModal.type === 'customer' && routeSelectionModal.route?.id === route.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
                         title="Thay đổi điểm đến"
                       >
                         <MapPin size={24} />
@@ -1137,6 +1153,68 @@ export const TransportRoutes = () => {
           })}
         </div>
       )}
+
+      <Modal
+        isOpen={routeSelectionModal.isOpen}
+        onClose={closeRouteSelectionModal}
+        title={routeSelectionModal.type === 'vehicle' ? 'Chọn xe hàng' : routeSelectionModal.type === 'customer' ? 'Chọn điểm đến' : 'Chọn tài xế'}
+        maxWidth="max-w-xl"
+      >
+        <div className="space-y-4">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder={routeSelectionModal.type === 'vehicle' ? 'Tìm mã xe hoặc tên xe...' : routeSelectionModal.type === 'customer' ? 'Tìm tên khách hàng...' : 'Tìm tên tài xế...'}
+              value={routeSelectionModal.search}
+              onChange={(e) => setRouteSelectionModal(prev => ({ ...prev, search: e.target.value }))}
+              autoFocus
+            />
+          </div>
+
+          <div className="max-h-[55vh] overflow-y-auto border border-gray-100 rounded-lg p-1 bg-gray-50">
+            {routeSelectionItems.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {routeSelectionItems.map((item) => {
+                  const isSelected = routeSelectionModal.type === 'vehicle'
+                    ? String(routeSelectionModal.route?.transportVehicle) === String(item.value)
+                    : routeSelectionModal.type === 'customer'
+                      ? String(routeSelectionModal.route?.to) === String(item.value)
+                      : String(routeSelectionModal.route?.driver) === String(item.value);
+
+                  return (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => {
+                        if (!routeSelectionModal.route) return;
+                        if (routeSelectionModal.type === 'vehicle') {
+                          handleVehicleChange(routeSelectionModal.route, item.value);
+                        } else if (routeSelectionModal.type === 'customer') {
+                          handleToChange(routeSelectionModal.route, item.value);
+                        } else {
+                          handleDriverChange(routeSelectionModal.route, item.value);
+                        }
+                      }}
+                      className={`w-full text-left px-3 py-2.5 rounded-md border transition-all ${isSelected
+                        ? 'bg-blue-50 border-blue-300 text-blue-700 font-bold'
+                        : 'bg-white border-transparent text-gray-700 hover:border-blue-200 hover:bg-blue-50/50'
+                        }`}
+                    >
+                      <span className="block text-sm leading-tight break-words">
+                        {routeSelectionModal.type === 'vehicle' ? `${item.vehicleCode} - ${item.label}` : item.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-sm text-gray-400">Không có dữ liệu phù hợp</div>
+            )}
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal Thêm Lộ Trình */}
       <Modal

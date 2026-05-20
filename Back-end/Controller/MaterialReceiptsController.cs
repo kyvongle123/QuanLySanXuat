@@ -61,6 +61,31 @@ namespace MyProject.Backend.Controller
             return Ok(updatedReceipt);
         }
 
+        [HttpPost("{id}/receive")]
+        public async Task<IActionResult> ReceiveMaterialReceipt(int id, [FromBody] ReceiveMaterialReceiptDto receiptDto)
+        {
+            try
+            {
+                var updatedReceipt = await _receiptService.ReceiveReceiptAsync(id, receiptDto);
+                if (updatedReceipt == null) return NotFound();
+
+                return Ok(updatedReceipt);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("{id}/wrong-info")]
+        public async Task<IActionResult> MarkMaterialReceiptWrongInfo(int id)
+        {
+            var updatedReceipt = await _receiptService.MarkWrongInfoAsync(id);
+            if (updatedReceipt == null) return NotFound();
+
+            return Ok(updatedReceipt);
+        }
+
         [HttpGet("{id}/export-inspection-report")]
         public async Task<IActionResult> ExportInspectionReport(int id)
         {

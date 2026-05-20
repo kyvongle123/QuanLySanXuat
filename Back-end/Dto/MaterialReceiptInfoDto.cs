@@ -10,7 +10,7 @@ namespace MyProject.Dto
         public string? DeliveryNoteNumber { get; set; }
         public DateTime? ReceivingDate { get; set; }
         public DateTime? ExpiredDate { get; set; }
-        public int? QualityStatus { get; set; }
+        public int? Status { get; set; }
         public int? Warehouse { get; set; }
         public int? Supplier { get; set; }
         public string? SpecialStorageCondition { get; set; }

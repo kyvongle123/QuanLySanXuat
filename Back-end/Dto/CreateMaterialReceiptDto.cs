@@ -23,7 +23,7 @@ namespace MyProject.Dto
         public string? DeliveryNoteNumber { get; set; }
         public DateTime? ReceivingDate { get; set; }
         public DateTime? ExpiredDate { get; set; }
-        public int? QualityStatus { get; set; }
+        public int? Status { get; set; }
         public int? Warehouse { get; set; }
         public int? Supplier { get; set; }
         public string? SpecialStorageCondition { get; set; }
@@ -37,5 +37,16 @@ namespace MyProject.Dto
         public string? CreatedBy { get; set; }
         public List<MaterialReceiptBatchDto> MaterialReceiptBatchList { get; set; } = new();
         public List<int>? InspectorPanel { get; set; }
+    }
+
+    public class ReceiveMaterialReceiptBatchDto
+    {
+        public int MaterialId { get; set; }
+        public int DeliveredQuantity { get; set; }
+    }
+
+    public class ReceiveMaterialReceiptDto
+    {
+        public List<ReceiveMaterialReceiptBatchDto> Items { get; set; } = new();
     }
 }

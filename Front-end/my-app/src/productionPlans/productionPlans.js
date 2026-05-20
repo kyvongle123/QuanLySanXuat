@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, FileDown, Calendar, Package, ClipboardList, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
@@ -487,7 +487,7 @@ export const ProductionPlans = () => {
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalMode === 'add' ? 'Thêm kế hoạch mới' : 'Chỉnh sửa kế hoạch'} isMaximized={isModalMaximized} onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}>
         {/* Tab Headers */}
         <div className="flex border-b mb-4">
-          <button type="button" onClick={() => setActiveTab('general')} className={`py-2 px-4 transition-all ${activeTab === 'general' ? 'border-b-2 border-blue-500 font-bold text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Thông tin chung</button>
+          <button type="button" onClick={() => setActiveTab('general')} className={`py-2 px-4 transition-all ${activeTab === 'general' ? 'border-b-2 border-blue-500 font-bold text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Thông tin cơ bản</button>
           <button type="button" onClick={() => setActiveTab('details')} className={`py-2 px-4 transition-all ${activeTab === 'details' ? 'border-b-2 border-blue-500 font-bold text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Thông tin chi tiết</button>
         </div>
 

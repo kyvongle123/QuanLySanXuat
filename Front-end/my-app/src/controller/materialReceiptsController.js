@@ -13,7 +13,7 @@ const normalizeReceiptData = (data) => {
             deliveryNoteNumber: item.deliveryNoteNumber || item.DeliveryNoteNumber,
             receivingDate: item.receivingDate || item.ReceivingDate,
             expiredDate: item.expiredDate || item.ExpiredDate,
-            qualityStatus: item.qualityStatus || item.QualityStatus,
+            status: item.status || item.status,
             warehouse: item.warehouse || item.Warehouse,
             supplier: item.supplier || item.Supplier,
             specialStorageCondition: item.specialStorageCondition || item.SpecialStorageCondition,
@@ -149,6 +149,26 @@ export const deleteMaterialReceipt = async (id) => {
         await axios.delete(`${API_URL}/${id}`);
     } catch (error) {
         console.error(`Error deleting material receipt ${id}:`, error);
+        throw error;
+    }
+};
+
+export const receiveMaterialReceipt = async (id, items) => {
+    try {
+        const response = await axios.post(`${API_URL}/${id}/receive`, { items });
+        return normalizeReceiptData(response.data);
+    } catch (error) {
+        console.error(`Error receiving material receipt ${id}:`, error);
+        throw error;
+    }
+};
+
+export const markMaterialReceiptWrongInfo = async (id) => {
+    try {
+        const response = await axios.post(`${API_URL}/${id}/wrong-info`);
+        return normalizeReceiptData(response.data);
+    } catch (error) {
+        console.error(`Error marking material receipt ${id} wrong info:`, error);
         throw error;
     }
 };

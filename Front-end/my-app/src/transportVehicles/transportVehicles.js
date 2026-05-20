@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { Search, FileUp, FileDown, Plus, ChevronRight } from 'lucide-react'; // Đã thêm ChevronRight cho expansion
-import { CustomDatatable, Modal, CustomSelect, AppNotification, CustomConfirm } from '../customComponent/customComponent';
+import { Search, FileUp, FileDown, ChevronRight } from 'lucide-react'; // Đã thêm ChevronRight cho expansion
+import { CustomDatatable, Modal, AppNotification, CustomConfirm } from '../customComponent/customComponent';
 import { getTransportVehicles, createTransportVehicle, updateTransportVehicle, deleteTransportVehicle } from '../controller/transportVehiclesController';
 
 export const TransportVehicles = () => {
@@ -194,21 +194,6 @@ export const TransportVehicles = () => {
   };
 
   const columns = [
-    {
-      header: '',
-      className: 'w-[40px] text-center !px-1',
-      render: (row, { isExpanded, toggleExpand }) => (
-        <button
-          onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
-          className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
-        >
-          <ChevronRight
-            size={18}
-            className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`}
-          />
-        </button>
-      ),
-    },
     { header: 'STT', className: 'w-[50px] text-center hidden sm:table-cell', render: (_, { index }) => index },
     {
       header: 'Mã số xe', // Đã sửa lại tên cột cho rõ ràng

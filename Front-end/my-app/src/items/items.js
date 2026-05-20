@@ -78,7 +78,7 @@ const AnchoredPortalMenu = ({ isOpen, onClose, trigger, children, className = ''
           ref={menuRef}
           style={menuStyle}
           onClick={(e) => e.stopPropagation()}
-          className={`bg-white rounded-md shadow-2xl border border-gray-100 p-1 flex flex-col origin-top whitespace-normal z-[1000] transition-all duration-150 ease-out ${isPositioned ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-1 scale-[0.98] pointer-events-none'} ${className}`}
+          className={`bg-white rounded-md shadow-2xl border border-gray-100 p-1 flex flex-col origin-top whitespace-normal z-[1000] ${isPositioned ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-1 scale-[0.98] pointer-events-none'} ${className}`}
         >
           {children}
         </div>,
@@ -196,10 +196,12 @@ export const Items = () => {
 
   const closeNotification = () => setNotification(prev => ({ ...prev, isOpen: false }));
 
+  const getEntityId = (entity) => entity?.id || entity?.ID || entity?.Id;
+
   // Logic lọc dữ liệu dựa trên searchTerm
   const filteredItems = useMemo(() => {
     return items.filter(item => {
-      const categoryLabel = categories.find(c => String(c.value) === String(item.category))?.label || '';
+      const categoryLabel = categories.find(c => String(c.value) === String(item.category || item.Category))?.label || '';
       const statusLabel = itemStatuses.find(s => String(s.value) === String(item.status))?.label || '';
       const warehouseLabel = warehouses.find(w => String(w.value) === String(item.location))?.label || '';
       return (
@@ -557,8 +559,11 @@ export const Items = () => {
   const handleCategoryChange = async (item, newCategoryId) => {
     try {
       const updatedValue = newCategoryId === "" ? null : parseInt(newCategoryId);
-      const updated = await updateItem(item.id, { ...item, category: updatedValue });
-      setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+      const itemId = getEntityId(item);
+      const updated = await updateItem(itemId, { ...item, category: updatedValue, Category: updatedValue });
+      const updatedItem = { ...item, ...updated, category: updatedValue, Category: updatedValue };
+      const updatedId = getEntityId(updatedItem);
+      setItems(prev => prev.map(i => getEntityId(i) === updatedId ? updatedItem : i));
       setOpenCategoryMenuId(null);
       showNotification("Cập nhật danh mục thành công!");
     } catch (err) {
@@ -799,7 +804,7 @@ export const Items = () => {
           </button>
 
           {openLocationMenuId === row.id && (
-            <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+            <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in zoom-in duration-200 origin-top whitespace-normal">
               <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                 <div className="relative">
                   <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -866,7 +871,7 @@ export const Items = () => {
             </button>
 
             {isOpen && (
-              <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+              <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in zoom-in duration-200 origin-top whitespace-normal">
                 <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                   <div className="relative">
                     <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -1024,7 +1029,7 @@ export const Items = () => {
 
       // Đổ dữ liệu vào rows và xử lý mapping label
       filteredItems.forEach((item) => {
-        const categoryLabel = categories.find(c => String(c.value) === String(item.category))?.label || '';
+        const categoryLabel = categories.find(c => String(c.value) === String(item.category || item.Category))?.label || '';
         const statusLabel = itemStatuses.find(s => String(s.value) === String(item.status))?.label || '';
         const warehouseLabel = warehouses.find(w => String(w.value) === String(item.location))?.label || '';
 
@@ -1181,7 +1186,7 @@ export const Items = () => {
       render: (row) => (
         <div className="relative">
           <AnchoredPortalMenu
-            isOpen={openCategoryMenuId === row.id}
+            isOpen={openCategoryMenuId === getEntityId(row)}
             onClose={() => setOpenCategoryMenuId(null)}
             trigger={(
               <>
@@ -1195,8 +1200,9 @@ export const Items = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (openCategoryMenuId !== row.id) setMenuSearchQuery('');
-                    setOpenCategoryMenuId(openCategoryMenuId === row.id ? null : row.id);
+                    const rowId = getEntityId(row);
+                    if (openCategoryMenuId !== rowId) setMenuSearchQuery('');
+                    setOpenCategoryMenuId(openCategoryMenuId === rowId ? null : rowId);
                     setOpenStatusMenuId(null);
                     setOpenManufactoryMenuId(null);
                     setOpenLocationMenuId(null);
@@ -1204,7 +1210,7 @@ export const Items = () => {
                   className="bg-white border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none font-medium text-left relative min-h-[30px] hover:border-blue-400 transition-colors"
                 >
                   <span className="truncate block">
-                    {categories.find(c => String(c.value) === String(row.category))?.label || '-- Chọn --'}
+                    {categories.find(c => String(c.value) === String(row.category || row.Category))?.label || '-- Chọn --'}
                   </span>
                   <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
                     <ChevronDown size={14} />
@@ -1233,8 +1239,13 @@ export const Items = () => {
               {categories.filter(cat => cat.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((cat) => (
                 <button
                   key={cat.value}
-                  onClick={() => handleCategoryChange(row, cat.value)}
-                  className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.category) === String(cat.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCategoryChange(row, cat.value);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.category || row.Category) === String(cat.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
                     }`}
                 >
                   <span className="block w-full !whitespace-normal break-words leading-tight">{cat.label}</span>
@@ -1287,7 +1298,7 @@ export const Items = () => {
           /> */}
 
           {selectedItemIds.length < 1 && (
-            <div className="flex gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
+            <div className="flex gap-2 animate-in slide-in-from-left-2 duration-200">
               <button
                 onClick={(e) => { e.stopPropagation(); handleEditItem(row); }}
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
@@ -1499,7 +1510,76 @@ export const Items = () => {
                     {/* Thông tin hiển thị khi bị ẩn ở bảng chính trên Mobile */}
                     <div className="flex flex-col gap-1 lg:hidden flex-none">
                       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Danh mục</span>
+                      <div className="relative sm:hidden">
+                        <AnchoredPortalMenu
+                          isOpen={openCategoryMenuId === getEntityId(row)}
+                          onClose={() => setOpenCategoryMenuId(null)}
+                          trigger={(
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setIsCategoryMgmtModalOpen(true) }}
+                                className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+                              >
+                                hiệu chỉnh
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rowId = getEntityId(row);
+                                  if (openCategoryMenuId !== rowId) setMenuSearchQuery('');
+                                  setOpenCategoryMenuId(openCategoryMenuId === rowId ? null : rowId);
+                                  setOpenStatusMenuId(null);
+                                  setOpenManufactoryMenuId(null);
+                                  setOpenLocationMenuId(null);
+                                }}
+                                className="bg-white border border-gray-300 text-gray-900 text-[11px] rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 pr-8 appearance-none cursor-pointer outline-none font-medium text-left relative min-h-[30px] hover:border-blue-400 transition-colors"
+                              >
+                                <span className="truncate block">
+                                  {categories.find(c => String(c.value) === String(row.category || row.Category))?.label || '-- Chọn --'}
+                                </span>
+                                <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                                  <ChevronDown size={14} />
+                                </div>
+                              </button>
+                            </>
+                          )}
+                          anchorClassName="w-40"
+                        >
 
+                          <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10 sm:hidden">
+                            <div className="relative">
+                              <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                              <input
+                                type="text"
+                                className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
+                                placeholder="Lọc danh mục"
+                                value={menuSearchQuery}
+                                onChange={(e) => setMenuSearchQuery(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                              />
+                            </div>
+                          </div>
+                          <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5 sm:hidden">
+                            {categories.filter(cat => cat.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((cat) => (
+                              <button
+                                key={cat.value}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleCategoryChange(row, cat.value);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.category || row.Category) === String(cat.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                                  }`}
+                              >
+                                <span className="block w-full !whitespace-normal break-words leading-tight">{cat.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </AnchoredPortalMenu>
+                      </div>
                     </div>
 
                     <div className="flex flex-col gap-1 sm:hidden flex-none">
@@ -1732,7 +1812,7 @@ export const Items = () => {
                         </button>
 
                         {openTypeMenuId === (row.id || row.ID) && (
-                          <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal">
+                          <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in zoom-in duration-200 origin-top whitespace-normal">
                             <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
                               <div className="relative">
                                 <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
