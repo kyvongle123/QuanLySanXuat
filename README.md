@@ -1,6 +1,6 @@
-# QuanLySanXuat
+# App quản lý sản xuất
 
-Ứng dụng quản lý sản xuất cho nhà máy, hỗ trợ quản lý nguyên vật liệu, kho, quản lý nhập nguyên liệu, nhận đơn hàng, tạo đơn sản xuất, lập kế hoạch sản xuất, quản lý tổ sản xuất, máy móc,...
+Ứng dụng hỗ trợ quản lý sản xuất cho nhà máy
 
 ## 🌐 Truy cập website
 
@@ -98,7 +98,6 @@ Người dùng có thể tiếp cận hệ thống theo luồng sau:
 **Lê Kỳ Vọng**
 
 Project được xây dựng nhằm phát triển hệ thống quản lý sản xuất cho nhà máy
-
 ---
 
 
