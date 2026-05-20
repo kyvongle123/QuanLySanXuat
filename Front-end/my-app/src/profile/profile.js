@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Phone, MapPin, Camera, Save, ArrowLeft, ShieldCheck, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getUser, updateUser } from '../controller/usersController';
+import { getUser, updateUser, uploadUserAvatar } from '../controller/usersController';
 import { AppNotification } from '../customComponent/customComponent';
 
 export const Profile = () => {
@@ -21,6 +21,8 @@ export const Profile = () => {
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [activeTab, setActiveTab] = useState('personalInfo'); // State for active tab
   const [errors, setErrors] = useState({});
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(null);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -57,8 +59,18 @@ export const Profile = () => {
     fetchUserData();
   }, [navigate]);
 
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) {
+        URL.revokeObjectURL(avatarPreviewUrl);
+      }
+    };
+  }, [avatarPreviewUrl]);
+
   // Hàm xử lý lấy URL đầy đủ của ảnh đại diện để hiển thị
   const getAvatarUrl = () => {
+    if (avatarPreviewUrl) return avatarPreviewUrl;
+
     const path = userData.userAvatar;
     if (!path) return null;
 
@@ -75,11 +87,16 @@ export const Profile = () => {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUserData(prev => ({ ...prev, userAvatar: reader.result }));
-      };
-      reader.readAsDataURL(file);
+      if (!file.type.startsWith('image/')) {
+        setNotification({ isOpen: true, message: 'Vui lòng chọn tệp hình ảnh.', type: 'error' });
+        return;
+      }
+
+      setSelectedAvatarFile(file);
+      setAvatarPreviewUrl(prevUrl => {
+        if (prevUrl) URL.revokeObjectURL(prevUrl);
+        return URL.createObjectURL(file);
+      });
     }
   };
 
@@ -99,8 +116,21 @@ export const Profile = () => {
 
     setErrors({});
     try {
-      const response = await updateUser(userData.id, userData);
-      const updatedData = response?.data || response;
+      const personalInfoPayload = { ...userData };
+      delete personalInfoPayload.userAvatar;
+      delete personalInfoPayload.UserAvatar;
+      const response = await updateUser(userData.id, personalInfoPayload);
+      let updatedData = response?.data || response;
+
+      if (selectedAvatarFile) {
+        const avatarResponse = await uploadUserAvatar(userData.id, selectedAvatarFile);
+        updatedData = avatarResponse?.data || avatarResponse;
+        setSelectedAvatarFile(null);
+        setAvatarPreviewUrl(prevUrl => {
+          if (prevUrl) URL.revokeObjectURL(prevUrl);
+          return null;
+        });
+      }
 
       // Cập nhật lại tên hiển thị trong localStorage nếu người dùng đổi tên
       const currentUser = JSON.parse(localStorage.getItem('user'));

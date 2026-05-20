@@ -8,6 +8,8 @@ using System.IO;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using BCrypt.Net;
+using Google.Apis.Auth.OAuth2;
+using Google.Cloud.Storage.V1;
 
 namespace MyProject.Backend.Controller
 {
@@ -17,6 +19,7 @@ namespace MyProject.Backend.Controller
     {
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _environment;
+        private const string FirebaseBucketName = "quanlysanxuat-cb353.firebasestorage.app";
 
         public UsersController(AppDbContext context, IWebHostEnvironment environment)
         {
@@ -51,7 +54,7 @@ namespace MyProject.Backend.Controller
             // Lưu ảnh sau khi đã có Id người dùng
             if (!string.IsNullOrEmpty(user.UserAvatar) && user.UserAvatar.Contains("base64,"))
             {
-                user.UserAvatar = SaveAvatar(user.Id, user.Name, user.UserAvatar);
+                user.UserAvatar = SaveAvatar(user.Id, user.Name ?? $"User_{user.Id}", user.UserAvatar);
                 await _context.SaveChangesAsync();
             }
 
@@ -80,7 +83,7 @@ namespace MyProject.Backend.Controller
             // Xử lý lưu ảnh đại diện nếu có thay đổi (gửi lên dạng base64)
             if (!string.IsNullOrEmpty(user.UserAvatar) && user.UserAvatar.Contains("base64,"))
             {
-                user.UserAvatar = SaveAvatar(user.Id, user.Name, user.UserAvatar);
+                user.UserAvatar = SaveAvatar(user.Id, user.Name ?? existing.Name ?? $"User_{user.Id}", user.UserAvatar) ?? existing.UserAvatar;
             }
             else
             {
@@ -100,40 +103,20 @@ namespace MyProject.Backend.Controller
         {
             try
             {
-                // Giải mã chuỗi Base64
                 var parts = base64String.Split(',');
+                string contentType = "image/png";
+                if (parts.Length > 1 && parts[0].StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                {
+                    contentType = parts[0].Replace("data:", "").Split(';')[0];
+                }
+
                 string base64Data = parts.Length > 1 ? parts[1] : parts[0];
                 byte[] imageBytes = Convert.FromBase64String(base64Data);
 
-                // Làm sạch tên người dùng để tránh ký tự lỗi khi tạo thư mục (vd: /, :, *)
-                string safeUserName = string.Join("_", userName.Split(Path.GetInvalidFileNameChars()));
-
-                // Cấu trúc thư mục: Public/UserAvatar/{Id} - {Name}
-                string folderName = $"{userId} - {safeUserName}";
-                string subPath = Path.Combine("Public", "UserAvatar", folderName);
-                
-                // Xử lý nếu WebRootPath bị null (thường do thiếu thư mục wwwroot)
-                string rootPath = _environment.WebRootPath;
-                if (string.IsNullOrEmpty(rootPath))
+                using (var stream = new MemoryStream(imageBytes))
                 {
-                    rootPath = Path.Combine(_environment.ContentRootPath, "wwwroot");
+                    return UploadAvatarToFirebase(userId, userName, stream, contentType);
                 }
-
-                string uploadPath = Path.Combine(rootPath, subPath);
-
-                if (!Directory.Exists(uploadPath)) Directory.CreateDirectory(uploadPath);
-
-                // Tên tệp: {Id} - {Name}.png
-                string fileName = $"{userId} - {safeUserName}.png";
-                string fullPath = Path.Combine(uploadPath, fileName);
-
-                // LOG ĐƯỜNG DẪN TUYỆT ĐỐI ĐỂ KIỂM TRA
-                Console.WriteLine($"[DEBUG] Đang lưu ảnh tại: {fullPath}");
-
-                System.IO.File.WriteAllBytes(fullPath, imageBytes);
-
-                // Trả về đường dẫn tương đối để lưu vào DB và hiển thị trên web
-                return $"/{subPath}/{fileName}".Replace("\\", "/");
             }
             catch (Exception ex) 
             { 
@@ -142,11 +125,149 @@ namespace MyProject.Backend.Controller
             }
         }
 
+        [HttpPut("{id}/avatar")]
+        [RequestSizeLimit(100 * 1024 * 1024)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 100 * 1024 * 1024)]
+        public async Task<IActionResult> PutUserAvatar(int id, IFormFile avatar)
+        {
+            var existing = await _context.Users.FindAsync(id);
+            if (existing == null) return NotFound();
+            if (avatar == null || avatar.Length == 0) return BadRequest(new { message = "Vui lòng chọn ảnh đại diện." });
+            if (!avatar.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new { message = "Tệp tải lên phải là hình ảnh." });
+            }
+
+            try
+            {
+                using (var stream = avatar.OpenReadStream())
+                {
+                    var avatarPath = UploadAvatarToFirebase(id, existing.Name ?? $"User_{id}", stream, avatar.ContentType);
+                    if (string.IsNullOrEmpty(avatarPath))
+                    {
+                        return StatusCode(500, new { message = "Không thể lưu ảnh đại diện." });
+                    }
+
+                    existing.UserAvatar = avatarPath;
+                }
+
+                existing.UpdatedAt = DateTime.Now;
+                await _context.SaveChangesAsync();
+
+                return Ok(existing);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] PutUserAvatar: {ex.Message}");
+                return StatusCode(500, new { message = "Không thể tải ảnh đại diện lên Firebase.", error = ex.Message });
+            }
+        }
+
+        private string UploadAvatarToFirebase(int userId, string userName, Stream imageStream, string contentType)
+        {
+            string safeUserName = string.Join("_", userName.Split(Path.GetInvalidFileNameChars()));
+            string folderName = $"{userId} - {safeUserName}";
+            string extension = contentType switch
+            {
+                "image/jpeg" => ".jpg",
+                "image/jpg" => ".jpg",
+                "image/webp" => ".webp",
+                "image/gif" => ".gif",
+                _ => ".png"
+            };
+            string fileName = $"{userId} - {safeUserName}{extension}";
+            string objectName = $"UserAvatar/{folderName}/{fileName}";
+
+            string credentialPath = ResolveFirebaseCredentialPath();
+            var credential = GoogleCredential.FromFile(credentialPath);
+            var storage = StorageClient.Create(credential);
+
+            storage.UploadObject(FirebaseBucketName, objectName, contentType, imageStream);
+
+            return $"/api/Users/avatar/{objectName}";
+        }
+
+        private async Task DeleteAvatarFromFirebaseAsync(string? avatarPath)
+        {
+            var objectName = GetFirebaseAvatarObjectName(avatarPath);
+            if (string.IsNullOrWhiteSpace(objectName)) return;
+
+            try
+            {
+                string credentialPath = ResolveFirebaseCredentialPath();
+                var credential = GoogleCredential.FromFile(credentialPath);
+                var storage = StorageClient.Create(credential);
+
+                await storage.DeleteObjectAsync(FirebaseBucketName, objectName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARN] DeleteAvatarFromFirebase: {ex.Message}");
+            }
+        }
+
+        private string? GetFirebaseAvatarObjectName(string? avatarPath)
+        {
+            if (string.IsNullOrWhiteSpace(avatarPath)) return null;
+
+            const string avatarRoute = "/api/Users/avatar/";
+            var routeIndex = avatarPath.IndexOf(avatarRoute, StringComparison.OrdinalIgnoreCase);
+            string objectName = routeIndex >= 0
+                ? avatarPath.Substring(routeIndex + avatarRoute.Length)
+                : avatarPath;
+
+            if (!objectName.StartsWith("UserAvatar/", StringComparison.OrdinalIgnoreCase)) return null;
+
+            return Uri.UnescapeDataString(objectName);
+        }
+
+        [HttpGet("avatar/{*objectName}")]
+        public async Task<IActionResult> GetAvatar(string objectName)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(objectName)) return NotFound();
+
+                string credentialPath = ResolveFirebaseCredentialPath();
+                var credential = GoogleCredential.FromFile(credentialPath);
+                var storage = StorageClient.Create(credential);
+
+                var stream = new MemoryStream();
+                var obj = await storage.GetObjectAsync(FirebaseBucketName, objectName);
+                await storage.DownloadObjectAsync(FirebaseBucketName, objectName, stream);
+                stream.Position = 0;
+
+                return File(stream, obj.ContentType);
+            }
+            catch (Exception ex)
+            {
+                return NotFound(new { message = "Không tìm thấy avatar trên Firebase", error = ex.Message });
+            }
+        }
+
+        private string ResolveFirebaseCredentialPath()
+        {
+            var configuredPath = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIAL_PATH");
+            if (!string.IsNullOrWhiteSpace(configuredPath))
+            {
+                return configuredPath;
+            }
+
+            var renderSecretPath = Path.Combine("/etc/secrets", "firebase-key.json");
+            if (System.IO.File.Exists(renderSecretPath))
+            {
+                return renderSecretPath;
+            }
+
+            return Path.Combine(_environment.ContentRootPath, "firebase-key.json");
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
             var user = await _context.Users.FindAsync(id);
             if (user == null) return NotFound();
+            await DeleteAvatarFromFirebaseAsync(user.UserAvatar);
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
             return NoContent();

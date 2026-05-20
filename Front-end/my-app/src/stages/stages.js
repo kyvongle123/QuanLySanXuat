@@ -400,7 +400,7 @@ export const Stages = () => {
   const columns = [
     {
       header: '',
-      className: 'w-[40px] text-center !px-1',
+      className: 'w-[40px] text-center !px-1 sm:hidden',
       render: (row, { isExpanded, toggleExpand }) => (
         <button
           onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
@@ -626,7 +626,7 @@ export const Stages = () => {
             onClick={handleAddItem}
             className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
-            <Plus size={18} /> Thêm công đoạn
+            Thêm công đoạn
           </button>
         </div>
       </div>
@@ -808,7 +808,7 @@ export const Stages = () => {
               onClick={() => handleOpenSectionEdit('add')}
               className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors"
             >
-              <Plus size={16} /> Thêm tổ sản xuất
+              Thêm tổ sản xuất
             </button>
           </div>
 

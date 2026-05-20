@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { Search, ListChecks, FileDown, ChevronRight } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Search, FileDown, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, AppNotification, CustomConfirm, Modal, CustomSelect } from '../customComponent/customComponent';
@@ -85,8 +85,8 @@ export const ProductionCapacities = () => {
       // 1. Tổng hợp tồn kho theo Category (Material.name chứa Category ID)
       const stockByCategory = {};
       materials.forEach(m => {
-        const catId = m.name ? String(m.name) : 'unknown';
-        stockByCategory[catId] = (stockByCategory[catId] || 0) + (m.quantity || 0);
+        const catId = (m.name || m.Name) ? String(m.name || m.Name) : 'unknown';
+        stockByCategory[catId] = (stockByCategory[catId] || 0) + (m.quantity || m.Quantity || 0);
       });
 
       let results = [];
@@ -95,9 +95,6 @@ export const ProductionCapacities = () => {
         // TRƯỜNG HỢP 1 SẢN PHẨM: Bottleneck tiêu chuẩn
         const targetItemId = String(selectedItemIds[0]);
         const itemBoms = boms.filter(b => String(b.item) === targetItemId);
-        console.log("itemBoms la", itemBoms);
-        console.log("targetItemId la", targetItemId);
-        console.log("boms la", boms);
         let minPossible = Infinity;
         let found = false;
 
@@ -115,32 +112,48 @@ export const ProductionCapacities = () => {
           maximumProductionQuantity: found ? Math.floor(minPossible) : 0
         });
       } else {
-        // TRƯỜNG HỢP NHIỀU SẢN PHẨM: Tối ưu sản xuất đều (Equal Sets)
-        // Tính tổng định mức cần thiết cho 1 "bộ" gồm tất cả các sản phẩm đã chọn
-        const combinedReq = {};
-        selectedItemIds.forEach(itemId => {
-          const itemBoms = boms.filter(b => String(b.item) === String(itemId));
-          itemBoms.forEach(bom => {
-            const catId = bom.materialCategory ? String(bom.materialCategory) : 'unknown';
-            combinedReq[catId] = (combinedReq[catId] || 0) + (bom.requiredQuantity || 0);
-          });
+        // TRƯỜNG HỢP NHIỀU SẢN PHẨM: chia đều nguyên liệu dùng chung,
+        // còn nguyên liệu riêng được tính tối đa theo từng thành phẩm.
+        const selectedItemSet = new Set(selectedItemIds.map(itemId => String(itemId)));
+        const bomsByItem = {};
+        const materialConsumers = {};
+
+        boms.forEach(bom => {
+          const itemId = String(bom.item || bom.Item);
+          const catId = (bom.materialCategory || bom.MaterialCategory) ? String(bom.materialCategory || bom.MaterialCategory) : 'unknown';
+          const requiredQuantity = bom.requiredQuantity || bom.RequiredQuantity || 0;
+
+          if (!selectedItemSet.has(itemId) || requiredQuantity <= 0) return;
+
+          if (!bomsByItem[itemId]) bomsByItem[itemId] = [];
+          bomsByItem[itemId].push({ catId, requiredQuantity });
+
+          if (!materialConsumers[catId]) materialConsumers[catId] = new Set();
+          materialConsumers[catId].add(itemId);
         });
 
-        let maxSets = Infinity;
-        let found = false;
-        Object.keys(combinedReq).forEach(catId => {
-          const stock = stockByCategory[catId] || 0;
-          if (combinedReq[catId] > 0) {
-            maxSets = Math.min(maxSets, stock / combinedReq[catId]);
-            found = true;
+        results = selectedItemIds.map(itemId => {
+          const itemKey = String(itemId);
+          const itemBoms = bomsByItem[itemKey] || [];
+
+          if (itemBoms.length === 0) {
+            return {
+              item: itemId,
+              maximumProductionQuantity: 0
+            };
           }
-        });
 
-        const qtyPerItem = found ? Math.floor(maxSets) : 0;
-        results = selectedItemIds.map(itemId => ({
-          item: itemId,
-          maximumProductionQuantity: qtyPerItem
-        }));
+          const maxQuantity = itemBoms.reduce((minQty, bom) => {
+            const consumerCount = materialConsumers[bom.catId]?.size || 1;
+            const availableStock = (stockByCategory[bom.catId] || 0) / consumerCount;
+            return Math.min(minQty, availableStock / bom.requiredQuantity);
+          }, Infinity);
+
+          return {
+            item: itemId,
+            maximumProductionQuantity: Number.isFinite(maxQuantity) ? Math.floor(maxQuantity) : 0
+          };
+        });
       }
 
       // 2. Xóa toàn bộ dữ liệu cũ trong bảng ProductionCapacities
@@ -178,6 +191,7 @@ export const ProductionCapacities = () => {
         { header: 'STT', key: 'stt', width: 10 },
         { header: 'Tên sản phẩm', key: 'itemName', width: 30 },
         { header: 'Nguyên liệu', key: 'materials', width: 50 },
+        { header: 'Tồn kho', key: 'inventory', width: 50 },
         { header: 'Sản lượng có thể sản xuất', key: 'quantity', width: 25 },
         { header: 'Thời điểm tính toán', key: 'time', width: 25 },
       ];
@@ -190,6 +204,16 @@ export const ProductionCapacities = () => {
           const totalNeeded = (cap.maximumProductionQuantity || 0) * (bom.requiredQuantity || 0);
           return `- ${totalNeeded.toLocaleString()} ${cat?.name || 'N/A'}`;
         }).join('\n') || 'Chưa thiết lập định mức';
+        const inventoryText = itemBoms.map(bom => {
+          const catId = String(bom.materialCategory || bom.MaterialCategory);
+          const cat = materialCategories.find(c => String(c.id || c.Id) === catId);
+          const totalStock = materials
+            .filter(m => String(m.name || m.Name) === catId)
+            .reduce((sum, m) => sum + (m.quantity || m.Quantity || 0), 0);
+          const totalNeeded = (cap.maximumProductionQuantity || 0) * (bom.requiredQuantity || 0);
+          const remaining = totalStock - totalNeeded;
+          return `- ${remaining.toLocaleString()} ${cat?.name || 'N/A'}`;
+        }).join('\n') || '-';
 
         const calculationTime = cap.updatedAt || cap.createdAt;
         const timeStr = calculationTime ? new Date(calculationTime).toLocaleString('vi-VN') : 'N/A';
@@ -198,6 +222,7 @@ export const ProductionCapacities = () => {
           stt: index + 1,
           itemName: itemLabel,
           materials: materialText,
+          inventory: inventoryText,
           quantity: cap.maximumProductionQuantity,
           time: timeStr
         });
@@ -252,7 +277,7 @@ export const ProductionCapacities = () => {
   const columns = [
     {
       header: '',
-      className: 'w-[40px] text-center',
+      className: 'w-[40px] text-center sm:hidden',
       render: (row, { isExpanded, toggleExpand }) => (
         <button
           onClick={(e) => { e.stopPropagation(); toggleExpand(); }}

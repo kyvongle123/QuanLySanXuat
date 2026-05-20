@@ -4,6 +4,18 @@ import axios from 'axios';
 // Bạn có thể thay thế bằng process.env.REACT_APP_API_BASE_URL nếu bạn cấu hình biến môi trường
 const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
+const normalizeUserPayload = (userData = {}) => {
+  const payload = { ...userData };
+  const avatar = payload.userAvatar ?? payload.UserAvatar;
+
+  if (avatar && typeof avatar === 'string' && !avatar.startsWith('data:')) {
+    delete payload.userAvatar;
+    delete payload.UserAvatar;
+  }
+
+  return payload;
+};
+
 export const getUsers = async () => {
   try {
     const response = await axios.get(`${API_BASE_URL}/users`);
@@ -36,10 +48,31 @@ export const createUser = async (userData) => {
 
 export const updateUser = async (id, userData) => {
   try {
-    const response = await axios.put(`${API_BASE_URL}/users/${id}`, userData);
+    const response = await axios.put(`${API_BASE_URL}/users/${id}`, normalizeUserPayload(userData), {
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity
+    });
     return response.data;
   } catch (error) {
     console.error(`Error updating user with ID ${id}:`, error);
+    throw error;
+  }
+};
+
+export const uploadUserAvatar = async (id, file) => {
+  try {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    const response = await axios.put(`${API_BASE_URL}/users/${id}/avatar`, formData, {
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+      timeout: 120000
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error uploading avatar for user with ID ${id}:`, error);
     throw error;
   }
 };

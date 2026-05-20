@@ -1397,7 +1397,7 @@ export const MaterialReceipts = () => {
   return (
     <div className="p-2 sm:p-6 bg-gray-50/50 min-h-screen">
       <div className="mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Quản lý Phiếu nhập nguyên liệu</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Danh sách phiếu nhập nguyên liệu</h2>
       </div>
 
       <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4">
@@ -1429,7 +1429,7 @@ export const MaterialReceipts = () => {
             onClick={() => handleOpenModal('add')}
             className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
-            <Plus size={18} /> Thêm phiếu mới
+            Thêm phiếu mới
           </button>
         </div>}
       </div>
@@ -1858,7 +1858,7 @@ export const MaterialReceipts = () => {
               />
             </div>
             <button onClick={() => { setEditingSupplier({ name: '', contactPerson: '', phone: '', email: '', address: '', taxId: '' }); setSupplierModalMode('add'); setIsSupplierEditModalOpen(true); }} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
-              <Plus size={16} /> Thêm nhà cung cấp
+              Thêm nhà cung cấp
             </button>
           </div>
           <div className={`${isSuppliersMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[450px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm transition-all duration-300`}>
@@ -1928,7 +1928,7 @@ export const MaterialReceipts = () => {
               />
             </div>
             <button onClick={() => { setEditingWarehouse({ name: '', code: '', type: '', status: '', location: '' }); setWarehouseModalMode('add'); setIsWarehouseEditModalOpen(true); }} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
-              <Plus size={16} /> Thêm nhà kho
+              Thêm nhà kho
             </button>
           </div>
           <div className={`${isWarehousesMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[450px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm transition-all duration-300`}> {/* This is the div for the CustomDatatable */}

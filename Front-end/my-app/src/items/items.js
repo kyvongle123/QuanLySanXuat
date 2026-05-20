@@ -520,6 +520,7 @@ export const Items = () => {
     setModalMode('add');
     setCurrentEditingItem({
       name: '',
+      itemCode: '',
       price: '',
       description: '',
       category: '',

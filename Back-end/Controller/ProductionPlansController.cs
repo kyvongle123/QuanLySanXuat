@@ -58,6 +58,11 @@ namespace MyProject.Backend.Controller
             var plan = await _context.ProductionPlans.FindAsync(id);
             if (plan == null) return NotFound();
 
+            var planItems = await _context.ProductionPlanItems
+                .Where(item => item.ProductionPlan == id)
+                .ToListAsync();
+
+            _context.ProductionPlanItems.RemoveRange(planItems);
             _context.ProductionPlans.Remove(plan);
             await _context.SaveChangesAsync();
 

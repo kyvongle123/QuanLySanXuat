@@ -209,21 +209,21 @@ export const Units = () => {
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="flex flex-row gap-2 w-full sm:w-auto">
-            <button className="flex-1 sm:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded-lg whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
+            <button className="flex-1 sm:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
               <FileUp size={16} /> Nhập Excel
             </button>
             <button
               onClick={handleRequestExportExcel}
-              className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
+              className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
             >
               <FileDown size={16} /> Xuất Excel
             </button>
           </div>
           <button
             onClick={() => handleOpenModal('add')}
-            className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
+            className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
-            <Plus size={18} /> Thêm đơn vị mới
+            Thêm đơn vị mới
           </button>
         </div>
       </div>

@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http.Features;
 using MyProject.Backend.Data;
 using MyProject.Service;
 
 var builder = WebApplication.CreateBuilder(args);
+const long MaxUploadBytes = 100 * 1024 * 1024;
 
 // 1. Cấu hình SQL Server
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -30,11 +32,23 @@ builder.Services.AddCors(options => {
 });
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
-builder.WebHost.UseUrls($"http://*:{port}");
+builder.WebHost
+    .UseUrls($"http://*:{port}")
+    .ConfigureKestrel(options =>
+    {
+        options.Limits.MaxRequestBodySize = MaxUploadBytes;
+    });
 
 // 3. Đăng ký ProductionPlanInfoService vào DI container
 builder.Services.AddScoped<ProductionPlanInfoService>();
 builder.Services.AddScoped<MaterialReceiptInfoService>();
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = MaxUploadBytes;
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartHeadersLengthLimit = int.MaxValue;
+});
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

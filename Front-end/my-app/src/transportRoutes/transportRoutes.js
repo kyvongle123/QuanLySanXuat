@@ -958,7 +958,7 @@ export const TransportRoutes = () => {
               onClick={handleOpenAdd}
               className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded flex items-center justify-center gap-2 transition-all shadow-lg shadow-green-100 active:scale-95 text-sm"
             >
-              <Plus size={18} /> Tạo chuyến hàng
+              Tạo chuyến hàng
             </button>
           </div>
         </div>
@@ -1228,7 +1228,7 @@ export const TransportRoutes = () => {
         <form onSubmit={handleModalSubmit} className="space-y-5 max-h-[75vh] overflow-y-auto px-1">
           <div className="grid grid-cols-1 gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-500 uppercase ml-1">Điểm xuất phát (Từ)</label>
+              <label className="text-xs text-gray-500 ml-1">Điểm xuất phát (Từ)</label>
               <input
                 type="text"
                 value="Nhà máy"
@@ -1372,7 +1372,7 @@ export const TransportRoutes = () => {
               />
             </div>
             <button onClick={() => { setEditingDriver({ name: '', phone: '', email: '', licenseNumber: '', note: '' }); setDriverModalMode('add'); setIsDriverEditModalOpen(true); }} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
-              <Plus size={16} /> Thêm tài xế
+              Thêm tài xế
             </button>
           </div>
           <div className={`${isDriversMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[450px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm`}>
@@ -1471,7 +1471,7 @@ export const TransportRoutes = () => {
               />
             </div>
             <button onClick={() => { setEditingVehicle({ vehicleCode: '', licensePlate: '', type: '', capacity: '', note: '' }); setVehicleModalMode('add'); setIsVehicleEditModalOpen(true); }} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
-              <Plus size={16} /> Thêm xe hàng
+              Thêm xe hàng
             </button>
           </div>
           <div className={`${isVehiclesMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[450px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm`}>
@@ -1573,7 +1573,7 @@ export const TransportRoutes = () => {
               />
             </div>
             <button onClick={() => { setEditingCustomer({ name: '', contactPerson: '', phone: '', email: '', address: '', taxCode: '', website: '', note: '' }); setCustomerModalMode('add'); setIsCustomerEditModalOpen(true); }} className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors active:scale-95">
-              <Plus size={16} /> Thêm khách hàng
+              Thêm khách hàng
             </button>
           </div>
           <div className={`${isCustomersMgmtMaximized ? 'max-h-[calc(100vh-250px)]' : 'max-h-[450px]'} overflow-y-auto border border-gray-200 rounded-lg shadow-sm`}>
