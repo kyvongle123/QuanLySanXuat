@@ -92,13 +92,14 @@ Người dùng có thể tiếp cận hệ thống theo luồng sau:
 
 ### Storage
 - Firebase Storage
+---
 
 ## 👤 Tác giả
 
 **Lê Kỳ Vọng**
 
 Project được xây dựng nhằm phát triển hệ thống quản lý sản xuất cho nhà máy
----
+
 
 
 
