@@ -745,19 +745,19 @@ export const Machines = () => {
         </div>
 
         <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
           <button
             onClick={handleRequestExportExcel}
-            className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap flex items-center justify-center gap-2 shadow-sm text-sm"
+            className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center justify-center gap-2 shadow-sm text-sm"
           >
             <FileDown size={18} />Xuất Excel
           </button>
           <button
             onClick={() => handleOpenModal('add')}
-            className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg whitespace-nowrap transition-all active:scale-95 shadow-md text-sm"
+            className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm"
           >
             <span className="hidden sm:inline">Thêm mới</span>
             <span className="sm:hidden">Thêm</span>

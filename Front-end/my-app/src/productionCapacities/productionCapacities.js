@@ -362,14 +362,14 @@ export const ProductionCapacities = () => {
         <div className="flex flex-wrap gap-2 w-full lg:w-auto">
           <button
             onClick={handleRequestExportExcel}
-            className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 text-sm"
+            className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 text-sm"
           >
             <FileDown size={18} />
             Xuất Excel
           </button>
           <button
             onClick={() => setIsSelectModalOpen(true)}
-            className="flex-1 lg:flex-none bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg whitespace-nowrap flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 text-sm"
+            className="flex-1 lg:flex-none bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
             + <span className="hidden sm:inline">Chọn sản phẩm cần tính</span><span className="sm:hidden">Tính toán</span>
           </button>
