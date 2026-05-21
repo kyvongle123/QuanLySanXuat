@@ -13,6 +13,8 @@ namespace MyProject.Backend.Controller
     [ApiController]
     public class MaterialsController : ControllerBase
     {
+        private const string MaterialCodePrefix = "NVL00";
+        private const int MaxCreateMaterialCodeAttempts = 10;
         private readonly AppDbContext _context;
 
         public MaterialsController(AppDbContext context)
@@ -37,11 +39,49 @@ namespace MyProject.Backend.Controller
         [HttpPost]
         public async Task<ActionResult<Material>> PostMaterial(Material material)
         {
-            material.CreatedAt = DateTime.Now;
-            material.UpdatedAt = DateTime.Now;
-            _context.Materials.Add(material);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetMaterial), new { id = material.Id }, material);
+            var hasProvidedMaterialCode = !string.IsNullOrWhiteSpace(material.MaterialCode);
+
+            for (var attempt = 0; attempt < MaxCreateMaterialCodeAttempts; attempt++)
+            {
+                material.CreatedAt = DateTime.Now;
+                material.UpdatedAt = DateTime.Now;
+
+                if (!hasProvidedMaterialCode)
+                {
+                    material.MaterialCode = await GenerateNextMaterialCodeAsync();
+                }
+                else
+                {
+                    material.MaterialCode = material.MaterialCode?.Trim();
+                }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                _context.Materials.Add(material);
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return CreatedAtAction(nameof(GetMaterial), new { id = material.Id }, material);
+                }
+                catch (DbUpdateException ex) when (IsUniqueMaterialCodeException(ex) && attempt < MaxCreateMaterialCodeAttempts - 1)
+                {
+                    await transaction.RollbackAsync();
+                    _context.Entry(material).State = EntityState.Detached;
+                    material.Id = 0;
+
+                    if (hasProvidedMaterialCode)
+                    {
+                        return Conflict("MaterialCode đã tồn tại.");
+                    }
+
+                    material.MaterialCode = null;
+                }
+            }
+
+            return StatusCode(500, "Không thể sinh MaterialCode không trùng sau nhiều lần thử.");
         }
 
         [HttpPut("{id}")]
@@ -49,9 +89,14 @@ namespace MyProject.Backend.Controller
         {
             if (id != material.Id) return BadRequest();
 
+            var existingMaterial = await _context.Materials.FindAsync(id);
+            if (existingMaterial == null) return NotFound();
+
             material.UpdatedAt = DateTime.Now;
-            _context.Entry(material).State = EntityState.Modified;
-            _context.Entry(material).Property(x => x.CreatedAt).IsModified = false;
+            material.CreatedAt = existingMaterial.CreatedAt;
+            material.MaterialCode = existingMaterial.MaterialCode ?? await GenerateNextMaterialCodeAsync();
+
+            _context.Entry(existingMaterial).CurrentValues.SetValues(material);
 
             // Chỉ giữ lại dòng này nếu Model Material thực sự có trường CreatedBy
             // Nếu không có, hãy xóa hoặc comment lại để tránh lỗi Build
@@ -67,7 +112,7 @@ namespace MyProject.Backend.Controller
                 else throw;
             }
 
-            return Ok(material);
+            return Ok(existingMaterial);
         }
 
         [HttpDelete("{id}")]
@@ -84,6 +129,38 @@ namespace MyProject.Backend.Controller
         private bool MaterialExists(int id)
         {
             return _context.Materials.Any(e => e.Id == id);
+        }
+
+        private async Task<string> GenerateNextMaterialCodeAsync()
+        {
+            var materialCodes = await _context.Materials
+                .AsNoTracking()
+                .Where(e => e.MaterialCode != null && e.MaterialCode.StartsWith(MaterialCodePrefix))
+                .Select(e => e.MaterialCode!)
+                .ToListAsync();
+
+            var maxNumber = 0;
+
+            foreach (var materialCode in materialCodes)
+            {
+                var numberText = materialCode[MaterialCodePrefix.Length..];
+
+                if (int.TryParse(numberText, out var number) && number > maxNumber)
+                {
+                    maxNumber = number;
+                }
+            }
+
+            return $"{MaterialCodePrefix}{maxNumber + 1}";
+        }
+
+        private static bool IsUniqueMaterialCodeException(DbUpdateException exception)
+        {
+            var message = exception.InnerException?.Message ?? exception.Message;
+
+            return message.Contains("IX_Materials_MaterialCode", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

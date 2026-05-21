@@ -149,6 +149,8 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Id)
                 .ValueGeneratedOnAdd()
                 .HasColumnName("ID");
+            entity.HasIndex(e => e.ItemCode).IsUnique();
+            entity.Property(e => e.ItemCode).HasMaxLength(50);
             entity.Property(e => e.Material).HasMaxLength(50);
             entity.Property(e => e.Name).HasMaxLength(50);
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
@@ -332,6 +334,12 @@ public partial class AppDbContext : DbContext
                 .ValueGeneratedOnAdd()
                 .HasColumnName("ID");
             entity.Property(e => e.Name).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<Warehouse>(entity =>
+        {
+            entity.HasIndex(e => e.WarehouseCode).IsUnique();
+            entity.Property(e => e.WarehouseCode).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Supplier>(entity =>

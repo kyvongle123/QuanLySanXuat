@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef, useLayoutEffect } from 'react';
+﻿import React, { useEffect, useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -16,7 +16,10 @@ import { BsLayoutSidebarInset, BsLayoutSidebarInsetReverse } from "react-icons/b
 import { VscLayoutSidebarLeftDock, VscLayoutSidebarRightDock } from "react-icons/vsc";
 import { RxDrawingPinFilled } from "react-icons/rx";
 import { LuSquarePen } from "react-icons/lu";
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 import { getWarehouseBins } from '../controller/warehouseBinsController';
+
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 const AnchoredPortalMenu = ({ isOpen, onClose, trigger, children, className = '', anchorClassName = '' }) => {
   const anchorRef = useRef(null);
@@ -96,6 +99,9 @@ export const Items = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
   const [isLocMgmtOpen, setIsLocMgmtOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
   const [currentEditingItem, setCurrentEditingItem] = useState(null);
@@ -105,6 +111,7 @@ export const Items = () => {
   const [openStatusMenuId, setOpenStatusMenuId] = useState(null);
   const [openLocationMenuId, setOpenLocationMenuId] = useState(null);
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState([]);
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
@@ -197,6 +204,38 @@ export const Items = () => {
   const closeNotification = () => setNotification(prev => ({ ...prev, isOpen: false }));
 
   const getEntityId = (entity) => entity?.id || entity?.ID || entity?.Id;
+  const getEntityValue = (entity, camelKey, pascalKey) => entity?.[camelKey] ?? entity?.[pascalKey];
+  const getExcelText = (cell) => {
+    if (!cell) return '';
+    if (cell.text !== undefined && cell.text !== null) return String(cell.text).trim();
+    if (cell.value === undefined || cell.value === null) return '';
+    if (typeof cell.value === 'object') {
+      if (cell.value.text !== undefined) return String(cell.value.text).trim();
+      if (cell.value.result !== undefined) return String(cell.value.result).trim();
+      if (Array.isArray(cell.value.richText)) return cell.value.richText.map(part => part.text || '').join('').trim();
+    }
+    return String(cell.value).trim();
+  };
+  const normalizeImportText = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .replace(/[‐‑‒–—―]/g, '-')
+    .replace(/\s*-\s*/g, ' - ')
+    .replace(/^kho hang hoa:\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  const parseImportNumber = (value) => {
+    const text = String(value || '').replace(/[^\d,.-]/g, '').trim();
+    if (!text) return null;
+    const normalized = text.includes(',') && !text.includes('.')
+      ? text.replace(',', '.')
+      : text.replace(/,/g, '');
+    const number = Number(normalized);
+    return Number.isFinite(number) ? number : null;
+  };
 
   // Logic lọc dữ liệu dựa trên searchTerm
   const filteredItems = useMemo(() => {
@@ -263,15 +302,13 @@ export const Items = () => {
         setWarehousesRawData(warehousesData);
         setRawWarehouseLocations(locationData.map(l => ({ ...l, id: l.id || l.ID })));
         setWarehouseRacks(rackData);
-        setWarehouseBins(binData);
         setRacks(rackData);
         setWarehouseTypes(typesData.map(wt => ({ value: wt.id, label: wt.name })));
         setWarehouseStatuses(statusesData.map(ws => ({ value: ws.id, label: ws.name })));
         setWarehouseLocations(locationData.map(l => {
           const rackObj = rackData.find(r => String(r.id || r.ID) === String(l.racks || l.Racks));
           const rackName = rackObj ? (rackObj.name || rackObj.Name) : (l.racks || l.Racks);
-          const binObj = binData.find(b => String(b.id || b.ID) === String(l.bin || l.Bin));
-          const binName = binObj ? (binObj.name || binObj.Name) : (l.bin || l.Bin);
+          const binName = l.bin;
           return {
             value: l.id || l.ID,
             label: `Kệ ${rackName} - Tầng ${l.level || l.Level} - Ô ${binName}`
@@ -332,7 +369,7 @@ export const Items = () => {
     if (type === 'delete') {
       try {
         await deleteItem(id);
-        setItems(items.filter(item => item.id !== id));
+        setItems(items.filter(item => getEntityId(item) !== id));
         setSelectedItemIds(prev => prev.filter(selectedId => selectedId !== id));
         showNotification("Hàng hóa đã được xóa thành công!");
       } catch (err) {
@@ -345,8 +382,9 @@ export const Items = () => {
       try {
         // Thực hiện xóa đồng thời các ID đã chọn
         await Promise.all(id.map(itemId => deleteItem(itemId)));
-        setItems(items.filter(item => !id.includes(item.id)));
+        setItems(items.filter(item => !id.includes(getEntityId(item))));
         setSelectedItemIds([]);
+        setIsBulkSelectMode(false);
         showNotification(`Đã xóa ${id.length} hàng hóa thành công!`);
       } catch (err) {
         console.error("Error bulk deleting items:", err);
@@ -385,7 +423,17 @@ export const Items = () => {
   };
 
   const handleBulkDelete = () => {
-    if (selectedItemIds.length === 0) return;
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
+      setSelectedItemIds([]);
+      return;
+    }
+
+    if (selectedItemIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedItemIds([]);
+      return;
+    }
 
     setConfirmModal({
       isOpen: true,
@@ -396,6 +444,23 @@ export const Items = () => {
     });
   };
 
+  const handleSelectAllItems = () => {
+    const visibleItemIds = filteredItems.map(item => getEntityId(item)).filter(Boolean);
+    setSelectedItemIds(visibleItemIds);
+  };
+
+  const handleClearSelectedItems = () => {
+    setSelectedItemIds([]);
+  };
+
+  const handleToggleSelectItem = (row) => {
+    const rowId = getEntityId(row);
+    setSelectedItemIds(prev => prev.includes(rowId)
+      ? prev.filter(id => id !== rowId)
+      : [...prev, rowId]
+    );
+  };
+
   const handleRequestExportExcel = () => {
     setConfirmModal({
       isOpen: true,
@@ -403,6 +468,208 @@ export const Items = () => {
       title: 'Xác nhận xuất Excel',
       message: 'Bạn có chắc chắn muốn xuất danh sách hàng hóa ra tệp Excel không?'
     });
+  };
+
+  const handleOpenImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(false);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    window.location.href = `${API_BASE_URL}/Templates/import/items`;
+  };
+
+  const getImportWarehouseLabel = (warehouse) => {
+    const locationId = warehouse.location ?? warehouse.Location;
+    const loc = rawWarehouseLocations.find(l => String(l.id || l.ID) === String(locationId));
+    if (!loc) return '';
+
+    const rackId = loc.racks ?? loc.Racks;
+    const binId = loc.bin ?? loc.Bin;
+    const rack = warehouseRacks.find(r => String(r.id || r.ID) === String(rackId));
+    const rackName = rack ? (rack.name || rack.Name) : rackId;
+    const binName = loc.bin;
+    const level = loc.level ?? loc.Level;
+
+    return `Kho hàng hóa: Kệ ${rackName} - Tầng ${level} - Ô ${binName}`;
+  };
+
+  const getImportWarehouseLookupLabels = (warehouse) => {
+    const fullLabel = getImportWarehouseLabel(warehouse);
+    const shortLabel = fullLabel.replace(/^Kho hàng hóa:\s*/i, '');
+    return [fullLabel, shortLabel].filter(Boolean);
+  };
+
+  const buildImportItemPayload = (baseItem, importedValues) => {
+    const itemId = getEntityId(baseItem);
+
+    return {
+      id: itemId || 0,
+      name: importedValues.name,
+      itemCode: importedValues.itemCode,
+      description: getEntityValue(baseItem, 'description', 'Description') ?? null,
+      price: importedValues.price,
+      inventory: importedValues.inventory,
+      category: importedValues.category,
+      manufactory: getEntityValue(baseItem, 'manufactory', 'Manufactory') ?? null,
+      material: getEntityValue(baseItem, 'material', 'Material') ?? null,
+      tax: getEntityValue(baseItem, 'tax', 'Tax') ?? null,
+      weight: importedValues.weight,
+      status: getEntityValue(baseItem, 'status', 'Status') ?? null,
+      createdAt: getEntityValue(baseItem, 'createdAt', 'CreatedAt') ?? null,
+      updatedAt: getEntityValue(baseItem, 'updatedAt', 'UpdatedAt') ?? null,
+      createdBy: getEntityValue(baseItem, 'createdBy', 'CreatedBy') ?? null,
+      transportVehicle: getEntityValue(baseItem, 'transportVehicle', 'TransportVehicle') ?? null,
+      transportRoute: getEntityValue(baseItem, 'transportRoute', 'TransportRoute') ?? null,
+      location: importedValues.location
+    };
+  };
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
+    }
+
+    if (!selectedImportFile.name.toLowerCase().endsWith('.xlsx')) {
+      showNotification("Vui lòng chọn file .xlsx để nhập dữ liệu.", "error");
+      return;
+    }
+
+    try {
+      setIsImportingExcel(true);
+
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có sheet dữ liệu.", "error");
+        return;
+      }
+
+      const categoryMap = new Map(categories.map(category => [
+        normalizeImportText(category.label),
+        category.value
+      ]));
+      const warehouseMap = new Map();
+      warehousesRawData
+        .filter(warehouse => Number(warehouse.type ?? warehouse.Type) === 1)
+        .forEach(warehouse => {
+          const warehouseId = warehouse.id || warehouse.ID;
+          getImportWarehouseLookupLabels(warehouse).forEach(label => {
+            const normalizedLabel = normalizeImportText(label);
+            if (normalizedLabel) warehouseMap.set(normalizedLabel, warehouseId);
+          });
+        });
+      const itemMap = new Map(items.map(item => [
+        normalizeImportText(item.itemCode || item.ItemCode),
+        item
+      ]));
+
+      let createdCount = 0;
+      let updatedCount = 0;
+      const skippedRows = [];
+      const importedItems = [];
+
+      const rowNumbers = [];
+      worksheet.eachRow({ includeEmpty: false }, (_, rowNumber) => {
+        if (rowNumber >= 2) rowNumbers.push(rowNumber);
+      });
+
+      for (const rowNumber of rowNumbers) {
+        const row = worksheet.getRow(rowNumber);
+        try {
+          const itemCode = getExcelText(row.getCell(2));
+          const itemName = getExcelText(row.getCell(3));
+          const categoryName = getExcelText(row.getCell(4));
+          const priceText = getExcelText(row.getCell(5));
+          const inventoryText = getExcelText(row.getCell(6));
+          const weightText = getExcelText(row.getCell(8));
+          const locationText = getExcelText(row.getCell(9));
+
+          if (!itemCode && !itemName && !categoryName && !priceText && !inventoryText && !weightText && !locationText) {
+            continue;
+          }
+
+          if (!itemCode) {
+            skippedRows.push(`Dòng ${rowNumber}: thiếu Mã thành phẩm`);
+            continue;
+          }
+
+          const existingItem = itemMap.get(normalizeImportText(itemCode));
+          const categoryId = categoryName ? categoryMap.get(normalizeImportText(categoryName)) : getEntityValue(existingItem, 'category', 'Category') ?? null;
+          const locationId = locationText ? warehouseMap.get(normalizeImportText(locationText)) : getEntityValue(existingItem, 'location', 'Location') ?? null;
+
+          if (categoryName && !categoryId) {
+            skippedRows.push(`Dòng ${rowNumber}: không tìm thấy Danh mục "${categoryName}"`);
+            continue;
+          }
+
+          if (locationText && !locationId) {
+            skippedRows.push(`Dòng ${rowNumber}: không tìm thấy Vị trí "${locationText}"`);
+            continue;
+          }
+
+          const importedValues = {
+            itemCode,
+            name: itemName || getEntityValue(existingItem, 'name', 'Name') || null,
+            category: categoryId,
+            price: priceText ? parseImportNumber(priceText) : getEntityValue(existingItem, 'price', 'Price') ?? null,
+            inventory: inventoryText ? parseInt(parseImportNumber(inventoryText), 10) : getEntityValue(existingItem, 'inventory', 'Inventory') ?? null,
+            weight: weightText ? parseImportNumber(weightText) : getEntityValue(existingItem, 'weight', 'Weight') ?? null,
+            location: locationId
+          };
+
+          const payload = buildImportItemPayload(existingItem || {}, importedValues);
+
+          if (existingItem) {
+            const updatedItem = await updateItem(getEntityId(existingItem), payload);
+            const mergedItem = { ...existingItem, ...updatedItem, ...payload, id: getEntityId(existingItem) };
+            importedItems.push(mergedItem);
+            itemMap.set(normalizeImportText(itemCode), mergedItem);
+            updatedCount++;
+          } else {
+            const createdItem = await createItem(payload);
+            const mergedItem = { ...createdItem, itemCode, ItemCode: itemCode };
+            importedItems.push(mergedItem);
+            itemMap.set(normalizeImportText(itemCode), mergedItem);
+            createdCount++;
+          }
+        } catch (rowError) {
+          console.error(`Error importing row ${rowNumber}:`, rowError);
+          skippedRows.push(`Dòng ${rowNumber}: lỗi khi lưu dữ liệu`);
+        }
+      }
+
+      if (importedItems.length > 0) {
+        setItems(prevItems => {
+          const importedMap = new Map(importedItems.map(item => [getEntityId(item), item]));
+          const nextItems = prevItems.map(item => importedMap.get(getEntityId(item)) || item);
+          const existingIds = new Set(prevItems.map(item => getEntityId(item)));
+          importedItems.forEach(item => {
+            if (!existingIds.has(getEntityId(item))) nextItems.push(item);
+          });
+          return nextItems;
+        });
+      }
+
+      handleCloseImportModal();
+      const skippedMessage = skippedRows.length ? ` Bỏ qua ${skippedRows.length} dòng.` : '';
+      showNotification("Nhập Excel thành công");
+      if (skippedRows.length) console.warn("Các dòng không nhập được:", skippedRows);
+    } catch (err) {
+      console.error("Error importing items from Excel:", err);
+      showNotification("Lỗi khi nhập Excel. Vui lòng kiểm tra lại file.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
   };
 
   const handleEditItem = (item) => {
@@ -589,8 +856,31 @@ export const Items = () => {
   const handleLocationChange = async (item, newLocationId) => {
     try {
       const updatedValue = newLocationId === "" ? null : parseInt(newLocationId);
-      const updated = await updateItem(item.id, { ...item, location: updatedValue });
-      setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+      const itemId = getEntityId(item);
+      const itemPayload = {
+        id: itemId,
+        name: getEntityValue(item, 'name', 'Name') ?? null,
+        itemCode: getEntityValue(item, 'itemCode', 'ItemCode') ?? null,
+        description: getEntityValue(item, 'description', 'Description') ?? null,
+        price: getEntityValue(item, 'price', 'Price') ?? null,
+        inventory: getEntityValue(item, 'inventory', 'Inventory') ?? null,
+        category: getEntityValue(item, 'category', 'Category') ?? null,
+        manufactory: getEntityValue(item, 'manufactory', 'Manufactory') ?? null,
+        material: getEntityValue(item, 'material', 'Material') ?? null,
+        tax: getEntityValue(item, 'tax', 'Tax') ?? null,
+        weight: getEntityValue(item, 'weight', 'Weight') ?? null,
+        status: getEntityValue(item, 'status', 'Status') ?? null,
+        createdAt: getEntityValue(item, 'createdAt', 'CreatedAt') ?? null,
+        updatedAt: getEntityValue(item, 'updatedAt', 'UpdatedAt') ?? null,
+        createdBy: getEntityValue(item, 'createdBy', 'CreatedBy') ?? null,
+        transportVehicle: getEntityValue(item, 'transportVehicle', 'TransportVehicle') ?? null,
+        transportRoute: getEntityValue(item, 'transportRoute', 'TransportRoute') ?? null,
+        location: updatedValue
+      };
+      const updated = await updateItem(itemId, itemPayload);
+      const updatedItem = { ...item, ...updated, location: updatedValue, Location: updatedValue };
+      const updatedId = getEntityId(updatedItem);
+      setItems(prev => prev.map(i => getEntityId(i) === updatedId ? updatedItem : i));
       setOpenLocationMenuId(null);
       showNotification("Cập nhật vị trí thành công!");
     } catch (err) {
@@ -1019,6 +1309,8 @@ export const Items = () => {
 
       // Định nghĩa các cột cho file Excel
       worksheet.columns = [
+        { header: 'STT', key: 'stt', width: 8 },
+        { header: 'Mã thành phẩm', key: 'itemCode', width: 18 },
         { header: 'Tên sản phẩm', key: 'name', width: 30 },
         { header: 'Danh mục', key: 'category', width: 25 },
         { header: 'Giá', key: 'price', width: 15 },
@@ -1029,12 +1321,14 @@ export const Items = () => {
       ];
 
       // Đổ dữ liệu vào rows và xử lý mapping label
-      filteredItems.forEach((item) => {
+      filteredItems.forEach((item, index) => {
         const categoryLabel = categories.find(c => String(c.value) === String(item.category || item.Category))?.label || '';
         const statusLabel = itemStatuses.find(s => String(s.value) === String(item.status))?.label || '';
         const warehouseLabel = warehouses.find(w => String(w.value) === String(item.location))?.label || '';
 
         worksheet.addRow({
+          stt: index + 1,
+          itemCode: item.itemCode || item.ItemCode || '',
           name: item.name,
           category: categoryLabel,
           price: item.price,
@@ -1049,20 +1343,26 @@ export const Items = () => {
       // Định dạng chung cho tất cả các ô: Times New Roman, cỡ chữ 12
       worksheet.eachRow((row, rowNumber) => {
         row.font = { name: 'Times New Roman', size: 12 };
-        row.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
 
         // Thêm viền cho các ô
         row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
           cell.border = {
             top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
           };
+
+          if (rowNumber === 1 || colNumber === 1) {
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+          } else if ([5, 6, 7, 8].includes(colNumber)) {
+            cell.alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+          } else {
+            cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+          }
         });
 
         if (rowNumber === 1) {
           // Định dạng Header: In đậm, Cao 30px
           row.height = 30;
           row.font = { name: 'Times New Roman', size: 12, bold: true };
-          row.alignment = { vertical: 'middle', horizontal: 'center' };
         }
         // Không đặt row.height cố định cho Body (rowNumber > 1) 
         // để Excel tự động mở rộng chiều cao khi có text quá dài dẫn đến xuống dòng (wrapText: true)
@@ -1080,19 +1380,25 @@ export const Items = () => {
   // Form cho Modal
   const itemForm = (
     <form onSubmit={handleModalSubmit} className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <div>
           <label htmlFor="name" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Tên sản phẩm</label>
           <input type="text" id="name" name="name" value={currentEditingItem?.name || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
           {itemErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{itemErrors.name}</p>}
         </div>
         <div>
-          <label htmlFor="price" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Giá (VNĐ)</label>
-          <input type="number" id="price" name="price" value={currentEditingItem?.price || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.price ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-          {itemErrors.price && <p className="text-red-500 text-[10px] mt-1 font-medium">{itemErrors.price}</p>}
+          <label htmlFor="itemCode" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Mã thành phẩm</label>
+          <input
+            type="text"
+            id="itemCode"
+            name="itemCode"
+            value={currentEditingItem?.itemCode || currentEditingItem?.ItemCode || ''}
+            disabled
+            className={`mt-1 block w-full border border-gray-200 bg-gray-100 text-gray-500 rounded-md shadow-sm cursor-not-allowed outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+          />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <div className="relative">
           <button
             type="button"
@@ -1121,7 +1427,7 @@ export const Items = () => {
         <label htmlFor="description" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Mô tả</label>
         <textarea id="description" name="description" value={currentEditingItem?.description || ''} onChange={handleModalInputChange} rows={isModalMaximized ? "3" : "2"} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}></textarea>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <div>
           <label htmlFor="tax" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Thuế</label>
           <input type="text" id="tax" name="tax" value={currentEditingItem?.tax || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.tax ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
@@ -1131,6 +1437,13 @@ export const Items = () => {
           <label htmlFor="weight" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Cân nặng</label>
           <input type="number" id="weight" name="weight" value={currentEditingItem?.weight || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.weight ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
           {itemErrors.weight && <p className="text-red-500 text-[10px] mt-1 font-medium">{itemErrors.weight}</p>}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div>
+          <label htmlFor="price" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Giá (VNĐ)</label>
+          <input type="number" id="price" name="price" value={currentEditingItem?.price || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.price ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+          {itemErrors.price && <p className="text-red-500 text-[10px] mt-1 font-medium">{itemErrors.price}</p>}
         </div>
       </div>
       <div>
@@ -1179,11 +1492,21 @@ export const Items = () => {
       ),
     },
     { header: 'STT', className: 'w-[30px] sm:w-[50px] !px-2 sm:!px-6 text-center', headerCellClassName: 'text-[10px] sm:text-sm', render: (row, { index }) => index },
-    { header: 'Tên sản phẩm', accessor: 'name', headerCellClassName: 'text-[10px]  sm:text-sm', className: 'font-medium text-blue-600 text-[11px] sm:text-sm min-w-[100px] sm:min-w-[140px] !px-2 sm:!px-6' },
+    {
+      header: 'Mã',
+      className: 'hidden lg:table-cell w-[120px] text-left text-[11px] sm:text-sm !px-2 sm:!px-6',
+      headerCellClassName: 'hidden lg:table-cell text-[10px] sm:text-sm',
+      render: (row) => (
+        <span className="font-semibold text-gray-700 whitespace-nowrap">
+          {row.itemCode || row.ItemCode || '--'}
+        </span>
+      )
+    },
+    { header: 'Tên thành phẩm', accessor: 'name', headerCellClassName: 'text-[10px]  sm:text-sm', className: 'font-medium text-blue-600 text-[11px] sm:text-sm min-w-[100px] sm:min-w-[140px] !px-2 sm:!px-6' },
     {
       header: 'Danh mục',
-      className: 'hidden lg:table-cell w-[180px] lg:relative lg:left-[-80px]',
-      headerCellClassName: 'hidden lg:table-cell text-[10px] sm:text-sm lg:relative lg:left-[-80px]',
+      className: 'hidden lg:table-cell w-[180px]',
+      headerCellClassName: 'hidden lg:table-cell text-[10px] sm:text-sm',
       render: (row) => (
         <div className="relative">
           <AnchoredPortalMenu
@@ -1258,20 +1581,10 @@ export const Items = () => {
       )
     },
     {
-      header: 'Giá (VNĐ)',
-      className: 'hidden sm:table-cell w-[60px] sm:w-[150px] text-left lg:relative lg:left-[-80px]',
-      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm lg:relative lg:left-[-80px]',
-      render: (row) => (
-        <span className="text-gray-700 font-semibold text-sm">
-          {row.price?.toLocaleString()}
-        </span>
-      )
-    },
-    {
       header: 'Tồn kho',
       accessor: 'inventory',
-      headerCellClassName: 'text-[10px] sm:text-sm lg:relative lg:left-[-80px]',
-      className: 'w-[60px] sm:w-[120px] text-center text-[11px] sm:text-sm !px-2 sm:!px-6 lg:relative lg:left-[-80px]',
+      headerCellClassName: 'text-[10px] sm:text-sm',
+      className: 'w-[60px] sm:w-[120px] text-center text-[11px] sm:text-sm !px-2 sm:!px-6',
       render: (row) => (
         <span>
           {row.inventory || 0}
@@ -1279,26 +1592,55 @@ export const Items = () => {
       )
     },
     {
-      header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>,
+      header: (
+        isBulkSelectMode ? (
+          <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-sm">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelectAllItems();
+              }}
+              className="font-semibold text-red-600 hover:text-red-700"
+            >
+              Tất cả
+            </button>
+            <span className="text-gray-300">/</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClearSelectedItems();
+              }}
+              className="font-semibold text-gray-500 hover:text-gray-700"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        ) : (
+          <div className="flex w-full items-center justify-center text-[10px] sm:text-sm">Hành động</div>
+        )
+      ),
       className: 'text-center w-[100px] sm:w-[180px]',
-      render: (row, { isExpanded, toggleExpand }) => (
+      render: (row) => (
         <div className="flex justify-center items-center gap-3">
-          {/* <RxDrawingPinFilled
-            size={20}
-            className={`cursor-pointer transition-colors ${selectedItemIds.includes(row.id) ? 'text-red-500' : 'text-gray-400'} hover:text-red-400`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (selectedItemIds.includes(row.id)) {
-                setSelectedItemIds(prev => prev.filter(id => id !== row.id));
-              } else {
-                setSelectedItemIds(prev => [...prev, row.id]);
-              }
-            }}
-            data-tooltip-id="select-multiple-users-tooltip"
-            data-tooltip-content={selectedItemIds.includes(row.id) ? "Bỏ chọn" : "Chọn xóa nhiều dòng"}
-          /> */}
-
-          {selectedItemIds.length < 1 && (
+          {isBulkSelectMode ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleSelectItem(row);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              title={selectedItemIds.includes(getEntityId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
+            >
+              {selectedItemIds.includes(getEntityId(row)) ? (
+                <FaRegSquareMinus size={20} className="text-red-600" />
+              ) : (
+                <FaRegSquare size={20} className="text-gray-400" />
+              )}
+            </button>
+          ) : (
             <div className="flex gap-2 animate-in slide-in-from-left-2 duration-200">
               <button
                 onClick={(e) => { e.stopPropagation(); handleEditItem(row); }}
@@ -1308,7 +1650,7 @@ export const Items = () => {
                 <span className="sm:inline">Sửa</span>
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); handleDeleteItem(row.id); }}
+                onClick={(e) => { e.stopPropagation(); handleDeleteItem(getEntityId(row)); }}
                 className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
                 title="Xóa"
               >
@@ -1468,7 +1810,7 @@ export const Items = () => {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
           {/* <button
             onClick={handleBulkDelete}
             disabled={selectedItemIds.length === 0}
@@ -1478,16 +1820,25 @@ export const Items = () => {
             Xóa nhiều dòng {selectedItemIds.length > 0 && `(${selectedItemIds.length})`}
           </button> */}
 
-          <button className="flex-1 lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
+          <button
+            onClick={handleBulkDelete}
+            className={`order-3 lg:order-1 w-full lg:w-auto lg:flex-none justify-center text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm ${selectedItemIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+          >
+            <Trash2 size={18} />
+            Xóa nhiều dòng {selectedItemIds.length > 0 && `(${selectedItemIds.length})`}
+          </button>
+
+          <button onClick={handleOpenImportModal} className="order-1 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
+          <button onClick={handleRequestExportExcel} className="order-2 lg:order-3 w-full lg:w-auto lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="w-full lg:w-auto justify-center bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors text-sm">
-            Thêm hàng hóa mới
+          <button onClick={handleAddItem} className="order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors text-sm">
+            <span className="lg:hidden">Thêm mới</span>
+            <span className="hidden lg:inline">Thêm hàng hóa mới</span>
           </button>
         </div>
       </div>
@@ -1506,8 +1857,108 @@ export const Items = () => {
                 s.label.toLowerCase().includes(menuSearchQuery.toLowerCase())
               );
               return (
-                <div className="py-4 pl-6 lg:pl-40 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
-                  <div className="flex flex-wrap lg:flex-nowrap items-end gap-x-8 lg:gap-x-[140px] gap-y-4 text-sm">
+                <div className="py-4 pl-6 lg:pl-24 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
+                  <div className="space-y-4 text-sm lg:hidden">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Mã thành phẩm</span>
+                        <span className="text-gray-900 font-medium truncate">{row.itemCode || row.ItemCode || '--'}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Danh mục</span>
+                        <span className="text-gray-900 font-medium truncate">
+                          {categories.find(c => String(c.value) === String(row.category || row.Category))?.label || '--'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Vị trí</span>
+                      <AnchoredPortalMenu
+                        isOpen={openLocationMenuId === getEntityId(row)}
+                        onClose={() => setOpenLocationMenuId(null)}
+                        trigger={(
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setIsWarehousesModalOpen(true); }}
+                              className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+                            >
+                              hiệu chỉnh
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const rowId = getEntityId(row);
+                                if (openLocationMenuId !== rowId) setMenuSearchQuery('');
+                                setOpenLocationMenuId(openLocationMenuId === rowId ? null : rowId);
+                                setOpenStatusMenuId(null);
+                                setOpenManufactoryMenuId(null);
+                                setOpenCategoryMenuId(null);
+                              }}
+                              className="text-xs block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors"
+                            >
+                              <span className="truncate block">
+                                {warehouses.find(w => String(w.value) === String(row.location ?? row.Location))?.label || '-- Chọn --'}
+                              </span>
+                              <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                                <ChevronDown size={14} />
+                              </div>
+                            </button>
+                          </>
+                        )}
+                      >
+
+                        <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                          <div className="relative sm:hidden">
+                            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                              type="text"
+                              className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+                              placeholder="Lọc vị trí"
+                              value={menuSearchQuery}
+                              onChange={(e) => setMenuSearchQuery(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              autoFocus
+                            />
+                          </div>
+                        </div>
+                        <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5 sm:hidden">
+                          {warehouses.filter(w => w.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
+                            <button
+                              key={w.value}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleLocationChange(row, w.value);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location ?? row.Location) === String(w.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                            >
+                              <span className="block w-full !whitespace-normal break-words leading-tight">{w.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </AnchoredPortalMenu>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Giá bán</span>
+                        <span className="text-gray-900 font-medium break-words">{row.price?.toLocaleString()} VNĐ</span>
+                      </div>
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Cân nặng</span>
+                        <span className="text-gray-900 font-medium break-words">{row.weight} kg</span>
+                      </div>
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Thuế</span>
+                        <span className="text-gray-900 font-medium break-words">{row.tax}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hidden lg:flex flex-wrap lg:flex-nowrap items-end gap-x-8 lg:gap-x-[140px] gap-y-4 text-sm">
                     {/* Thông tin hiển thị khi bị ẩn ở bảng chính trên Mobile */}
                     <div className="flex flex-col gap-1 lg:hidden flex-none">
                       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Danh mục</span>
@@ -1583,7 +2034,7 @@ export const Items = () => {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-1 sm:hidden flex-none">
+                    <div className="flex flex-col gap-1 flex-none">
                       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Giá bán</span>
                       <span className="text-gray-900 font-medium">{row.price?.toLocaleString()} VNĐ</span>
                     </div>
@@ -1592,7 +2043,7 @@ export const Items = () => {
                     <div className="flex flex-col gap-1 w-full md:w-64 flex-none">
                       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Vị trí</span>
                       <AnchoredPortalMenu
-                        isOpen={openLocationMenuId === row.id}
+                        isOpen={openLocationMenuId === getEntityId(row)}
                         onClose={() => setOpenLocationMenuId(null)}
                         trigger={(
                           <>
@@ -1606,8 +2057,9 @@ export const Items = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (openLocationMenuId !== row.id) setMenuSearchQuery('');
-                                setOpenLocationMenuId(openLocationMenuId === row.id ? null : row.id);
+                                const rowId = getEntityId(row);
+                                if (openLocationMenuId !== rowId) setMenuSearchQuery('');
+                                setOpenLocationMenuId(openLocationMenuId === rowId ? null : rowId);
                                 setOpenStatusMenuId(null);
                                 setOpenManufactoryMenuId(null);
                                 setOpenCategoryMenuId(null);
@@ -1615,7 +2067,7 @@ export const Items = () => {
                               className="text-xs block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors"
                             >
                               <span className="truncate block">
-                                {warehouses.find(w => String(w.value) === String(row.location))?.label || '-- Chọn --'}
+                                {warehouses.find(w => String(w.value) === String(row.location ?? row.Location))?.label || '-- Chọn --'}
                               </span>
                               <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
                                 <ChevronDown size={14} />
@@ -1626,7 +2078,7 @@ export const Items = () => {
                       >
 
                         <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
-                          <div className="relative">
+                          <div className="relative hidden sm:flex">
                             <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
                               type="text"
@@ -1643,8 +2095,13 @@ export const Items = () => {
                           {warehouses.filter(w => w.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
                             <button
                               key={w.value}
-                              onClick={() => handleLocationChange(row, w.value)}
-                              className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location) === String(w.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleLocationChange(row, w.value);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location ?? row.Location) === String(w.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
                             >
                               <span className="block w-full !whitespace-normal break-words leading-tight">{w.label}</span>
                             </button>
@@ -1681,6 +2138,62 @@ export const Items = () => {
         onMaximizeToggle={toggleModalMaximize}
       >
         {itemForm}
+      </Modal>
+
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="item-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel để nhập'}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
+              <input
+                id="item-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button
+              type="button"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleImportExcel}
+              disabled={isImportingExcel}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isImportingExcel ? 'Đang nhập...' : 'Nhập Excel'}
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* Modal Quản lý danh mục */}

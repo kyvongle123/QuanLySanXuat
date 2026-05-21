@@ -27,6 +27,7 @@ export const getItem = async (id) => {
 export const createItem = async (itemData) => {
   try {
     const response = await axios.post(`${API_BASE_URL}/items`, itemData);
+    if (!response) throw new Error("Error creating item");
     return response.data;
   } catch (error) {
     console.error("Error creating item:", error);

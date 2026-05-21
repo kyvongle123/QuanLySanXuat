@@ -14,6 +14,9 @@ import { getWarehouseStatuses } from '../controller/warehouseStatusesController'
 import { getUnits } from '../controller/unitsController';
 import { LuSquarePen } from "react-icons/lu";
 import { getWarehouseBins } from '../controller/warehouseBinsController';
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
+
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const Material = () => {
   const [materials, setMaterials] = useState([]);
@@ -22,6 +25,9 @@ export const Material = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentEditingItem, setCurrentEditingItem] = useState({ name: '', materialCategory: '', quantity: 0, unit: '', location: '' });
   const [modalErrors, setModalErrors] = useState({});
@@ -39,6 +45,8 @@ export const Material = () => {
   const [categoryErrors, setCategoryErrors] = useState({});
   const [isCategoryEditMaximized, setIsCategoryEditMaximized] = useState(false);
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState([]);
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
+  const [selectedMaterialIds, setSelectedMaterialIds] = useState([]);
 
   // States cho quản lý Nhà kho
   const [warehouses, setWarehouses] = useState([]);
@@ -83,6 +91,40 @@ export const Material = () => {
 
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
+
+  const getEntityId = (entity) => entity?.id || entity?.ID || entity?.Id;
+  const getEntityValue = (entity, camelKey, pascalKey) => entity?.[camelKey] ?? entity?.[pascalKey];
+  const getExcelText = (cell) => {
+    if (!cell) return '';
+    if (cell.text !== undefined && cell.text !== null) return String(cell.text).trim();
+    if (cell.value === undefined || cell.value === null) return '';
+    if (typeof cell.value === 'object') {
+      if (cell.value.text !== undefined) return String(cell.value.text).trim();
+      if (cell.value.result !== undefined) return String(cell.value.result).trim();
+      if (Array.isArray(cell.value.richText)) return cell.value.richText.map(part => part.text || '').join('').trim();
+    }
+    return String(cell.value).trim();
+  };
+  const normalizeImportText = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .replace(/[‐‑‒–—―]/g, '-')
+    .replace(/\s*-\s*/g, ' - ')
+    .replace(/^kho nguyen lieu:\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  const parseImportNumber = (value) => {
+    const text = String(value || '').replace(/[^\d,.-]/g, '').trim();
+    if (!text) return null;
+    const normalized = text.includes(',') && !text.includes('.')
+      ? text.replace(',', '.')
+      : text.replace(/,/g, '');
+    const number = Number(normalized);
+    return Number.isFinite(number) ? number : null;
+  };
 
   const showNotification = (message, type = 'success') => {
     setNotification({ isOpen: true, message, type });
@@ -131,7 +173,7 @@ export const Material = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [materialData, catData, warehousesData, locationData, rackData, typesData, statusesData, unitsData, binData] = await Promise.all([
+        const [materialData, catData, warehousesData, locationData, rackData, typesData, statusesData, unitsData] = await Promise.all([
           getMaterials(),
           getMaterialCategories(),
           getWarehouses(),
@@ -140,7 +182,6 @@ export const Material = () => {
           getWarehouseTypes(),
           getWarehouseStatuses(),
           getUnits(),
-          getWarehouseBins()
         ]);
         setMaterials(materialData);
         setCategories(catData.map(c => ({ value: c.id, label: c.name, unit: c.unit })));
@@ -153,16 +194,13 @@ export const Material = () => {
         setWarehouseLocations(locationData.map(l => {
           const rackObj = rackData.find(r => String(r.id || r.ID) === String(l.racks || l.Racks));
           const rackName = rackObj ? (rackObj.name || rackObj.Name) : (l.racks || l.Racks);
-          const binObj = binData.find(b => String(b.id || b.ID) === String(l.bin || l.Bin));
-          const binName = binObj ? (binObj.name || binObj.Name) : (l.bin || l.Bin);
-          console.log("rackName la", rackName, "level la", l.level, "binName la", binName);
+          const binName = l.bin;
           return {
             value: l.id || l.ID,
             label: `Kệ ${rackName} - Tầng ${l.level || l.Level} - Ô ${binName}`
           };
         }));
         setWarehouseRacks(rackData);
-        setWarehouseBins(binData);
 
         // Lọc những nhà kho có loại là Nguyên liệu (Type 2) và thiết kế lại label dựa trên vị trí
         const mappedWarehouses = warehousesData
@@ -177,8 +215,7 @@ export const Material = () => {
               const rackObj = rackData.find(r => String(r.id || r.ID) === String(rackId));
               const rackName = rackObj ? (rackObj.name || rackObj.Name) : rackId;
               const level = loc.level || loc.Level;
-              const binObj = binData.find(b => String(b.id || b.ID) === String(loc.bin || loc.Bin));
-              const binName = binObj ? (binObj.name || binObj.Name) : (loc.bin || loc.Bin);
+              const binName = loc.bin;
               label = `Kho nguyên liệu: Kệ ${rackName} - Tầng ${level} - Ô ${binName}`;
             }
             return { value: w.id || w.ID, label };
@@ -556,7 +593,7 @@ export const Material = () => {
 
   const handleAddItem = () => {
     setModalMode('add');
-    setCurrentEditingItem({ name: '', quantity: '', unit: '', location: '' });
+    setCurrentEditingItem({ name: '', materialCode: '', quantity: '', unit: '', location: '' });
     setModalErrors({});
     setIsModalOpen(true);
     setImportingStates({}); // Thoát tất cả chế độ nhập hàng khi mở modal
@@ -582,10 +619,6 @@ export const Material = () => {
 
     if (!currentEditingItem?.name) {
       newErrors.name = 'Bắt buộc nhập Tên nguyên liệu';
-    }
-
-    if (currentEditingItem?.quantity === '' || currentEditingItem?.quantity === null || currentEditingItem?.quantity === undefined) {
-      newErrors.quantity = 'Bắt buộc nhập Số lượng';
     }
 
     if (!currentEditingItem?.location) {
@@ -665,6 +698,212 @@ export const Material = () => {
     });
   };
 
+  const handleOpenImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(false);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    window.location.href = `${API_BASE_URL}/Templates/import/materials`;
+  };
+
+  const getImportWarehouseLabel = (warehouse) => {
+    const locationId = warehouse.location ?? warehouse.Location;
+    const loc = rawWarehouseLocations.find(l => String(l.id || l.ID) === String(locationId));
+    if (!loc) return '';
+
+    const rackId = loc.racks ?? loc.Racks;
+    const rack = warehouseRacks.find(r => String(r.id || r.ID) === String(rackId));
+    const rackName = rack ? (rack.name || rack.Name) : rackId;
+    const level = loc.level ?? loc.Level;
+    const binName = loc.bin ?? loc.Bin;
+
+    return `Kho nguyên liệu: Kệ ${rackName} - Tầng ${level} - Ô ${binName}`;
+  };
+
+  const getImportWarehouseLookupLabels = (warehouse) => {
+    const fullLabel = getImportWarehouseLabel(warehouse);
+    const shortLabel = fullLabel.replace(/^Kho nguyên liệu:\s*/i, '');
+    return [fullLabel, shortLabel].filter(Boolean);
+  };
+
+  const buildImportMaterialPayload = (baseMaterial, importedValues) => {
+    const materialId = getEntityId(baseMaterial);
+
+    return {
+      id: materialId || 0,
+      materialCode: importedValues.materialCode,
+      name: importedValues.name,
+      location: importedValues.location,
+      quantity: importedValues.quantity,
+      unit: importedValues.unit,
+      createdAt: getEntityValue(baseMaterial, 'createdAt', 'CreatedAt') ?? null,
+      updatedAt: getEntityValue(baseMaterial, 'updatedAt', 'UpdatedAt') ?? null,
+      createdBy: getEntityValue(baseMaterial, 'createdBy', 'CreatedBy') ?? null,
+      item: getEntityValue(baseMaterial, 'item', 'Item') ?? null,
+      materialCategory: importedValues.name
+    };
+  };
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
+    }
+
+    if (!selectedImportFile.name.toLowerCase().endsWith('.xlsx')) {
+      showNotification("Vui lòng chọn file .xlsx để nhập dữ liệu.", "error");
+      return;
+    }
+
+    try {
+      setIsImportingExcel(true);
+
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có sheet dữ liệu.", "error");
+        return;
+      }
+
+      const categoryMap = new Map(categories.map(category => [
+        normalizeImportText(category.label),
+        category
+      ]));
+      const warehouseMap = new Map();
+      warehousesRawData
+        .filter(warehouse => Number(warehouse.type ?? warehouse.Type) === 2)
+        .forEach(warehouse => {
+          const warehouseId = warehouse.id || warehouse.ID;
+          getImportWarehouseLookupLabels(warehouse).forEach(label => {
+            const normalizedLabel = normalizeImportText(label);
+            if (normalizedLabel) warehouseMap.set(normalizedLabel, warehouseId);
+          });
+        });
+      const materialMap = new Map(materials.map(material => [
+        normalizeImportText(material.materialCode || material.MaterialCode),
+        material
+      ]));
+
+      let createdCount = 0;
+      let updatedCount = 0;
+      const skippedRows = [];
+      const importedMaterials = [];
+
+      const rowNumbers = [];
+      worksheet.eachRow({ includeEmpty: false }, (_, rowNumber) => {
+        if (rowNumber >= 2) rowNumbers.push(rowNumber);
+      });
+
+      for (const rowNumber of rowNumbers) {
+        const row = worksheet.getRow(rowNumber);
+
+        try {
+          const materialCode = getExcelText(row.getCell(2));
+          const materialName = getExcelText(row.getCell(3));
+          const locationText = getExcelText(row.getCell(4));
+          const quantityText = getExcelText(row.getCell(5));
+
+          if (!materialCode && !materialName && !locationText && !quantityText) {
+            continue;
+          }
+
+          if (!materialCode) {
+            skippedRows.push(`Dòng ${rowNumber}: thiếu Mã nguyên liệu`);
+            continue;
+          }
+
+          if (!materialName) {
+            skippedRows.push(`Dòng ${rowNumber}: thiếu Tên nguyên liệu`);
+            continue;
+          }
+
+          const existingMaterial = materialMap.get(normalizeImportText(materialCode));
+          const category = categoryMap.get(normalizeImportText(materialName));
+
+          if (!category) {
+            skippedRows.push(`Dòng ${rowNumber}: không tìm thấy Tên nguyên liệu "${materialName}" trong danh mục`);
+            continue;
+          }
+
+          const locationId = locationText ? warehouseMap.get(normalizeImportText(locationText)) : getEntityValue(existingMaterial, 'location', 'Location') ?? null;
+
+          if (locationText && !locationId) {
+            skippedRows.push(`Dòng ${rowNumber}: không tìm thấy Vị trí "${locationText}"`);
+            continue;
+          }
+
+          if (!locationId) {
+            skippedRows.push(`Dòng ${rowNumber}: thiếu Vị trí`);
+            continue;
+          }
+
+          const parsedQuantity = quantityText ? parseImportNumber(quantityText) : null;
+          if (quantityText && parsedQuantity === null) {
+            skippedRows.push(`Dòng ${rowNumber}: Số lượng không hợp lệ`);
+            continue;
+          }
+
+          const importedValues = {
+            materialCode,
+            name: category.value,
+            location: locationId,
+            quantity: parsedQuantity !== null ? parseInt(parsedQuantity, 10) : getEntityValue(existingMaterial, 'quantity', 'Quantity') ?? 0,
+            unit: category.unit || ''
+          };
+          const payload = buildImportMaterialPayload(existingMaterial || {}, importedValues);
+
+          if (existingMaterial) {
+            const updatedMaterial = await updateMaterial(getEntityId(existingMaterial), payload);
+            const mergedMaterial = { ...existingMaterial, ...updatedMaterial, ...payload, id: getEntityId(existingMaterial) };
+            importedMaterials.push(mergedMaterial);
+            materialMap.set(normalizeImportText(materialCode), mergedMaterial);
+            updatedCount++;
+          } else {
+            const createdMaterial = await createMaterial(payload);
+            const mergedMaterial = { ...createdMaterial, materialCode, MaterialCode: materialCode };
+            importedMaterials.push(mergedMaterial);
+            materialMap.set(normalizeImportText(materialCode), mergedMaterial);
+            createdCount++;
+          }
+        } catch (rowError) {
+          console.error(`Error importing material row ${rowNumber}:`, rowError);
+          skippedRows.push(`Dòng ${rowNumber}: lỗi khi lưu dữ liệu`);
+        }
+      }
+
+      if (importedMaterials.length > 0) {
+        setMaterials(prevMaterials => {
+          const importedMap = new Map(importedMaterials.map(material => [getEntityId(material), material]));
+          const nextMaterials = prevMaterials.map(material => importedMap.get(getEntityId(material)) || material);
+          const existingIds = new Set(prevMaterials.map(material => getEntityId(material)));
+          importedMaterials.forEach(material => {
+            if (!existingIds.has(getEntityId(material))) nextMaterials.push(material);
+          });
+          return nextMaterials;
+        });
+      }
+
+      handleCloseImportModal();
+      const skippedMessage = skippedRows.length ? ` Bỏ qua ${skippedRows.length} dòng.` : '';
+      showNotification("Nhập Excel thành công");
+      if (skippedRows.length) console.warn("Các dòng không nhập được:", skippedRows);
+    } catch (err) {
+      console.error("Import Material Excel Error:", err);
+      showNotification("Lỗi khi nhập Excel. Vui lòng kiểm tra lại file.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
+  };
+
   const handleExportExcel = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -672,6 +911,7 @@ export const Material = () => {
 
       worksheet.columns = [
         { header: 'STT', key: 'stt', width: 10 },
+        { header: 'Mã nguyên liệu', key: 'materialCode', width: 18 },
         { header: 'Tên nguyên liệu', key: 'name', width: 30 },
         { header: 'Vị trí', key: 'location', width: 45 },
         { header: 'Số lượng', key: 'quantity', width: 15 },
@@ -684,6 +924,7 @@ export const Material = () => {
 
         worksheet.addRow({
           stt: index + 1,
+          materialCode: material.materialCode || material.MaterialCode || '',
           name: categoryLabel, // Tên nguyên liệu thực chất là tên danh mục
           category: categories.find(c => String(c.value) === String(material.materialCategory))?.label || 'N/A',
           location: warehouseLabel,
@@ -736,10 +977,21 @@ export const Material = () => {
     } else if (confirmModal.type === 'delete') {
       try {
         await deleteMaterial(confirmModal.id);
-        setMaterials(prev => prev.filter(m => m.id !== confirmModal.id));
+        setMaterials(prev => prev.filter(m => getEntityId(m) !== confirmModal.id));
+        setSelectedMaterialIds(prev => prev.filter(id => id !== confirmModal.id));
         showNotification("Xóa nguyên liệu thành công!", "success");
       } catch (err) {
         showNotification("Lỗi khi xóa dữ liệu.", "error");
+      }
+    } else if (confirmModal.type === 'bulkDelete') {
+      try {
+        await Promise.all(confirmModal.id.map(materialId => deleteMaterial(materialId)));
+        setMaterials(prev => prev.filter(m => !confirmModal.id.includes(getEntityId(m))));
+        setSelectedMaterialIds([]);
+        setIsBulkSelectMode(false);
+        showNotification(`Đã xóa ${confirmModal.id.length} nguyên liệu thành công!`, "success");
+      } catch (err) {
+        showNotification("Có lỗi xảy ra khi xóa nhiều nguyên liệu.", "error");
       }
     } else if (confirmModal.type === 'deleteWarehouse') {
       try {
@@ -770,6 +1022,45 @@ export const Material = () => {
       }
     }
     setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' });
+  };
+
+  const handleBulkDelete = () => {
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
+      setSelectedMaterialIds([]);
+      return;
+    }
+
+    if (selectedMaterialIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedMaterialIds([]);
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      id: selectedMaterialIds,
+      type: 'bulkDelete',
+      title: 'Xác nhận xóa nhiều nguyên liệu',
+      message: `Bạn có chắc chắn muốn xóa ${selectedMaterialIds.length} nguyên liệu đã chọn không? Hành động này không thể hoàn tác.`
+    });
+  };
+
+  const handleSelectAllMaterials = () => {
+    const visibleMaterialIds = filteredData.map(material => getEntityId(material)).filter(Boolean);
+    setSelectedMaterialIds(visibleMaterialIds);
+  };
+
+  const handleClearSelectedMaterials = () => {
+    setSelectedMaterialIds([]);
+  };
+
+  const handleToggleSelectMaterial = (row) => {
+    const rowId = getEntityId(row);
+    setSelectedMaterialIds(prev => prev.includes(rowId)
+      ? prev.filter(id => id !== rowId)
+      : [...prev, rowId]
+    );
   };
 
   // Định nghĩa cột cho bảng danh sách Nhà kho
@@ -1081,6 +1372,12 @@ export const Material = () => {
     },
     { header: 'STT', className: 'w-[30px] sm:w-[50px] !px-2 sm:!px-4 text-center', headerCellClassName: 'text-[10px] sm:text-sm', render: (row, { index }) => index },
     {
+      header: 'Mã nguyên liệu',
+      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
+      className: 'hidden sm:table-cell min-w-[130px] !px-2 sm:!px-4 text-[11px] sm:text-sm font-semibold text-gray-700',
+      render: (row) => row.materialCode || row.MaterialCode || '--'
+    },
+    {
       header: 'Tên nguyên liệu',
       headerCellClassName: 'text-[10px] sm:text-sm',
       className: 'min-w-[120px] sm:min-w-[150px] !px-2 sm:!px-6 text-[11px] sm:text-sm',
@@ -1177,11 +1474,55 @@ export const Material = () => {
       )
     },
     {
-      header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>,
+      header: (
+        isBulkSelectMode ? (
+          <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-sm">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelectAllMaterials();
+              }}
+              className="font-semibold text-red-600 hover:text-red-700"
+            >
+              Tất cả
+            </button>
+            <span className="text-gray-300">/</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClearSelectedMaterials();
+              }}
+              className="font-semibold text-gray-500 hover:text-gray-700"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        ) : (
+          <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>
+        )
+      ),
       className: 'text-center whitespace-nowrap w-[100px] sm:w-[150px]', // Tăng chiều rộng để chứa nút mới
       render: (row) => (
-        <div className="flex gap-2 justify-end items-center">
-          {importingStates[row.id] !== undefined ? ( // Kiểm tra nếu dòng này đang ở chế độ nhập hàng
+        <div className="flex gap-2 justify-center items-center">
+          {isBulkSelectMode ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleSelectMaterial(row);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              title={selectedMaterialIds.includes(getEntityId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
+            >
+              {selectedMaterialIds.includes(getEntityId(row)) ? (
+                <FaRegSquareMinus size={20} className="text-red-600" />
+              ) : (
+                <FaRegSquare size={20} className="text-gray-400" />
+              )}
+            </button>
+          ) : importingStates[row.id] !== undefined ? ( // Kiểm tra nếu dòng này đang ở chế độ nhập hàng
             <>
               <button onClick={() => handleUpdateImport(row)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-[10px] sm:text-sm transition-colors active:scale-95">Lưu</button>
               <button onClick={() => handleCancelImport(row.id)} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-2 sm:px-3 rounded text-[10px] sm:text-sm transition-colors active:scale-95">Hủy</button>
@@ -1195,7 +1536,7 @@ export const Material = () => {
                 <span>Sửa</span>
               </button>
               <button
-                onClick={() => setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa nguyên liệu này?' })}
+                onClick={() => setConfirmModal({ isOpen: true, id: getEntityId(row), type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa nguyên liệu này?' })}
                 className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-[11px] sm:text-xs transition-all active:scale-95 flex items-center gap-1.5"
               >
                 <span>Xóa</span>
@@ -1226,18 +1567,25 @@ export const Material = () => {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button className="flex-1 lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
+        <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
+          <button
+            onClick={handleBulkDelete}
+            className={`order-3 lg:order-1 w-full lg:w-auto lg:flex-none justify-center text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm ${selectedMaterialIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+          >
+            <Trash2 size={18} />
+            Xóa nhiều dòng {selectedMaterialIds.length > 0 && `(${selectedMaterialIds.length})`}
+          </button>
+          <button onClick={handleOpenImportModal} className="order-1 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+          <button onClick={handleRequestExportExcel} className="order-2 lg:order-3 w-full lg:w-auto lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
-            <span className="hidden sm:inline">Thêm nguyên liệu mới</span>
-            <span className="sm:hidden">Thêm nguyên liệu</span>
+          <button onClick={handleAddItem} className="order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+            <span className="lg:hidden">Thêm mới</span>
+            <span className="hidden lg:inline">Thêm nguyên liệu mới</span>
           </button>
         </div>
       </div>
@@ -1253,6 +1601,11 @@ export const Material = () => {
             <div className="py-4 pl-6 lg:pl-40 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
               <div className="flex flex-wrap lg:flex-nowrap items-end gap-x-8 lg:gap-x-[140px] gap-y-4 text-sm !overflow-visible">
                 {/* Thông tin hiển thị khi bị ẩn ở bảng chính trên Mobile */}
+                <div className="flex flex-col gap-1 sm:hidden flex-none">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Mã nguyên liệu</span>
+                  <span className="font-medium text-gray-900">{row.materialCode || row.MaterialCode || '--'}</span>
+                </div>
+
                 <div className="flex flex-col gap-1 sm:hidden flex-none">
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Số lượng</span>
                   <div className="flex items-center gap-1 font-medium text-gray-900">
@@ -1325,6 +1678,62 @@ export const Material = () => {
       )}
 
       <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="material-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel để nhập'}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
+              <input
+                id="material-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button
+              type="button"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleImportExcel}
+              disabled={isImportingExcel}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isImportingExcel ? 'Đang nhập...' : 'Nhập Excel'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         title={modalMode === 'add' ? 'Thêm nguyên liệu mới' : 'Chỉnh sửa nguyên liệu'}
@@ -1333,38 +1742,48 @@ export const Material = () => {
         onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}
       >
         <form onSubmit={handleModalSubmit} className="space-y-4">
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsCategoryMgmtModalOpen(true)}
-              className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 text-[11px] font-bold underline z-10"
-            >
-              hiệu chỉnh
-            </button>
-            <CustomSelect
-              label="Tên nguyên liệu"
-              options={categories}
-              value={currentEditingItem?.name || ''}
-              onChange={(e) => {
-                const categoryId = e.target.value;
-                const selectedCat = categories.find(c => String(c.value) === String(categoryId));
-                setModalErrors(prev => ({ ...prev, name: '' }));
-                setCurrentEditingItem({
-                  ...currentEditingItem,
-                  name: categoryId,
-                  unit: selectedCat ? selectedCat.unit : ''
-                });
-              }}
-              isModalMaximized={isModalMaximized}
-              error={!!modalErrors.name}
-              errorMessage={modalErrors.name}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsCategoryMgmtModalOpen(true)}
+                className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 text-[11px] font-bold underline z-10"
+              >
+                hiệu chỉnh
+              </button>
+              <CustomSelect
+                label="Tên nguyên liệu"
+                options={categories}
+                value={currentEditingItem?.name || ''}
+                onChange={(e) => {
+                  const categoryId = e.target.value;
+                  const selectedCat = categories.find(c => String(c.value) === String(categoryId));
+                  setModalErrors(prev => ({ ...prev, name: '' }));
+                  setCurrentEditingItem({
+                    ...currentEditingItem,
+                    name: categoryId,
+                    unit: selectedCat ? selectedCat.unit : ''
+                  });
+                }}
+                isModalMaximized={isModalMaximized}
+                error={!!modalErrors.name}
+                errorMessage={modalErrors.name}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700">Mã nguyên liệu</label>
+              <input
+                type="text"
+                value={currentEditingItem?.materialCode || currentEditingItem?.MaterialCode || ''}
+                disabled
+                className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm outline-none bg-gray-100 text-gray-500 cursor-not-allowed ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={`block text-xs font-medium ${modalErrors.quantity ? 'text-red-600' : 'text-gray-700'}`}>Số lượng</label>
+              <label className="block text-xs font-medium text-gray-700">Số lượng</label>
               <input type="number" value={currentEditingItem?.quantity ?? ''} onChange={(e) => { setModalErrors(prev => ({ ...prev, quantity: '' })); setCurrentEditingItem({ ...currentEditingItem, quantity: e.target.value }); }} className={`mt-1 block w-full border ${modalErrors.quantity ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-              {modalErrors.quantity && <p className="mt-1 text-xs font-medium text-red-600">{modalErrors.quantity}</p>}
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700">Đơn vị tính</label>
@@ -1841,6 +2260,6 @@ export const Material = () => {
         type={notification.type}
         onClose={() => setNotification(prev => ({ ...prev, isOpen: false }))}
       />
-    </div>
+    </div >
   );
 };

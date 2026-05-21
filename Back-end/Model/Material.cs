@@ -10,6 +10,8 @@ namespace MyProject.Backend.Model
         [Column("ID")]
         public int Id { get; set; }
 
+        public string? MaterialCode { get; set; }
+
         public int Name { get; set; }
 
         public int Location { get; set; }

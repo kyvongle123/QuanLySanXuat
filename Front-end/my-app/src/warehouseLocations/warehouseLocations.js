@@ -8,12 +8,14 @@ import { getWarehouseLocations, createWarehouseLocation, updateWarehouseLocation
 import { getWarehouseRacks, createWarehouseRack, updateWarehouseRack, deleteWarehouseRack } from '../controller/warehouseRacksController';
 import { getWarehouseBins, createWarehouseBin, updateWarehouseBin, deleteWarehouseBin } from '../controller/warehouseBinsController'; // Import all CRUD functions for bins
 import { LuSquarePen } from "react-icons/lu";
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 
 export const WarehouseLocations = () => {
   const [locations, setLocations] = useState([]);
   const [racks, setRacks] = useState([]);
   const [bins, setBins] = useState([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState([]); // New state for selected locations
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -54,6 +56,8 @@ export const WarehouseLocations = () => {
     setNotification({ isOpen: true, message, type });
   };
 
+  const getEntityId = (entity) => entity?.id || entity?.ID || entity?.Id;
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -65,6 +69,8 @@ export const WarehouseLocations = () => {
       setLocations(locationData.map(l => ({ ...l, id: l.id || l.ID })));
       setRacks(rackData.map(r => ({ value: r.id || r.ID, label: r.name || r.Name, ...r }))); // Spread ...r to keep full object for editing
       setBins(binData.map(b => ({ value: b.id || b.ID, label: b.name || b.Name, ...b })));
+      setSelectedLocationIds([]);
+      setIsBulkSelectMode(false);
     } catch (err) {
       showNotification("Lỗi khi tải dữ liệu vị trí kho", "error");
     } finally {
@@ -165,20 +171,44 @@ export const WarehouseLocations = () => {
     }
   };
 
-  // Xử lý chọn/bỏ chọn vị trí kho
-  const handleSelectAllLocations = (e) => {
-    if (e.target.checked) {
-      setSelectedLocationIds(locations.map(loc => loc.id));
-    } else {
+  const handleBulkDelete = () => {
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
       setSelectedLocationIds([]);
+      return;
     }
+
+    if (selectedLocationIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedLocationIds([]);
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      id: selectedLocationIds,
+      type: 'bulk-delete-locations',
+      title: 'Xác nhận xóa nhiều vị trí kho',
+      message: `Bạn có chắc chắn muốn xóa ${selectedLocationIds.length} vị trí kho đã chọn không? Hành động này không thể hoàn tác.`
+    });
   };
 
-  const handleSelectLocation = (id) => {
+  // Xử lý chọn/bỏ chọn vị trí kho
+  const handleSelectAllLocations = () => {
+    const visibleLocationIds = filteredData.map(location => getEntityId(location)).filter(Boolean);
+    setSelectedLocationIds(visibleLocationIds);
+  };
+
+  const handleClearSelectedLocations = () => {
+    setSelectedLocationIds([]);
+  };
+
+  const handleToggleSelectLocation = (row) => {
+    const rowId = getEntityId(row);
     setSelectedLocationIds(prevSelected =>
-      prevSelected.includes(id)
-        ? prevSelected.filter(locationId => locationId !== id)
-        : [...prevSelected, id]
+      prevSelected.includes(rowId)
+        ? prevSelected.filter(locationId => locationId !== rowId)
+        : [...prevSelected, rowId]
     );
   };
 
@@ -505,6 +535,7 @@ export const WarehouseLocations = () => {
         await deleteWarehouseLocation(confirmModal.id); // confirmModal.id will be an array of IDs
         setLocations(prevLocations => prevLocations.filter(loc => !confirmModal.id.includes(loc.id)));
         setSelectedLocationIds([]); // Clear selections after deleting
+        setIsBulkSelectMode(false);
         showNotification(`Xóa ${confirmModal.id.length} vị trí kho thành công!`);
       } catch (err) {
         console.error("Error deleting multiple warehouse locations:", err);
@@ -608,24 +639,72 @@ export const WarehouseLocations = () => {
       render: (row) => `Tầng ${row.level || row.Level}`
     },
     {
-      header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>,
+      header: (
+        isBulkSelectMode ? (
+          <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-sm">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelectAllLocations();
+              }}
+              className="font-semibold text-red-600 hover:text-red-700"
+            >
+              Tất cả
+            </button>
+            <span className="text-gray-300">/</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClearSelectedLocations();
+              }}
+              className="font-semibold text-gray-500 hover:text-gray-700"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        ) : (
+          <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>
+        )
+      ),
       className: 'text-center w-[100px] sm:w-[180px]',
       render: (row) => (
         <div className="flex justify-center items-center gap-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); handleEditItem(row); }}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
-            title="Sửa"
-          >
-            <span>Sửa</span>
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa vị trí kho này?' }); }}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
-            title="Xóa"
-          >
-            <span>Xóa</span>
-          </button>
+          {isBulkSelectMode ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleSelectLocation(row);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              title={selectedLocationIds.includes(getEntityId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
+            >
+              {selectedLocationIds.includes(getEntityId(row)) ? (
+                <FaRegSquareMinus size={20} className="text-red-600" />
+              ) : (
+                <FaRegSquare size={20} className="text-gray-400" />
+              )}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleEditItem(row); }}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
+                title="Sửa"
+              >
+                <span>Sửa</span>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, id: getEntityId(row), type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa vị trí kho này?' }); }}
+                className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
+                title="Xóa"
+              >
+                <span>Xóa</span>
+              </button>
+            </>
+          )}
         </div>
       ),
     },
@@ -650,17 +729,25 @@ export const WarehouseLocations = () => {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button className="flex-1 lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
+        <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
+          <button className="order-1 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+          <button onClick={handleRequestExportExcel} className="order-2 lg:order-3 w-full lg:w-auto lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
-            Thêm vị trí mới
+          <button
+            onClick={handleBulkDelete}
+            className={`order-3 lg:order-1 w-full lg:w-auto lg:flex-none justify-center text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm ${selectedLocationIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+          >
+            <Trash2 size={18} />
+            Xóa nhiều dòng {selectedLocationIds.length > 0 && `(${selectedLocationIds.length})`}
+          </button>
+          <button onClick={handleAddItem} className="order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+            <span className="lg:hidden">Thêm mới</span>
+            <span className="hidden lg:inline">Thêm vị trí mới</span>
           </button>
         </div>
       </div>

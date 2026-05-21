@@ -8,7 +8,7 @@ const normalizeWarehouseData = (data) => {
         return data.map(item => ({
             id: item.id || item.Id,
             name: item.name || item.Name,
-            code: item.code || item.Code,
+            warehouseCode: item.warehouseCode || item.WarehouseCode,
             type: item.type || item.Type,
             status: item.status || item.Status,
             location: item.location || item.Location,
@@ -19,7 +19,7 @@ const normalizeWarehouseData = (data) => {
     return {
         id: data.id || data.Id,
         name: data.name || data.Name,
-        code: data.code || data.Code,
+        warehouseCode: data.warehouseCode || data.WarehouseCode,
         type: data.type || data.Type,
         status: data.status || data.Status,
         location: data.location || data.Location,

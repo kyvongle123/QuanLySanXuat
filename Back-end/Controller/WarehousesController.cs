@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyProject.Backend.Data;
 using MyProject.Backend.Model;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,6 +13,8 @@ namespace MyProject.Backend.Controller
     [ApiController]
     public class WarehousesController : ControllerBase
     {
+        private const string WarehouseCodePrefix = "NK00";
+        private const int MaxCreateWarehouseCodeAttempts = 10;
         private readonly AppDbContext _context;
 
         public WarehousesController(AppDbContext context)
@@ -39,9 +42,46 @@ namespace MyProject.Backend.Controller
         [HttpPost]
         public async Task<ActionResult<Warehouse>> PostWarehouse(Warehouse warehouse)
         {
-            _context.Warehouses.Add(warehouse);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetWarehouse), new { id = warehouse.ID }, warehouse);
+            var hasProvidedWarehouseCode = !string.IsNullOrWhiteSpace(warehouse.WarehouseCode);
+
+            for (var attempt = 0; attempt < MaxCreateWarehouseCodeAttempts; attempt++)
+            {
+                if (!hasProvidedWarehouseCode)
+                {
+                    warehouse.WarehouseCode = await GenerateNextWarehouseCodeAsync();
+                }
+                else
+                {
+                    warehouse.WarehouseCode = warehouse.WarehouseCode?.Trim();
+                }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                _context.Warehouses.Add(warehouse);
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return CreatedAtAction(nameof(GetWarehouse), new { id = warehouse.ID }, warehouse);
+                }
+                catch (DbUpdateException ex) when (IsUniqueWarehouseCodeException(ex) && attempt < MaxCreateWarehouseCodeAttempts - 1)
+                {
+                    await transaction.RollbackAsync();
+                    _context.Entry(warehouse).State = EntityState.Detached;
+                    warehouse.ID = 0;
+
+                    if (hasProvidedWarehouseCode)
+                    {
+                        return Conflict("WarehouseCode đã tồn tại.");
+                    }
+
+                    warehouse.WarehouseCode = null;
+                }
+            }
+
+            return StatusCode(500, "Không thể sinh WarehouseCode không trùng sau nhiều lần thử.");
         }
 
         // PUT: api/Warehouses/5
@@ -50,7 +90,12 @@ namespace MyProject.Backend.Controller
         {
             if (id != warehouse.ID) return BadRequest("ID không khớp.");
 
-            _context.Entry(warehouse).State = EntityState.Modified;
+            var existingWarehouse = await _context.Warehouses.FindAsync(id);
+            if (existingWarehouse == null) return NotFound();
+
+            warehouse.WarehouseCode = existingWarehouse.WarehouseCode ?? await GenerateNextWarehouseCodeAsync();
+
+            _context.Entry(existingWarehouse).CurrentValues.SetValues(warehouse);
 
             try
             {
@@ -58,14 +103,11 @@ namespace MyProject.Backend.Controller
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!WarehouseExists(id))
-                {
-                    return NotFound();
-                }
-                else throw;
+                if (!WarehouseExists(id)) return NotFound();
+                throw;
             }
 
-            return Ok(warehouse);
+            return Ok(existingWarehouse);
         }
 
         // DELETE: api/Warehouses/5
@@ -84,6 +126,38 @@ namespace MyProject.Backend.Controller
         private bool WarehouseExists(int id)
         {
             return _context.Warehouses.Any(e => e.ID == id);
+        }
+
+        private async Task<string> GenerateNextWarehouseCodeAsync()
+        {
+            var warehouseCodes = await _context.Warehouses
+                .AsNoTracking()
+                .Where(e => e.WarehouseCode != null && e.WarehouseCode.StartsWith(WarehouseCodePrefix))
+                .Select(e => e.WarehouseCode!)
+                .ToListAsync();
+
+            var maxNumber = 0;
+
+            foreach (var warehouseCode in warehouseCodes)
+            {
+                var numberText = warehouseCode[WarehouseCodePrefix.Length..];
+
+                if (int.TryParse(numberText, out var number) && number > maxNumber)
+                {
+                    maxNumber = number;
+                }
+            }
+
+            return $"{WarehouseCodePrefix}{maxNumber + 1}";
+        }
+
+        private static bool IsUniqueWarehouseCodeException(DbUpdateException exception)
+        {
+            var message = exception.InnerException?.Message ?? exception.Message;
+
+            return message.Contains("IX_Warehouses_WarehouseCode", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

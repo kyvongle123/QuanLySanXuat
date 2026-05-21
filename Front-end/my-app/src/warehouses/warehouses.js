@@ -11,11 +11,15 @@ import { getWarehouseRacks } from '../controller/warehouseRacksController';
 import { getWarehouseBins } from '../controller/warehouseBinsController';
 import { getWarehouseStatuses, createWarehouseStatus, updateWarehouseStatus, deleteWarehouseStatus } from '../controller/warehouseStatusesController';
 import { LuSquarePen } from "react-icons/lu";
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
+
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const Warehouses = () => {
   const [warehouses, setWarehouses] = useState([]);
   const [types, setTypes] = useState([]);
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState([]);
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
   const [sections, setSections] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +27,7 @@ export const Warehouses = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
-  const [currentEditingItem, setCurrentEditingItem] = useState({ type: '', available: 0, location: '' });
+  const [currentEditingItem, setCurrentEditingItem] = useState({ type: '', warehouseCode: '', available: 0, location: '' });
   const [modalErrors, setModalErrors] = useState({});
   const [isModalMaximized, setIsModalMaximized] = useState(false);
 
@@ -70,6 +74,42 @@ export const Warehouses = () => {
 
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
+
+  const getEntityId = (entity) => entity?.id || entity?.ID || entity?.Id;
+  const getEntityValue = (entity, camelKey, pascalKey) => entity?.[camelKey] ?? entity?.[pascalKey];
+  const getExcelText = (cell) => {
+    if (!cell) return '';
+    if (cell.text !== undefined && cell.text !== null) return String(cell.text).trim();
+    if (cell.value === undefined || cell.value === null) return '';
+    if (typeof cell.value === 'object') {
+      if (cell.value.text !== undefined) return String(cell.value.text).trim();
+      if (cell.value.result !== undefined) return String(cell.value.result).trim();
+      if (Array.isArray(cell.value.richText)) return cell.value.richText.map(part => part.text || '').join('').trim();
+    }
+    return String(cell.value).trim();
+  };
+  const normalizeImportText = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .replace(/[‐‑‒–—―]/g, '-')
+    .replace(/\s*-\s*/g, ' - ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  const parseImportNumber = (value) => {
+    const text = String(value || '').replace(/[^\d,.-]/g, '').trim();
+    if (!text) return null;
+    const normalized = text.includes(',') && !text.includes('.')
+      ? text.replace(',', '.')
+      : text.replace(/,/g, '');
+    const number = Number(normalized);
+    return Number.isFinite(number) ? number : null;
+  };
 
   const showNotification = (message, type = 'success') => {
     setNotification({ isOpen: true, message, type });
@@ -78,33 +118,31 @@ export const Warehouses = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [whData, typeData, locationData, rackData, binData, statusData] = await Promise.all([
+      const [whData, typeData, locationData, rackData, statusData] = await Promise.all([
         getWarehouses(),
         getWarehouseTypes(),
         getWarehouseLocations(),
         getWarehouseRacks(),
-        getWarehouseBins(),
         getWarehouseStatuses(),
       ]);
-      setWarehouses(whData.map(w => ({ ...w, id: w.id || w.ID })));
+      setWarehouses(whData.map(w => ({ ...w, id: getEntityId(w) })));
       setTypes(typeData.map(t => ({ value: t.id || t.ID, label: t.name || t.Name })));
       setStatuses(statusData.map(s => ({ value: s.id || s.ID, label: s.name || s.Name })));
 
       setRawRacks(rackData.map(r => ({ value: r.id || r.ID, label: r.name || r.Name })));
-      setRawBins(binData.map(b => ({ value: b.id || b.ID, label: b.name || b.Name })));
       setRawLocations(locationData.map(l => ({ ...l, id: l.id || l.ID })));
 
       setSections(locationData.map(l => {
         const rackObj = rackData.find(r => String(r.id || r.ID) === String(l.racks || l.Racks));
         const rackName = rackObj ? (rackObj.name || rackObj.Name) : (l.racks || l.Racks);
-        const binObj = binData.find(b => String(b.id || b.ID) === String(l.bin || l.Bin));
-        const binName = binObj ? (binObj.name || binObj.Name) : (l.bin || l.Bin);
+        const binName = l.bin;
         return {
           value: l.id || l.ID,
           label: `Kệ ${rackName} - Tầng ${l.level || l.Level} - Ô ${binName}`
         };
       }));
       setSelectedWarehouseIds([]); // Clear selections after data refresh
+      setIsBulkSelectMode(false);
     } catch (err) {
       showNotification("Lỗi khi tải dữ liệu nhà kho", "error");
     } finally {
@@ -195,7 +233,7 @@ export const Warehouses = () => {
 
   const handleAddItem = () => {
     setModalMode('add');
-    setCurrentEditingItem({ type: '', available: '', location: '' });
+    setCurrentEditingItem({ type: '', warehouseCode: '', available: '', location: '' });
     setModalErrors({});
     setIsModalOpen(true);
   };
@@ -205,6 +243,7 @@ export const Warehouses = () => {
     setCurrentEditingItem({
       ...item,
       type: item.type || item.Type,
+      warehouseCode: item.warehouseCode || item.WarehouseCode || '',
       available: item.available || item.Available,
       location: item.location || item.Location
     });
@@ -212,19 +251,43 @@ export const Warehouses = () => {
     setIsModalOpen(true);
   };
 
-  const handleSelectAllWarehouses = (e) => {
-    if (e.target.checked) {
-      setSelectedWarehouseIds(warehouses.map(wh => wh.id));
-    } else {
+  const handleBulkDelete = () => {
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
       setSelectedWarehouseIds([]);
+      return;
     }
+
+    if (selectedWarehouseIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedWarehouseIds([]);
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      id: selectedWarehouseIds,
+      type: 'bulkDelete',
+      title: 'Xác nhận xóa nhiều nhà kho',
+      message: `Bạn có chắc chắn muốn xóa ${selectedWarehouseIds.length} nhà kho đã chọn không? Hành động này không thể hoàn tác.`
+    });
   };
 
-  const handleSelectWarehouse = (id) => {
+  const handleSelectAllWarehouses = () => {
+    const visibleWarehouseIds = filteredData.map(warehouse => getEntityId(warehouse)).filter(Boolean);
+    setSelectedWarehouseIds(visibleWarehouseIds);
+  };
+
+  const handleClearSelectedWarehouses = () => {
+    setSelectedWarehouseIds([]);
+  };
+
+  const handleToggleSelectWarehouse = (row) => {
+    const rowId = getEntityId(row);
     setSelectedWarehouseIds(prevSelected =>
-      prevSelected.includes(id)
-        ? prevSelected.filter(warehouseId => warehouseId !== id)
-        : [...prevSelected, id]
+      prevSelected.includes(rowId)
+        ? prevSelected.filter(warehouseId => warehouseId !== rowId)
+        : [...prevSelected, rowId]
     );
   };
 
@@ -592,7 +655,7 @@ export const Warehouses = () => {
     {
       header: 'Ô (Bin)',
       className: '!px-2 sm:!px-6',
-      render: (row) => rawBins.find(b => String(b.value) === String(row.bin || row.Bin))?.label || 'N/A'
+      render: (row) => row.bin
     },
     {
       header: 'Kệ (Rack)',
@@ -691,10 +754,6 @@ export const Warehouses = () => {
       errors.location = "Bắt buộc nhập Vị trí chi tiết";
     }
 
-    if (currentEditingItem?.available === '' || currentEditingItem?.available === null || currentEditingItem?.available === undefined) {
-      errors.available = "Bắt buộc nhập Số lượng tối đa";
-    }
-
     if (Object.keys(errors).length > 0) {
       setModalErrors(errors);
       return;
@@ -704,6 +763,7 @@ export const Warehouses = () => {
 
     const payload = {
       ID: currentEditingItem.id || 0,
+      WarehouseCode: currentEditingItem.warehouseCode || currentEditingItem.WarehouseCode || null,
       Type: parseInt(currentEditingItem.type),
       Available: Number(currentEditingItem.available || 0),
       Location: parseInt(currentEditingItem.location)
@@ -733,6 +793,179 @@ export const Warehouses = () => {
     });
   };
 
+  const handleOpenImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportingExcel(false);
+    setIsImportModalOpen(false);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    window.location.href = `${API_BASE_URL}/Templates/import/warehouses`;
+  };
+
+  const buildImportWarehousePayload = (baseWarehouse, importedValues) => {
+    const warehouseId = getEntityId(baseWarehouse);
+
+    return {
+      ID: warehouseId || 0,
+      WarehouseCode: importedValues.warehouseCode,
+      Type: importedValues.type,
+      Location: importedValues.location,
+      Available: importedValues.available
+    };
+  };
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel trước khi nhập.", "error");
+      return;
+    }
+
+    if (!selectedImportFile.name.toLowerCase().endsWith('.xlsx')) {
+      showNotification("Vui lòng chọn file .xlsx để nhập dữ liệu.", "error");
+      return;
+    }
+
+    try {
+      setIsImportingExcel(true);
+
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có sheet dữ liệu.", "error");
+        return;
+      }
+
+      const typeMap = new Map(types.map(type => [
+        normalizeImportText(type.label),
+        type.value
+      ]));
+      const locationMap = new Map(sections.map(section => [
+        normalizeImportText(section.label),
+        section.value
+      ]));
+      const warehouseMap = new Map(warehouses.map(warehouse => [
+        normalizeImportText(warehouse.warehouseCode || warehouse.WarehouseCode),
+        warehouse
+      ]));
+
+      let createdCount = 0;
+      let updatedCount = 0;
+      const skippedRows = [];
+      const importedWarehouses = [];
+
+      const rowNumbers = [];
+      worksheet.eachRow({ includeEmpty: false }, (_, rowNumber) => {
+        if (rowNumber >= 2) rowNumbers.push(rowNumber);
+      });
+
+      for (const rowNumber of rowNumbers) {
+        const row = worksheet.getRow(rowNumber);
+
+        try {
+          const warehouseCode = getExcelText(row.getCell(2));
+          const typeText = getExcelText(row.getCell(3));
+          const locationText = getExcelText(row.getCell(4));
+          const availableText = getExcelText(row.getCell(5));
+
+          if (!warehouseCode && !typeText && !locationText && !availableText) {
+            continue;
+          }
+
+          if (!warehouseCode) {
+            skippedRows.push(`Dòng ${rowNumber}: thiếu Mã kho`);
+            continue;
+          }
+
+          const existingWarehouse = warehouseMap.get(normalizeImportText(warehouseCode));
+          const typeId = typeText ? typeMap.get(normalizeImportText(typeText)) : getEntityValue(existingWarehouse, 'type', 'Type') ?? null;
+
+          if (typeText && !typeId) {
+            skippedRows.push(`Dòng ${rowNumber}: không tìm thấy Loại kho "${typeText}"`);
+            continue;
+          }
+
+          if (!typeId) {
+            skippedRows.push(`Dòng ${rowNumber}: thiếu Loại kho`);
+            continue;
+          }
+
+          const locationId = locationText ? locationMap.get(normalizeImportText(locationText)) : getEntityValue(existingWarehouse, 'location', 'Location') ?? null;
+
+          if (locationText && !locationId) {
+            skippedRows.push(`Dòng ${rowNumber}: không tìm thấy Vị trí "${locationText}"`);
+            continue;
+          }
+
+          if (!locationId) {
+            skippedRows.push(`Dòng ${rowNumber}: thiếu Vị trí`);
+            continue;
+          }
+
+          const parsedAvailable = availableText ? parseImportNumber(availableText) : null;
+          if (availableText && parsedAvailable === null) {
+            skippedRows.push(`Dòng ${rowNumber}: Số lượng không hợp lệ`);
+            continue;
+          }
+
+          const importedValues = {
+            warehouseCode,
+            type: parseInt(typeId, 10),
+            location: parseInt(locationId, 10),
+            available: parsedAvailable !== null ? parseInt(parsedAvailable, 10) : getEntityValue(existingWarehouse, 'available', 'Available') ?? 0
+          };
+          const payload = buildImportWarehousePayload(existingWarehouse || {}, importedValues);
+
+          if (existingWarehouse) {
+            const updatedWarehouse = await updateWarehouse(getEntityId(existingWarehouse), payload);
+            const mergedWarehouse = { ...existingWarehouse, ...updatedWarehouse, ...payload, id: getEntityId(existingWarehouse), warehouseCode };
+            importedWarehouses.push(mergedWarehouse);
+            warehouseMap.set(normalizeImportText(warehouseCode), mergedWarehouse);
+            updatedCount++;
+          } else {
+            const createdWarehouse = await createWarehouse(payload);
+            const mergedWarehouse = { ...createdWarehouse, warehouseCode, WarehouseCode: warehouseCode };
+            importedWarehouses.push(mergedWarehouse);
+            warehouseMap.set(normalizeImportText(warehouseCode), mergedWarehouse);
+            createdCount++;
+          }
+        } catch (rowError) {
+          console.error(`Error importing warehouse row ${rowNumber}:`, rowError);
+          skippedRows.push(`Dòng ${rowNumber}: lỗi khi lưu dữ liệu`);
+        }
+      }
+
+      if (importedWarehouses.length > 0) {
+        setWarehouses(prevWarehouses => {
+          const importedMap = new Map(importedWarehouses.map(warehouse => [getEntityId(warehouse), warehouse]));
+          const nextWarehouses = prevWarehouses.map(warehouse => importedMap.get(getEntityId(warehouse)) || warehouse);
+          const existingIds = new Set(prevWarehouses.map(warehouse => getEntityId(warehouse)));
+          importedWarehouses.forEach(warehouse => {
+            if (!existingIds.has(getEntityId(warehouse))) nextWarehouses.push(warehouse);
+          });
+          return nextWarehouses;
+        });
+      }
+
+      handleCloseImportModal();
+      showNotification("Nhập Excel thành công");
+      if (skippedRows.length) console.warn("Các dòng không nhập được:", skippedRows);
+    } catch (err) {
+      console.error("Import Warehouse Excel Error:", err);
+      showNotification("Lỗi khi nhập Excel nhà kho.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
+  };
+
   const handleExportExcel = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -740,6 +973,7 @@ export const Warehouses = () => {
 
       worksheet.columns = [
         { header: 'STT', key: 'stt', width: 10 },
+        { header: 'Mã kho', key: 'warehouseCode', width: 18 },
         { header: 'Loại kho', key: 'type', width: 20 },
         { header: 'Vị trí (Phân xưởng)', key: 'location', width: 25 },
         { header: 'Số lượng tối đa', key: 'available', width: 20 },
@@ -748,8 +982,9 @@ export const Warehouses = () => {
       filteredData.forEach((w, index) => {
         worksheet.addRow({
           stt: index + 1,
+          warehouseCode: w.warehouseCode || w.WarehouseCode || '',
           type: types.find(t => String(t.value) === String(w.type || w.Type))?.label || 'N/A',
-          available: (w.available || w.Available) === 1 ? 'Trống' : 'Có hàng',
+          available: w.available || w.Available || 0,
           location: sections.find(s => String(s.value) === String(w.location || w.Location))?.label || 'N/A',
         });
       });
@@ -777,20 +1012,22 @@ export const Warehouses = () => {
     } else if (confirmModal.type === 'delete') {
       try {
         await deleteWarehouse(confirmModal.id);
-        setWarehouses(prev => prev.filter(w => w.id !== confirmModal.id));
+        setWarehouses(prev => prev.filter(w => getEntityId(w) !== confirmModal.id));
+        setSelectedWarehouseIds(prev => prev.filter(id => id !== confirmModal.id));
         showNotification("Xóa vị trí kho thành công!");
       } catch (err) {
         showNotification("Lỗi khi xóa dữ liệu.", "error");
       }
-    } else if (confirmModal.type === 'bulk-delete-warehouses') {
+    } else if (confirmModal.type === 'bulkDelete') {
       try {
-        await deleteWarehouse(confirmModal.id); // Assuming deleteWarehouse can handle an array of IDs
-        setWarehouses(prevWarehouses => prevWarehouses.filter(wh => !confirmModal.id.includes(wh.id)));
-        setSelectedWarehouseIds([]); // Clear selections after deleting
-        showNotification(`Xóa ${confirmModal.id.length} vị trí kho thành công!`);
+        await deleteWarehouse(confirmModal.id);
+        setWarehouses(prevWarehouses => prevWarehouses.filter(wh => !confirmModal.id.includes(getEntityId(wh))));
+        setSelectedWarehouseIds([]);
+        setIsBulkSelectMode(false);
+        showNotification(`Xóa ${confirmModal.id.length} nhà kho thành công!`);
       } catch (err) {
         console.error("Error deleting multiple warehouses:", err);
-        showNotification("Lỗi khi xóa nhiều vị trí kho.", "error");
+        showNotification("Lỗi khi xóa nhiều nhà kho.", "error");
       }
     } else if (confirmModal.type === 'deleteType') {
       try {
@@ -821,6 +1058,16 @@ export const Warehouses = () => {
       ),
     },
     { header: 'STT', className: 'w-[30px] sm:w-[50px] !px-2 sm:!px-4 text-center', headerCellClassName: 'text-[10px] sm:text-sm', render: (row, { index }) => index },
+    {
+      header: 'Mã kho',
+      className: 'hidden sm:table-cell w-28 !px-2 sm:!px-6 text-center',
+      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
+      render: (row) => (
+        <span className="font-semibold text-gray-700">
+          {row.warehouseCode || row.WarehouseCode || '-'}
+        </span>
+      )
+    },
     {
       header: 'Loại kho',
       className: 'hidden sm:table-cell w-32 sm:w-48 !px-2 sm:!px-6',
@@ -967,24 +1214,72 @@ export const Warehouses = () => {
       )
     },
     {
-      header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>,
+      header: (
+        isBulkSelectMode ? (
+          <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-sm">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelectAllWarehouses();
+              }}
+              className="font-semibold text-red-600 hover:text-red-700"
+            >
+              Tất cả
+            </button>
+            <span className="text-gray-300">/</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClearSelectedWarehouses();
+              }}
+              className="font-semibold text-gray-500 hover:text-gray-700"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        ) : (
+          <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>
+        )
+      ),
       className: 'text-center w-[100px] sm:w-[180px]',
       render: (row) => (
         <div className="flex justify-center items-center gap-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); handleEditItem(row); }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
-            title="Sửa"
-          >
-            <span>Sửa</span>
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa vị trí kho này?' }); }}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
-            title="Xóa"
-          >
-            <span>Xóa</span>
-          </button>
+          {isBulkSelectMode ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleSelectWarehouse(row);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              title={selectedWarehouseIds.includes(getEntityId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
+            >
+              {selectedWarehouseIds.includes(getEntityId(row)) ? (
+                <FaRegSquareMinus size={20} className="text-red-600" />
+              ) : (
+                <FaRegSquare size={20} className="text-gray-400" />
+              )}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleEditItem(row); }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
+                title="Sửa"
+              >
+                <span>Sửa</span>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, id: getEntityId(row), type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa vị trí kho này?' }); }}
+                className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 sm:px-3 rounded text-xs transition-all active:scale-95 flex items-center gap-1.5"
+                title="Xóa"
+              >
+                <span>Xóa</span>
+              </button>
+            </>
+          )}
         </div>
       ),
     },
@@ -1009,17 +1304,25 @@ export const Warehouses = () => {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button className="flex-1 lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
+        <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
+          <button
+            onClick={handleBulkDelete}
+            className={`order-3 lg:order-1 w-full lg:w-auto lg:flex-none justify-center text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm ${selectedWarehouseIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+          >
+            <Trash2 size={18} />
+            Xóa nhiều dòng {selectedWarehouseIds.length > 0 && `(${selectedWarehouseIds.length})`}
+          </button>
+          <button onClick={handleOpenImportModal} className="order-2 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+          <button onClick={handleRequestExportExcel} className="order-1 lg:order-3 w-full lg:w-auto lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
-            Thêm nhà kho mới
+          <button onClick={handleAddItem} className="order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+            <span className="lg:hidden">Thêm mới</span>
+            <span className="hidden lg:inline">Thêm nhà kho mới</span>
           </button>
         </div>
       </div>
@@ -1035,6 +1338,11 @@ export const Warehouses = () => {
             <div className="py-4 pl-6 lg:pl-40 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
               <div className="flex flex-wrap lg:flex-nowrap items-end gap-x-8 lg:gap-x-[140px] gap-y-4 text-sm !overflow-visible">
                 {/* Thông tin hiển thị khi bị ẩn ở bảng chính trên Mobile */}
+                <div className="flex flex-col gap-1 sm:hidden flex-none">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Mã kho</span>
+                  <span className="text-gray-900 font-semibold">{row.warehouseCode || row.WarehouseCode || '-'}</span>
+                </div>
+
                 <div className="flex flex-col gap-1 sm:hidden flex-none !overflow-visible">
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Loại kho</span>
                   <div className="relative w-40">
@@ -1098,7 +1406,7 @@ export const Warehouses = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1 sm:hidden flex-none">
+                <div className="flex flex-col gap-1 sm:hidden flex-none -mt-2">
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Số lượng tối đa</span>
                   <span className="text-gray-900 font-medium">{row.available || row.Available || 0}</span>
                 </div>
@@ -1108,17 +1416,85 @@ export const Warehouses = () => {
         />
       )}
 
-      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalMode === 'add' ? 'Thêm nhà kho mới' : 'Chỉnh sửa nhà kho'} isMaximized={isModalMaximized} onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}>
-        <form onSubmit={handleModalSubmit} className="space-y-4">
-          <div className="relative">
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="warehouse-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel để nhập'}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
+              <input
+                id="warehouse-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
             <button
               type="button"
-              onClick={() => setIsTypeMgmtModalOpen(true)}
-              className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 text-[11px] font-bold underline z-10"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
             >
-              hiệu chỉnh
+              Hủy
             </button>
-            <CustomSelect label="Loại kho" options={types} value={currentEditingItem?.type || ''} onChange={(e) => { setModalErrors(prev => ({ ...prev, type: '' })); setCurrentEditingItem({ ...currentEditingItem, type: e.target.value }); }} isModalMaximized={isModalMaximized} error={!!modalErrors.type} errorMessage={modalErrors.type} />
+            <button
+              type="button"
+              onClick={handleImportExcel}
+              disabled={isImportingExcel}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isImportingExcel ? 'Đang nhập...' : 'Nhập Excel'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalMode === 'add' ? 'Thêm nhà kho mới' : 'Chỉnh sửa nhà kho'} isMaximized={isModalMaximized} onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}>
+        <form onSubmit={handleModalSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsTypeMgmtModalOpen(true)}
+                className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 text-[11px] font-bold underline z-10"
+              >
+                hiệu chỉnh
+              </button>
+              <CustomSelect label="Loại kho" options={types} value={currentEditingItem?.type || ''} onChange={(e) => { setModalErrors(prev => ({ ...prev, type: '' })); setCurrentEditingItem({ ...currentEditingItem, type: e.target.value }); }} isModalMaximized={isModalMaximized} error={!!modalErrors.type} errorMessage={modalErrors.type} />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-700">Mã kho</label>
+              <input
+                type="text"
+                value={currentEditingItem?.warehouseCode || currentEditingItem?.WarehouseCode || ''}
+                disabled
+                className={`w-full cursor-not-allowed rounded-md border border-gray-300 bg-gray-100 text-gray-500 shadow-sm outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+              />
+            </div>
           </div>
 
           <div className="relative">
@@ -1133,15 +1509,14 @@ export const Warehouses = () => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${modalErrors.available ? 'text-red-600' : 'text-gray-700'}`}>Số lượng tối đa</label>
+            <label className="text-xs font-medium text-gray-700">Số lượng tối đa</label>
             <input
               type="number"
               min="0"
               value={currentEditingItem?.available ?? ''}
               onChange={(e) => { setModalErrors(prev => ({ ...prev, available: '' })); setCurrentEditingItem({ ...currentEditingItem, available: e.target.value }); }}
-              className={`w-full border ${modalErrors.available ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+              className={`w-full border border-gray-300 focus:ring-blue-500 rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
             />
-            {modalErrors.available && <p className="text-xs font-medium text-red-600">{modalErrors.available}</p>}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
