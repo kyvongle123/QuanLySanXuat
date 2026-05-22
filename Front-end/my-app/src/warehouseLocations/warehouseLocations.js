@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Plus, FileDown, Trash2, ChevronDown, FileUp } from 'lucide-react';
+import { Search, Plus, FileDown, Trash2, ChevronDown, ChevronRight, FileUp } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, AppNotification, CustomConfirm, Modal, CustomSelect } from '../customComponent/customComponent';
@@ -9,6 +9,8 @@ import { getWarehouseRacks, createWarehouseRack, updateWarehouseRack, deleteWare
 import { getWarehouseBins, createWarehouseBin, updateWarehouseBin, deleteWarehouseBin } from '../controller/warehouseBinsController'; // Import all CRUD functions for bins
 import { LuSquarePen } from "react-icons/lu";
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
+
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const WarehouseLocations = () => {
   const [locations, setLocations] = useState([]);
@@ -21,7 +23,7 @@ export const WarehouseLocations = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
-  const [currentEditingItem, setCurrentEditingItem] = useState({ bin: '', racks: '', level: 1 });
+  const [currentEditingItem, setCurrentEditingItem] = useState({ locationCode: '', bin: '', racks: '', level: 1 });
   const [modalErrors, setModalErrors] = useState({});
   const [isModalMaximized, setIsModalMaximized] = useState(false);
 
@@ -51,12 +53,41 @@ export const WarehouseLocations = () => {
   const [rackErrors, setRackErrors] = useState({});
   const [rackConfirmModal, setRackConfirmModal] = useState({ isOpen: false, id: null });
   const [isRackMgmtMaximized, setIsRackMgmtMaximized] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ isOpen: true, message, type });
   };
 
   const getEntityId = (entity) => entity?.id || entity?.ID || entity?.Id;
+  const getEntityValue = (entity, camelKey, pascalKey) => entity?.[camelKey] ?? entity?.[pascalKey];
+  const getExcelText = (cell) => {
+    if (!cell) return '';
+    if (cell.text !== undefined && cell.text !== null) return String(cell.text).trim();
+    if (cell.value === undefined || cell.value === null) return '';
+    if (typeof cell.value === 'object') {
+      if (cell.value.text !== undefined) return String(cell.value.text).trim();
+      if (cell.value.result !== undefined) return String(cell.value.result).trim();
+      if (Array.isArray(cell.value.richText)) return cell.value.richText.map(part => part.text || '').join('').trim();
+    }
+    return String(cell.value).trim();
+  };
+  const normalizeImportText = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  const parseImportInteger = (value) => {
+    const match = String(value || '').match(/\d+/);
+    if (!match) return null;
+    const number = Number(match[0]);
+    return Number.isInteger(number) ? number : null;
+  };
 
   const fetchData = async () => {
     try {
@@ -126,6 +157,7 @@ export const WarehouseLocations = () => {
       return (
         rackLabel.toLowerCase().includes(searchTerm.toLowerCase()) ||
         binLabel.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (l.locationCode || l.LocationCode || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         String(l.level || l.Level).includes(searchTerm.toLowerCase())
       );
     });
@@ -414,7 +446,7 @@ export const WarehouseLocations = () => {
 
   const handleAddItem = () => {
     setModalMode('add');
-    setCurrentEditingItem({ bin: '', racks: '', level: '' });
+    setCurrentEditingItem({ locationCode: '', bin: '', racks: '', level: '' });
     setModalErrors({});
     setIsModalOpen(true);
   };
@@ -423,6 +455,7 @@ export const WarehouseLocations = () => {
     setModalMode('edit');
     setCurrentEditingItem({
       ...location,
+      locationCode: location.locationCode || location.LocationCode || '',
       bin: location.bin || location.Bin,
       racks: location.racks || location.Racks,
       level: location.level || location.Level
@@ -462,6 +495,7 @@ export const WarehouseLocations = () => {
 
     const payload = {
       ID: currentEditingItem.id || 0,
+      LocationCode: currentEditingItem.locationCode || currentEditingItem.LocationCode || null,
       Bin: parseInt(currentEditingItem.bin),
       Racks: parseInt(currentEditingItem.racks),
       Level: parseInt(currentEditingItem.level)
@@ -491,6 +525,152 @@ export const WarehouseLocations = () => {
     });
   };
 
+  const handleOpenImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(false);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    window.location.href = `${API_BASE_URL}/Templates/import/warehouse-locations`;
+  };
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
+    }
+
+    if (!selectedImportFile.name.toLowerCase().endsWith('.xlsx')) {
+      showNotification("Vui lòng chọn file .xlsx để nhập dữ liệu.", "error");
+      return;
+    }
+
+    try {
+      setIsImportingExcel(true);
+
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có sheet dữ liệu.", "error");
+        return;
+      }
+
+      const locationMap = new Map(locations.map(location => [
+        normalizeImportText(location.locationCode || location.LocationCode),
+        location
+      ]));
+      const rackMap = new Map(racks.map(rack => [
+        normalizeImportText(rack.label || rack.name || rack.Name),
+        rack.value || rack.id || rack.ID
+      ]));
+
+      let createdCount = 0;
+      let updatedCount = 0;
+      const skippedRows = [];
+
+      const rowNumbers = [];
+      worksheet.eachRow({ includeEmpty: false }, (_, rowNumber) => {
+        if (rowNumber >= 2) rowNumbers.push(rowNumber);
+      });
+
+      for (const rowNumber of rowNumbers) {
+        const row = worksheet.getRow(rowNumber);
+
+        try {
+          const locationCode = getExcelText(row.getCell(2));
+          const binText = getExcelText(row.getCell(3));
+          const rackText = getExcelText(row.getCell(4));
+          const levelText = getExcelText(row.getCell(5));
+
+          if (!locationCode && !binText && !rackText && !levelText) {
+            continue;
+          }
+
+          if (!locationCode) {
+            skippedRows.push(`Dòng ${rowNumber}: thiếu Mã vị trí`);
+            continue;
+          }
+
+          const existingLocation = locationMap.get(normalizeImportText(locationCode));
+          const parsedBin = binText ? parseImportInteger(binText) : getEntityValue(existingLocation, 'bin', 'Bin') ?? null;
+          const rackId = rackText ? rackMap.get(normalizeImportText(rackText)) : getEntityValue(existingLocation, 'racks', 'Racks') ?? null;
+          const parsedLevel = levelText ? parseImportInteger(levelText) : getEntityValue(existingLocation, 'level', 'Level') ?? null;
+
+          if (binText && parsedBin === null) {
+            skippedRows.push(`Dòng ${rowNumber}: Ô "${binText}" không hợp lệ`);
+            continue;
+          }
+
+          if (rackText && !rackId) {
+            skippedRows.push(`Dòng ${rowNumber}: không tìm thấy Kệ "${rackText}"`);
+            continue;
+          }
+
+          if (levelText && parsedLevel === null) {
+            skippedRows.push(`Dòng ${rowNumber}: Tầng "${levelText}" không hợp lệ`);
+            continue;
+          }
+
+          if (!existingLocation && (parsedBin === null || !rackId || parsedLevel === null)) {
+            skippedRows.push(`Dòng ${rowNumber}: thiếu Ô, Kệ hoặc Tầng để thêm mới`);
+            continue;
+          }
+
+          const payload = {
+            ID: getEntityId(existingLocation) || 0,
+            LocationCode: locationCode,
+            Bin: parsedBin,
+            Racks: parseInt(rackId),
+            Level: parsedLevel
+          };
+
+          if (existingLocation) {
+            const updatedLocation = await updateWarehouseLocation(getEntityId(existingLocation), payload);
+            const mergedLocation = {
+              ...existingLocation,
+              ...updatedLocation,
+              ...payload,
+              id: getEntityId(existingLocation),
+              locationCode
+            };
+            locationMap.set(normalizeImportText(locationCode), mergedLocation);
+            updatedCount++;
+          } else {
+            const createdLocation = await createWarehouseLocation(payload);
+            const mergedLocation = {
+              ...createdLocation,
+              locationCode: createdLocation.locationCode || createdLocation.LocationCode || locationCode,
+              LocationCode: createdLocation.LocationCode || createdLocation.locationCode || locationCode
+            };
+            locationMap.set(normalizeImportText(locationCode), mergedLocation);
+            createdCount++;
+          }
+        } catch (rowError) {
+          console.error(`Error importing warehouse location row ${rowNumber}:`, rowError);
+          skippedRows.push(`Dòng ${rowNumber}: lỗi khi lưu dữ liệu`);
+        }
+      }
+
+      await fetchData();
+      handleCloseImportModal();
+
+      const skippedMessage = skippedRows.length ? ` Bỏ qua ${skippedRows.length} dòng.` : '';
+      showNotification(`Nhập Excel thành công. Thêm ${createdCount}, cập nhật ${updatedCount}.${skippedMessage}`);
+      if (skippedRows.length) console.warn("Các dòng vị trí kho không nhập được:", skippedRows);
+      return;
+    } finally {
+      setIsImportingExcel(false);
+    }
+  };
+
   const handleExportExcel = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -498,6 +678,7 @@ export const WarehouseLocations = () => {
 
       worksheet.columns = [
         { header: 'STT', key: 'stt', width: 10 },
+        { header: 'Mã vị trí', key: 'locationCode', width: 18 },
         { header: 'Ô (Bin)', key: 'bin', width: 20 },
         { header: 'Kệ (Rack)', key: 'racks', width: 20 },
         { header: 'Tầng (Level)', key: 'level', width: 15 },
@@ -506,7 +687,8 @@ export const WarehouseLocations = () => {
       filteredData.forEach((loc, index) => {
         worksheet.addRow({
           stt: index + 1,
-          bin: bins.find(b => String(b.value) === String(loc.bin || loc.Bin))?.label || 'N/A',
+          locationCode: loc.locationCode || loc.LocationCode || '',
+          bin: loc.bin || '',
           racks: racks.find(r => String(r.value) === String(loc.racks || loc.Racks))?.label || 'N/A',
           level: loc.level || loc.Level,
         });
@@ -559,17 +741,41 @@ export const WarehouseLocations = () => {
 
   const columns = [
     // Checkbox column
-    { header: 'STT', className: 'w-[30px] sm:w-[50px] !px-2 sm:!px-4 text-center', headerCellClassName: 'text-[10px] sm:text-sm', render: (row, { index }) => index },
+    {
+      header: '',
+      headerCellClassName: 'sm:hidden',
+      className: 'sm:hidden w-[20px] !px-2 text-center',
+      render: (row, { isExpanded, toggleExpand }) => (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
+          className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
+        >
+          <ChevronRight
+            size={18}
+            className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`}
+          />
+        </button>
+      ),
+    },
+    { header: 'STT', className: 'hidden sm:table-cell w-[30px] sm:w-[50px] !px-2 sm:!px-4 text-center', headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm', render: (row, { index }) => index },
+    {
+      header: 'Mã vị trí',
+      accessor: 'locationCode',
+      className: 'min-w-[120px] !px-2 sm:!px-6 text-[11px] sm:text-sm font-semibold text-gray-700',
+      headerCellClassName: 'text-[10px] sm:text-sm',
+      render: (row) => row.locationCode || row.LocationCode || '--'
+    },
     {
       header: 'Ô (Bin)',
-      className: 'text-[11px] sm:text-sm !px-2 sm:!px-6',
-      headerCellClassName: 'text-[10px] sm:text-sm',
+      className: 'hidden sm:table-cell text-[11px] sm:text-sm !px-2 sm:!px-6',
+      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
       render: (row) => `${row.bin || row.Bin}`
     },
     {
       header: 'Kệ (Rack)',
-      className: 'w-36 sm:w-48 !px-2 sm:!px-6',
-      headerCellClassName: 'text-[10px] sm:text-sm',
+      className: 'hidden sm:table-cell w-36 sm:w-48 !px-2 sm:!px-6',
+      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
       render: (row) => (
         <div className="relative">
           <button
@@ -634,8 +840,8 @@ export const WarehouseLocations = () => {
     },
     {
       header: 'Tầng (Level)',
-      className: 'text-[11px] sm:text-sm !px-2 sm:!px-6',
-      headerCellClassName: 'text-[10px] sm:text-sm',
+      className: 'hidden sm:table-cell text-[11px] sm:text-sm !px-2 sm:!px-6',
+      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
       render: (row) => `Tầng ${row.level || row.Level}`
     },
     {
@@ -730,7 +936,7 @@ export const WarehouseLocations = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
-          <button className="order-1 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
+          <button onClick={handleOpenImportModal} className="order-1 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
@@ -759,11 +965,41 @@ export const WarehouseLocations = () => {
           columns={columns}
           data={filteredData}
           bodyCellClassName="!py-2 lg:!py-3"
+          renderExpansion={(row) => (
+            <div className="py-4 pl-10 pr-6 bg-blue-50/30 border-b border-gray-100 sm:hidden">
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="flex flex-col gap-1 min-w-0">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Kệ</span>
+                  <span className="font-medium text-gray-900 truncate">
+                    {racks.find(r => String(r.value) === String(row.racks || row.Racks))?.label || '--'}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 min-w-0">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tầng</span>
+                  <span className="font-medium text-gray-900">Tầng {row.level || row.Level || '--'}</span>
+                </div>
+                <div className="flex flex-col gap-1 min-w-0">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ô</span>
+                  <span className="font-medium text-gray-900">{row.bin || row.Bin || '--'}</span>
+                </div>
+              </div>
+            </div>
+          )}
         />
       )}
 
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={modalMode === 'add' ? 'Thêm vị trí kho mới' : 'Chỉnh sửa vị trí kho'} isMaximized={isModalMaximized} onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)} maxWidth="max-w-xl">
         <form onSubmit={handleModalSubmit} className="space-y-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-700">Mã vị trí</label>
+            <input
+              type="text"
+              value={currentEditingItem?.locationCode || currentEditingItem?.LocationCode || ''}
+              disabled
+              className={`w-full cursor-not-allowed border border-gray-200 bg-gray-100 text-gray-500 rounded-md shadow-sm p-1.5 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`}
+            />
+          </div>
+
           <div className="relative">
             <label className={`text-xs font-medium ${modalErrors.bin ? 'text-red-600' : 'text-gray-700'}`}>Ô</label>
             <input
@@ -920,6 +1156,62 @@ export const WarehouseLocations = () => {
         message="Hành động này không thể hoàn tác nếu kệ đang có dữ liệu liên quan."
         type="delete"
       />
+
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="warehouse-location-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel để nhập'}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
+              <input
+                id="warehouse-location-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button
+              type="button"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleImportExcel}
+              disabled={isImportingExcel}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isImportingExcel ? 'Đang nhập...' : 'Nhập Excel'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <CustomConfirm isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ isOpen: false, id: null })} onConfirm={handleConfirmAction} title={confirmModal.title} message={confirmModal.message} type={confirmModal.type} />
       <AppNotification isOpen={notification.isOpen} message={notification.message} type={notification.type} onClose={() => setNotification(prev => ({ ...prev, isOpen: false }))} />

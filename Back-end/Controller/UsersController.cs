@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using BCrypt.Net;
 using Google.Apis.Auth.OAuth2;
@@ -17,6 +18,8 @@ namespace MyProject.Backend.Controller
     [ApiController]
     public class UsersController : ControllerBase
     {
+        private const string UserCodePrefix = "ND00";
+        private const int MaxCreateUserCodeAttempts = 10;
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _environment;
         private const string FirebaseBucketName = "quanlysanxuat-cb353.firebasestorage.app";
@@ -40,6 +43,65 @@ namespace MyProject.Backend.Controller
         [HttpPost]
         public async Task<ActionResult<User>> PostUser(User user)
         {
+            var hasProvidedUserCode = !string.IsNullOrWhiteSpace(user.UserCode);
+            var plainPassword = user.Password;
+            if (DateTime.Now.Ticks >= 0)
+            {
+                for (var attempt = 0; attempt < MaxCreateUserCodeAttempts; attempt++)
+                {
+                    user.Password = plainPassword;
+
+                    if (!string.IsNullOrEmpty(user.Password))
+                    {
+                        user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password);
+                    }
+
+                    if (!hasProvidedUserCode)
+                    {
+                        user.UserCode = await GenerateNextUserCodeAsync();
+                    }
+                    else
+                    {
+                        user.UserCode = user.UserCode?.Trim();
+                    }
+
+                    await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                    user.CreatedAt = DateTime.Now;
+                    user.UpdatedAt = DateTime.Now;
+                    _context.Users.Add(user);
+
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+
+                        if (!string.IsNullOrEmpty(user.UserAvatar) && user.UserAvatar.Contains("base64,"))
+                        {
+                            user.UserAvatar = SaveAvatar(user.Id, user.Name ?? $"User_{user.Id}", user.UserAvatar);
+                            await _context.SaveChangesAsync();
+                        }
+
+                        await transaction.CommitAsync();
+
+                        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+                    }
+                    catch (DbUpdateException ex) when (IsUniqueUserCodeException(ex))
+                    {
+                        await transaction.RollbackAsync();
+                        _context.Entry(user).State = EntityState.Detached;
+                        user.Id = 0;
+
+                        if (hasProvidedUserCode || attempt >= MaxCreateUserCodeAttempts - 1)
+                        {
+                            return Conflict("UserCode đã tồn tại.");
+                        }
+
+                        user.UserCode = null;
+                    }
+                }
+
+                return StatusCode(500, "Không thể sinh UserCode không trùng sau nhiều lần thử.");
+            }
             // Mã hóa mật khẩu trước khi lưu
             if (!string.IsNullOrEmpty(user.Password))
             {
@@ -92,6 +154,9 @@ namespace MyProject.Backend.Controller
 
             user.UpdatedAt = DateTime.Now;
             user.CreatedAt = existing.CreatedAt;
+            user.UserCode = string.IsNullOrWhiteSpace(existing.UserCode)
+                ? await GenerateNextUserCodeAsync()
+                : existing.UserCode;
             _context.Entry(user).State = EntityState.Modified;
             _context.Entry(user).Property(x => x.CreatedAt).IsModified = false;
 
@@ -260,6 +325,38 @@ namespace MyProject.Backend.Controller
             }
 
             return Path.Combine(_environment.ContentRootPath, "firebase-key.json");
+        }
+
+        private async Task<string> GenerateNextUserCodeAsync()
+        {
+            var userCodes = await _context.Users
+                .AsNoTracking()
+                .Where(e => e.UserCode != null && e.UserCode.StartsWith(UserCodePrefix))
+                .Select(e => e.UserCode!)
+                .ToListAsync();
+
+            var maxNumber = 0;
+
+            foreach (var userCode in userCodes)
+            {
+                var numberText = userCode[UserCodePrefix.Length..];
+
+                if (int.TryParse(numberText, out var number) && number > maxNumber)
+                {
+                    maxNumber = number;
+                }
+            }
+
+            return $"{UserCodePrefix}{maxNumber + 1}";
+        }
+
+        private static bool IsUniqueUserCodeException(DbUpdateException exception)
+        {
+            var message = exception.InnerException?.Message ?? exception.Message;
+
+            return message.Contains("IX_Users_UserCode", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase);
         }
 
         [HttpDelete("{id}")]

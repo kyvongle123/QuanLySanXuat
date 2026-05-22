@@ -10,6 +10,8 @@ namespace MyProject.Backend.Model
         [Key]
         public int ID { get; set; }
 
+        public string? LocationCode { get; set; }
+
         public int? Bin { get; set; }
 
         public int? Racks { get; set; }

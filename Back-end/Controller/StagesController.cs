@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyProject.Backend.Data;
 using MyProject.Backend.Model;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,6 +13,8 @@ namespace MyProject.Backend.Controller
     [ApiController]
     public class StagesController : ControllerBase
     {
+        private const string StageCodePrefix = "CĐ00";
+        private const int MaxCreateStageCodeAttempts = 10;
         private readonly AppDbContext _context;
 
         public StagesController(AppDbContext context)
@@ -36,10 +39,46 @@ namespace MyProject.Backend.Controller
         [HttpPost]
         public async Task<ActionResult<Stage>> PostStage(Stage stage)
         {
-            _context.Stages.Add(stage);
-            await _context.SaveChangesAsync();
+            var hasProvidedStageCode = !string.IsNullOrWhiteSpace(stage.StageCode);
 
-            return CreatedAtAction(nameof(GetStage), new { id = stage.ID }, stage);
+            for (var attempt = 0; attempt < MaxCreateStageCodeAttempts; attempt++)
+            {
+                if (!hasProvidedStageCode)
+                {
+                    stage.StageCode = await GenerateNextStageCodeAsync();
+                }
+                else
+                {
+                    stage.StageCode = stage.StageCode?.Trim();
+                }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                _context.Stages.Add(stage);
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return CreatedAtAction(nameof(GetStage), new { id = stage.ID }, stage);
+                }
+                catch (DbUpdateException ex) when (IsUniqueStageCodeException(ex) && attempt < MaxCreateStageCodeAttempts - 1)
+                {
+                    await transaction.RollbackAsync();
+                    _context.Entry(stage).State = EntityState.Detached;
+                    stage.ID = 0;
+
+                    if (hasProvidedStageCode)
+                    {
+                        return Conflict("StageCode đã tồn tại.");
+                    }
+
+                    stage.StageCode = null;
+                }
+            }
+
+            return StatusCode(500, "Không thể sinh StageCode không trùng sau nhiều lần thử.");
         }
 
         [HttpPut("{id}")]
@@ -47,7 +86,12 @@ namespace MyProject.Backend.Controller
         {
             if (id != stage.ID) return BadRequest();
 
-            _context.Entry(stage).State = EntityState.Modified;
+            var existingStage = await _context.Stages.FindAsync(id);
+            if (existingStage == null) return NotFound();
+
+            stage.StageCode = existingStage.StageCode ?? await GenerateNextStageCodeAsync();
+
+            _context.Entry(existingStage).CurrentValues.SetValues(stage);
 
             try
             {
@@ -59,7 +103,7 @@ namespace MyProject.Backend.Controller
                 else throw;
             }
 
-            return Ok(stage);
+            return Ok(existingStage);
         }
 
         [HttpDelete("{id}")]
@@ -77,6 +121,38 @@ namespace MyProject.Backend.Controller
         private bool StageExists(int id)
         {
             return _context.Stages.Any(e => e.ID == id);
+        }
+
+        private async Task<string> GenerateNextStageCodeAsync()
+        {
+            var stageCodes = await _context.Stages
+                .AsNoTracking()
+                .Where(e => e.StageCode != null && e.StageCode.StartsWith(StageCodePrefix))
+                .Select(e => e.StageCode!)
+                .ToListAsync();
+
+            var maxNumber = 0;
+
+            foreach (var stageCode in stageCodes)
+            {
+                var numberText = stageCode[StageCodePrefix.Length..];
+
+                if (int.TryParse(numberText, out var number) && number > maxNumber)
+                {
+                    maxNumber = number;
+                }
+            }
+
+            return $"{StageCodePrefix}{maxNumber + 1}";
+        }
+
+        private static bool IsUniqueStageCodeException(DbUpdateException exception)
+        {
+            var message = exception.InnerException?.Message ?? exception.Message;
+
+            return message.Contains("IX_Stages_StageCode", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyProject.Backend.Data;
 using MyProject.Backend.Model;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace MyProject.Backend.Controller
@@ -11,6 +13,8 @@ namespace MyProject.Backend.Controller
     [ApiController]
     public class TransportVehiclesController : ControllerBase
     {
+        private const string VehicleCodePrefix = "XH00";
+        private const int MaxCreateVehicleCodeAttempts = 10;
         private readonly AppDbContext _context;
         public TransportVehiclesController(AppDbContext context) => _context = context;
 
@@ -27,9 +31,45 @@ namespace MyProject.Backend.Controller
         [HttpPost]
         public async Task<ActionResult<TransportVehicle>> PostTransportVehicle(TransportVehicle vehicle)
         {
-            _context.TransportVehicles.Add(vehicle);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetTransportVehicle), new { id = vehicle.Id }, vehicle);
+            var hasProvidedVehicleCode = !string.IsNullOrWhiteSpace(vehicle.VehicleCode);
+
+            for (var attempt = 0; attempt < MaxCreateVehicleCodeAttempts; attempt++)
+            {
+                if (!hasProvidedVehicleCode)
+                {
+                    vehicle.VehicleCode = await GenerateNextVehicleCodeAsync();
+                }
+                else
+                {
+                    vehicle.VehicleCode = vehicle.VehicleCode?.Trim();
+                }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                _context.TransportVehicles.Add(vehicle);
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return CreatedAtAction(nameof(GetTransportVehicle), new { id = vehicle.Id }, vehicle);
+                }
+                catch (DbUpdateException ex) when (IsUniqueVehicleCodeException(ex))
+                {
+                    await transaction.RollbackAsync();
+                    _context.Entry(vehicle).State = EntityState.Detached;
+                    vehicle.Id = 0;
+
+                    if (hasProvidedVehicleCode || attempt >= MaxCreateVehicleCodeAttempts - 1)
+                    {
+                        return Conflict("VehicleCode đã tồn tại.");
+                    }
+
+                    vehicle.VehicleCode = null;
+                }
+            }
+
+            return StatusCode(500, "Không thể sinh VehicleCode không trùng sau nhiều lần thử.");
         }
 
         [HttpPut("{id}")]
@@ -38,6 +78,10 @@ namespace MyProject.Backend.Controller
             if (id != vehicle.Id) return BadRequest();
             var existing = await _context.TransportVehicles.FindAsync(id);
             if (existing == null) return NotFound();
+
+            vehicle.VehicleCode = string.IsNullOrWhiteSpace(existing.VehicleCode)
+                ? await GenerateNextVehicleCodeAsync()
+                : existing.VehicleCode;
 
             _context.Entry(existing).CurrentValues.SetValues(vehicle);
             try {
@@ -56,6 +100,38 @@ namespace MyProject.Backend.Controller
             _context.TransportVehicles.Remove(vehicle);
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        private async Task<string> GenerateNextVehicleCodeAsync()
+        {
+            var vehicleCodes = await _context.TransportVehicles
+                .AsNoTracking()
+                .Where(e => e.VehicleCode != null && e.VehicleCode.StartsWith(VehicleCodePrefix))
+                .Select(e => e.VehicleCode!)
+                .ToListAsync();
+
+            var maxNumber = 0;
+
+            foreach (var vehicleCode in vehicleCodes)
+            {
+                var numberText = vehicleCode[VehicleCodePrefix.Length..];
+
+                if (int.TryParse(numberText, out var number) && number > maxNumber)
+                {
+                    maxNumber = number;
+                }
+            }
+
+            return $"{VehicleCodePrefix}{maxNumber + 1}";
+        }
+
+        private static bool IsUniqueVehicleCodeException(DbUpdateException exception)
+        {
+            var message = exception.InnerException?.Message ?? exception.Message;
+
+            return message.Contains("IX_TransportVehicles_VehicleCode", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

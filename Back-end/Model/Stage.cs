@@ -9,9 +9,8 @@ namespace MyProject.Backend.Model
         [Key]
         public int ID { get; set; }
 
-        [Required]
         [StringLength(50)]
-        public string StageCode { get; set; }
+        public string? StageCode { get; set; }
 
         [Required]
         [StringLength(100)]

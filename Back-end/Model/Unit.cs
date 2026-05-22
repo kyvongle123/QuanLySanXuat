@@ -9,6 +9,8 @@ namespace MyProject.Backend.Model
         [Key]
         public int ID { get; set; }
 
+        public string? UnitCode { get; set; }
+
         [MaxLength(10)]
         public string? Name { get; set; }
     }

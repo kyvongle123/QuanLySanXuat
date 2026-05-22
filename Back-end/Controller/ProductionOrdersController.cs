@@ -13,6 +13,8 @@ namespace MyProject.Backend.Controller
     [ApiController]
     public class ProductionOrdersController : ControllerBase
     {
+        private const string OrderCodePrefix = "LSX00";
+        private const int MaxCreateOrderCodeAttempts = 10;
         private readonly AppDbContext _context;
 
         public ProductionOrdersController(AppDbContext context)
@@ -37,11 +39,48 @@ namespace MyProject.Backend.Controller
         [HttpPost]
         public async Task<ActionResult<ProductionOrder>> PostProductionOrder(ProductionOrder order)
         {
-            order.CreatedAt = DateTime.Now;
-            order.UpdatedAt = DateTime.Now;
-            _context.ProductionOrders.Add(order);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetProductionOrder), new { id = order.Id }, order);
+            var hasProvidedOrderCode = !string.IsNullOrWhiteSpace(order.OrderCode);
+
+            for (var attempt = 0; attempt < MaxCreateOrderCodeAttempts; attempt++)
+            {
+                if (!hasProvidedOrderCode)
+                {
+                    order.OrderCode = await GenerateNextOrderCodeAsync();
+                }
+                else
+                {
+                    order.OrderCode = order.OrderCode?.Trim();
+                }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                order.CreatedAt = DateTime.Now;
+                order.UpdatedAt = DateTime.Now;
+                _context.ProductionOrders.Add(order);
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return CreatedAtAction(nameof(GetProductionOrder), new { id = order.Id }, order);
+                }
+                catch (DbUpdateException ex) when (IsUniqueOrderCodeException(ex))
+                {
+                    await transaction.RollbackAsync();
+                    _context.Entry(order).State = EntityState.Detached;
+                    order.Id = 0;
+
+                    if (hasProvidedOrderCode || attempt >= MaxCreateOrderCodeAttempts - 1)
+                    {
+                        return Conflict("OrderCode đã tồn tại.");
+                    }
+
+                    order.OrderCode = null;
+                }
+            }
+
+            return StatusCode(500, "Không thể sinh OrderCode không trùng sau nhiều lần thử.");
         }
 
         [HttpPut("{id}")]
@@ -54,6 +93,9 @@ namespace MyProject.Backend.Controller
 
             order.UpdatedAt = DateTime.Now;
             order.CreatedAt = existing.CreatedAt;
+            order.OrderCode = string.IsNullOrWhiteSpace(existing.OrderCode)
+                ? await GenerateNextOrderCodeAsync()
+                : existing.OrderCode;
 
             _context.Entry(order).State = EntityState.Modified;
             _context.Entry(order).Property(x => x.CreatedAt).IsModified = false;
@@ -81,6 +123,38 @@ namespace MyProject.Backend.Controller
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        private async Task<string> GenerateNextOrderCodeAsync()
+        {
+            var orderCodes = await _context.ProductionOrders
+                .AsNoTracking()
+                .Where(e => e.OrderCode != null && e.OrderCode.StartsWith(OrderCodePrefix))
+                .Select(e => e.OrderCode!)
+                .ToListAsync();
+
+            var maxNumber = 0;
+
+            foreach (var orderCode in orderCodes)
+            {
+                var numberText = orderCode[OrderCodePrefix.Length..];
+
+                if (int.TryParse(numberText, out var number) && number > maxNumber)
+                {
+                    maxNumber = number;
+                }
+            }
+
+            return $"{OrderCodePrefix}{maxNumber + 1}";
+        }
+
+        private static bool IsUniqueOrderCodeException(DbUpdateException exception)
+        {
+            var message = exception.InnerException?.Message ?? exception.Message;
+
+            return message.Contains("IX_ProductionOrders_OrderCode", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

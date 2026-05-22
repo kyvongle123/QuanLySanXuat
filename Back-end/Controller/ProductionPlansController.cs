@@ -40,8 +40,15 @@ namespace MyProject.Backend.Controller
         [HttpPost]
         public async Task<ActionResult<ProductionPlan>> PostProductionPlan(CreateProductionPlanDto dto)
         {
-            var plan = await _productionPlanService.CreatePlanWithItemsAsync(dto);
-            return CreatedAtAction(nameof(GetProductionPlan), new { id = plan.Id }, plan);
+            try
+            {
+                var plan = await _productionPlanService.CreatePlanWithItemsAsync(dto);
+                return CreatedAtAction(nameof(GetProductionPlan), new { id = plan.Id }, plan);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("PlanCode", StringComparison.OrdinalIgnoreCase))
+            {
+                return Conflict(ex.Message);
+            }
         }
 
         [HttpPut("{id}")]

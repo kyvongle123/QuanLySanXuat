@@ -110,6 +110,8 @@ public partial class AppDbContext : DbContext
             entity.ToTable("BOM").HasKey(e => e.Id);
 
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.HasIndex(e => e.BomCode).IsUnique();
+            entity.Property(e => e.BomCode).HasMaxLength(50);
             entity.Property(e => e.Id)
                 .ValueGeneratedOnAdd()
                 .HasColumnName("ID");
@@ -127,10 +129,28 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(50);
         });
 
+        modelBuilder.Entity<Customer>(entity =>
+        {
+            entity.HasKey(e => e.ID);
+            entity.HasIndex(e => e.CustomerCode).IsUnique();
+
+            entity.Property(e => e.ID)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("ID");
+            entity.Property(e => e.CustomerCode).HasMaxLength(50);
+            entity.Property(e => e.Email).HasMaxLength(50);
+            entity.Property(e => e.Name).HasMaxLength(50);
+            entity.Property(e => e.Phone).HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+        });
+
         modelBuilder.Entity<Driver>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.DriverCode).IsUnique();
 
+            entity.Property(e => e.DriverCode).HasMaxLength(50);
             entity.Property(e => e.Email).HasMaxLength(50);
             entity.Property(e => e.Id)
                 .ValueGeneratedOnAdd()
@@ -210,6 +230,7 @@ public partial class AppDbContext : DbContext
         modelBuilder.Entity<ProductionOrder>(entity =>
         {
             entity.ToTable("ProductionOrders").HasKey(e => e.Id);
+            entity.HasIndex(e => e.OrderCode).IsUnique();
             entity.Property(e => e.Id).HasColumnName("ID").ValueGeneratedOnAdd();
             entity.Property(e => e.OrderCode).HasMaxLength(50);
             entity.Property(e => e.Note).HasMaxLength(500);
@@ -226,6 +247,7 @@ public partial class AppDbContext : DbContext
         modelBuilder.Entity<ProductionPlan>(entity =>
         {
             entity.ToTable("ProductionPlans").HasKey(e => e.Id);
+            entity.HasIndex(e => e.PlanCode).IsUnique();
             entity.Property(e => e.Id).HasColumnName("ID").ValueGeneratedOnAdd();
             entity.Property(e => e.PlanCode).HasMaxLength(50);
             entity.Property(e => e.Note).HasMaxLength(500);
@@ -272,11 +294,13 @@ public partial class AppDbContext : DbContext
         modelBuilder.Entity<Role>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.RoleCode).IsUnique();
 
             entity.Property(e => e.Id)
                 .ValueGeneratedOnAdd()
                 .HasColumnName("ID");
             entity.Property(e => e.Name).HasMaxLength(50);
+            entity.Property(e => e.RoleCode).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Status>(entity =>
@@ -292,17 +316,20 @@ public partial class AppDbContext : DbContext
         modelBuilder.Entity<TransportRoute>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.RouteCode).IsUnique();
 
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
             entity.Property(e => e.Id)
                 .ValueGeneratedOnAdd()
                 .HasColumnName("ID");
+            entity.Property(e => e.RouteCode).HasMaxLength(50);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
         });
 
         modelBuilder.Entity<TransportVehicle>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.VehicleCode).IsUnique();
 
             entity.Property(e => e.Id)
                 .ValueGeneratedOnAdd()
@@ -313,6 +340,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
+            entity.HasIndex(e => e.UserCode).IsUnique();
             entity.Property(e => e.Id).HasColumnName("ID");
             entity.Property(e => e.Address).HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
@@ -342,8 +370,35 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.WarehouseCode).HasMaxLength(50);
         });
 
+        modelBuilder.Entity<WarehouseLocation>(entity =>
+        {
+            entity.HasIndex(e => e.LocationCode).IsUnique();
+            entity.Property(e => e.LocationCode).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<Unit>(entity =>
+        {
+            entity.HasIndex(e => e.UnitCode).IsUnique();
+            entity.Property(e => e.UnitCode).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<Stage>(entity =>
+        {
+            entity.HasIndex(e => e.StageCode).IsUnique();
+            entity.Property(e => e.StageCode).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<ProductionSection>(entity =>
+        {
+            entity.HasIndex(e => e.ProductionSectionCode).IsUnique();
+            entity.Property(e => e.ProductionSectionCode).HasMaxLength(50);
+        });
+
         modelBuilder.Entity<Supplier>(entity =>
         {
+            entity.HasIndex(e => e.SupplierCode).IsUnique();
+            entity.Property(e => e.SupplierCode).HasMaxLength(50);
+
             // Cấu hình cụ thể cho cột ContactPerson nếu cần
             entity.Property(e => e.ContactPerson)
                     .HasMaxLength(50);
@@ -355,6 +410,7 @@ public partial class AppDbContext : DbContext
         {
             entity.ToTable("Machines").HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("ID").ValueGeneratedOnAdd();
+            entity.HasIndex(e => e.MachineCode).IsUnique();
             entity.Property(e => e.MachineCode).HasMaxLength(50);
             entity.Property(e => e.TotalRunningHours).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.OEETarget).HasColumnType("decimal(18, 2)");

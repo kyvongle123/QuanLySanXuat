@@ -11,6 +11,8 @@ namespace MyProject.Backend.Model
         [Column("ID")]
         public int Id { get; set; }
 
+        public string? BomCode { get; set; }
+
         // Thay đổi từ ItemCategory (ID danh mục) sang ItemId (ID sản phẩm)
         [Required]
         public int Item { get; set; }

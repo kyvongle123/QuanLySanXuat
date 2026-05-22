@@ -4,6 +4,7 @@ using MyProject.Backend.Data;
 using MyProject.Backend.Model;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace MyProject.Backend.Controller
@@ -12,6 +13,8 @@ namespace MyProject.Backend.Controller
     [ApiController]
     public class BOMController : ControllerBase
     {
+        private const string BomCodePrefix = "BOM00";
+        private const int MaxCreateBomCodeAttempts = 10;
         private readonly AppDbContext _context;
 
         public BOMController(AppDbContext context)
@@ -39,11 +42,48 @@ namespace MyProject.Backend.Controller
         [HttpPost]
         public async Task<ActionResult<Bom>> PostBOM(Bom bom)
         {
-            bom.CreatedAt = DateTime.Now;
-            _context.Boms.Add(bom);
-            await _context.SaveChangesAsync();
+            var hasProvidedBomCode = !string.IsNullOrWhiteSpace(bom.BomCode);
 
-            return CreatedAtAction(nameof(GetBOM), new { id = bom.Id }, bom);
+            for (var attempt = 0; attempt < MaxCreateBomCodeAttempts; attempt++)
+            {
+                bom.CreatedAt = DateTime.Now;
+
+                if (!hasProvidedBomCode)
+                {
+                    bom.BomCode = await GenerateNextBomCodeAsync();
+                }
+                else
+                {
+                    bom.BomCode = bom.BomCode?.Trim();
+                }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                _context.Boms.Add(bom);
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return CreatedAtAction(nameof(GetBOM), new { id = bom.Id }, bom);
+                }
+                catch (DbUpdateException ex) when (IsUniqueBomCodeException(ex) && attempt < MaxCreateBomCodeAttempts - 1)
+                {
+                    await transaction.RollbackAsync();
+                    _context.Entry(bom).State = EntityState.Detached;
+                    bom.Id = 0;
+
+                    if (hasProvidedBomCode)
+                    {
+                        return Conflict("BomCode đã tồn tại.");
+                    }
+
+                    bom.BomCode = null;
+                }
+            }
+
+            return StatusCode(500, "Không thể sinh BomCode không trùng sau nhiều lần thử.");
         }
 
         // PUT: api/BOM/5
@@ -58,6 +98,7 @@ namespace MyProject.Backend.Controller
             bom.UpdatedAt = DateTime.Now;
             // Giữ lại ngày tạo gốc
             bom.CreatedAt = existingBOM.CreatedAt;
+            bom.BomCode = existingBOM.BomCode ?? await GenerateNextBomCodeAsync();
 
             _context.Entry(existingBOM).CurrentValues.SetValues(bom);
             
@@ -85,6 +126,39 @@ namespace MyProject.Backend.Controller
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        private async Task<string> GenerateNextBomCodeAsync()
+        {
+            var bomCodes = await _context.Boms
+                .AsNoTracking()
+                .Where(e => e.BomCode != null && e.BomCode.StartsWith(BomCodePrefix))
+                .Select(e => e.BomCode!)
+                .ToListAsync();
+
+            var maxNumber = 0;
+
+            foreach (var bomCode in bomCodes)
+            {
+                var numberText = bomCode[BomCodePrefix.Length..];
+
+                if (int.TryParse(numberText, out var number) && number > maxNumber)
+                {
+                    maxNumber = number;
+                }
+            }
+
+            return $"{BomCodePrefix}{maxNumber + 1}";
+        }
+
+        private static bool IsUniqueBomCodeException(DbUpdateException exception)
+        {
+            var message = exception.InnerException?.Message ?? exception.Message;
+
+            return message.Contains("IX_BOM_BomCode", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("IX_Boms_BomCode", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

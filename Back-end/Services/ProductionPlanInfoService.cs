@@ -11,6 +11,8 @@ namespace MyProject.Service
 {
     public class ProductionPlanInfoService
     {
+        private const string PlanCodePrefix = "KH00";
+        private const int MaxCreatePlanCodeAttempts = 10;
         private readonly AppDbContext _context;
 
         public ProductionPlanInfoService(AppDbContext context)
@@ -21,15 +23,20 @@ namespace MyProject.Service
         public async Task<ProductionPlan> CreatePlanWithItemsAsync(CreateProductionPlanDto dto)
         {
             var strategy = _context.Database.CreateExecutionStrategy();
+            var hasProvidedPlanCode = !string.IsNullOrWhiteSpace(dto.PlanCode);
 
             return await strategy.ExecuteAsync(async () =>
             {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
+                for (var attempt = 0; attempt < MaxCreatePlanCodeAttempts; attempt++)
                 {
+                    var planCode = hasProvidedPlanCode
+                        ? dto.PlanCode.Trim()
+                        : await GenerateNextPlanCodeAsync();
+
+                    await using var transaction = await _context.Database.BeginTransactionAsync();
                     var plan = new ProductionPlan
                     {
-                        PlanCode = dto.PlanCode,
+                        PlanCode = planCode,
                         StartDate = dto.StartDate,
                         EndDate = dto.EndDate,
                         Status = dto.Status,
@@ -37,33 +44,49 @@ namespace MyProject.Service
                         Note = dto.Note
                     };
 
-                    _context.ProductionPlans.Add(plan);
-                    await _context.SaveChangesAsync();
-
-                    if (dto.ProductionPlanItemList != null && dto.ProductionPlanItemList.Any())
+                    try
                     {
-                        var items = dto.ProductionPlanItemList.Select(i => new ProductionPlanItem
-                        {
-                            ProductionPlan = plan.Id,
-                            Item = i.Item,
-                            Quantity = i.Quantity
-                        });
-                        _context.ProductionPlanItems.AddRange(items);
+                        _context.ProductionPlans.Add(plan);
                         await _context.SaveChangesAsync();
-                    }
 
-                    await transaction.CommitAsync();
-                    return plan;
+                        if (dto.ProductionPlanItemList != null && dto.ProductionPlanItemList.Any())
+                        {
+                            var items = dto.ProductionPlanItemList.Select(i => new ProductionPlanItem
+                            {
+                                ProductionPlan = plan.Id,
+                                Item = i.Item,
+                                Quantity = i.Quantity
+                            });
+                            _context.ProductionPlanItems.AddRange(items);
+                            await _context.SaveChangesAsync();
+                        }
+
+                        await transaction.CommitAsync();
+                        return plan;
+                    }
+                    catch (DbUpdateException ex) when (IsUniquePlanCodeException(ex))
+                    {
+                        await transaction.RollbackAsync();
+                        _context.Entry(plan).State = EntityState.Detached;
+                        plan.Id = 0;
+
+                        if (hasProvidedPlanCode || attempt >= MaxCreatePlanCodeAttempts - 1)
+                        {
+                            throw new InvalidOperationException("PlanCode đã tồn tại.", ex);
+                        }
+                    }
+                    catch
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
                 }
-                catch (Exception)
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
+
+                throw new InvalidOperationException("Không thể sinh PlanCode không trùng sau nhiều lần thử.");
             });
         }
 
-        public async Task<ProductionPlan> UpdatePlanWithItemsAsync(int id, CreateProductionPlanDto dto)
+        public async Task<ProductionPlan?> UpdatePlanWithItemsAsync(int id, CreateProductionPlanDto dto)
         {
             var strategy = _context.Database.CreateExecutionStrategy();
 
@@ -76,7 +99,9 @@ namespace MyProject.Service
                     if (plan == null) return null;
 
                     // Cập nhật thông tin chung
-                    plan.PlanCode = dto.PlanCode;
+                    plan.PlanCode = string.IsNullOrWhiteSpace(plan.PlanCode)
+                        ? await GenerateNextPlanCodeAsync()
+                        : plan.PlanCode;
                     plan.StartDate = dto.StartDate;
                     plan.EndDate = dto.EndDate;
                     plan.Status = dto.Status;
@@ -109,6 +134,38 @@ namespace MyProject.Service
                     throw;
                 }
             });
+        }
+
+        private async Task<string> GenerateNextPlanCodeAsync()
+        {
+            var planCodes = await _context.ProductionPlans
+                .AsNoTracking()
+                .Where(e => e.PlanCode != null && e.PlanCode.StartsWith(PlanCodePrefix))
+                .Select(e => e.PlanCode)
+                .ToListAsync();
+
+            var maxNumber = 0;
+
+            foreach (var planCode in planCodes)
+            {
+                var numberText = planCode[PlanCodePrefix.Length..];
+
+                if (int.TryParse(numberText, out var number) && number > maxNumber)
+                {
+                    maxNumber = number;
+                }
+            }
+
+            return $"{PlanCodePrefix}{maxNumber + 1}";
+        }
+
+        private static bool IsUniquePlanCodeException(DbUpdateException exception)
+        {
+            var message = exception.InnerException?.Message ?? exception.Message;
+
+            return message.Contains("IX_ProductionPlans_PlanCode", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

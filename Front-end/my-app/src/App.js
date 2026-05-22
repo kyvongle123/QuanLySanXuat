@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Navbar } from './navbar/navbar';
 import { Sidebar } from './sidebar/sidebar';
@@ -38,6 +38,16 @@ const AppContent = () => {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
   const isProfilePage = location.pathname === '/profile';
+
+  useEffect(() => {
+    const handleResize = () => {
+      setSidebarOpen(window.innerWidth < 1024);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   if (isLoginPage) {
     return (

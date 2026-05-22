@@ -4,9 +4,12 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, AppNotification, CustomConfirm, Modal } from '../customComponent/customComponent';
 import { getUnits, createUnit, updateUnit, deleteUnit } from '../controller/unitsController';
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 
 export const Units = () => {
   const [units, setUnits] = useState([]);
+  const [selectedUnitIds, setSelectedUnitIds] = useState([]);
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -28,6 +31,8 @@ export const Units = () => {
       setLoading(true);
       const data = await getUnits();
       setUnits(data);
+      setSelectedUnitIds([]);
+      setIsBulkSelectMode(false);
     } catch (err) {
       showNotification("Lỗi khi tải dữ liệu đơn vị tính", "error");
     } finally {
@@ -44,6 +49,47 @@ export const Units = () => {
       unit.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [units, searchTerm]);
+
+  const getEntityId = (entity) => entity?.id || entity?.ID || entity?.Id;
+
+  const handleBulkDelete = () => {
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
+      setSelectedUnitIds([]);
+      return;
+    }
+
+    if (selectedUnitIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedUnitIds([]);
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      id: selectedUnitIds,
+      type: 'bulkDelete',
+      title: 'Xác nhận xóa nhiều đơn vị tính',
+      message: `Bạn có chắc chắn muốn xóa ${selectedUnitIds.length} đơn vị tính đã chọn không? Hành động này không thể hoàn tác.`
+    });
+  };
+
+  const handleSelectAllUnits = () => {
+    const visibleUnitIds = filteredData.map(unit => getEntityId(unit)).filter(Boolean);
+    setSelectedUnitIds(visibleUnitIds);
+  };
+
+  const handleClearSelectedUnits = () => {
+    setSelectedUnitIds([]);
+  };
+
+  const handleToggleSelectUnit = (row) => {
+    const rowId = getEntityId(row);
+    setSelectedUnitIds(prev => prev.includes(rowId)
+      ? prev.filter(id => id !== rowId)
+      : [...prev, rowId]
+    );
+  };
 
   const handleOpenModal = (mode, unit = null) => {
     setModalMode(mode);
@@ -112,9 +158,20 @@ export const Units = () => {
       try {
         await deleteUnit(confirmModal.id);
         setUnits(prev => prev.filter(unit => unit.id !== confirmModal.id));
+        setSelectedUnitIds(prev => prev.filter(id => id !== confirmModal.id));
         showNotification("Xóa đơn vị tính thành công!", "success");
       } catch (err) {
         showNotification("Lỗi khi xóa dữ liệu.", "error");
+      }
+    } else if (confirmModal.type === 'bulkDelete') {
+      try {
+        await Promise.all(confirmModal.id.map(id => deleteUnit(id)));
+        setUnits(prev => prev.filter(unit => !confirmModal.id.includes(getEntityId(unit))));
+        setSelectedUnitIds([]);
+        setIsBulkSelectMode(false);
+        showNotification(`Xóa ${confirmModal.id.length} đơn vị tính thành công!`, "success");
+      } catch (err) {
+        showNotification("Lỗi khi xóa nhiều đơn vị tính.", "error");
       }
     } else if (confirmModal.type === 'export') {
       await handleExportExcel();
@@ -177,12 +234,60 @@ export const Units = () => {
     { header: 'STT', className: 'w-[40px] text-center !px-1', render: (_, { index }) => index },
     { header: 'Tên đơn vị', accessor: 'name', className: 'font-medium text-blue-600 !px-1' },
     {
-      header: 'Hành động',
-      className: 'text-right pr-2 sm:pr-4 w-[100px] sm:w-[150px]',
+      header: (
+        isBulkSelectMode ? (
+          <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-sm">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelectAllUnits();
+              }}
+              className="font-semibold text-red-600 hover:text-red-700"
+            >
+              Tất cả
+            </button>
+            <span className="text-gray-300">/</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClearSelectedUnits();
+              }}
+              className="font-semibold text-gray-500 hover:text-gray-700"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        ) : (
+          <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>
+        )
+      ),
+      className: 'text-center pr-2 sm:pr-4 w-[100px] sm:w-[150px]',
       render: (row) => (
-        <div className="flex gap-1.5 justify-end">
-          <button onClick={() => handleOpenModal('edit', row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
-          <button onClick={() => handleDeleteRequest(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Xóa</button>
+        <div className="flex gap-1.5 justify-center">
+          {isBulkSelectMode ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleSelectUnit(row);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              title={selectedUnitIds.includes(getEntityId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
+            >
+              {selectedUnitIds.includes(getEntityId(row)) ? (
+                <FaRegSquareMinus size={20} className="text-red-600" />
+              ) : (
+                <FaRegSquare size={20} className="text-gray-400" />
+              )}
+            </button>
+          ) : (
+            <>
+              <button onClick={() => handleOpenModal('edit', row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
+              <button onClick={() => handleDeleteRequest(getEntityId(row))} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Xóa</button>
+            </>
+          )}
         </div>
       ),
     }
@@ -191,7 +296,7 @@ export const Units = () => {
   return (
     <div className="p-2 sm:p-6 bg-gray-50/50 min-h-screen">
       <div className="mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Quản lý Đơn vị tính</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Danh sách đơn vị tính</h2>
       </div>
 
       <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4">
@@ -207,23 +312,29 @@ export const Units = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="flex flex-row gap-2 w-full sm:w-auto">
-            <button className="flex-1 sm:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
-              <FileUp size={16} /> Nhập Excel
-            </button>
-            <button
-              onClick={handleRequestExportExcel}
-              className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
-            >
-              <FileDown size={16} /> Xuất Excel
-            </button>
-          </div>
+        <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
+          <button className="order-1 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
+            <FileUp size={16} /> Nhập Excel
+          </button>
+          <button
+            onClick={handleRequestExportExcel}
+            className="order-2 lg:order-3 w-full lg:w-auto lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
+          >
+            <FileDown size={16} /> Xuất Excel
+          </button>
+          <button
+            onClick={handleBulkDelete}
+            className={`order-3 lg:order-1 w-full lg:w-auto lg:flex-none justify-center text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedUnitIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+          >
+            <Trash2 size={16} />
+            Xóa nhiều dòng {selectedUnitIds.length > 0 && `(${selectedUnitIds.length})`}
+          </button>
           <button
             onClick={() => handleOpenModal('add')}
-            className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
+            className="order-4 w-full lg:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
-            Thêm đơn vị mới
+            <span className="lg:hidden">Thêm mới</span>
+            <span className="hidden lg:inline">Thêm đơn vị mới</span>
           </button>
         </div>
       </div>

@@ -6,6 +6,7 @@ const normalizeData = (data) => {
     if (Array.isArray(data)) {
         return data.map(item => ({
             id: item.id || item.ID,
+            locationCode: item.locationCode || item.LocationCode,
             bin: item.bin || item.Bin,
             // racks is an ID, not an object, so keep it as is
             racks: item.racks || item.Racks,
@@ -15,6 +16,7 @@ const normalizeData = (data) => {
     }
     return {
         id: data.id || data.ID,
+        locationCode: data.locationCode || data.LocationCode,
         bin: data.bin || data.Bin,
         // racks is an ID, not an object, so keep it as is
         racks: data.racks || data.Racks,

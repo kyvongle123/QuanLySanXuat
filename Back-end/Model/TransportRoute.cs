@@ -7,6 +7,8 @@ public partial class TransportRoute
 {
     public int Id { get; set; }
 
+    public string? RouteCode { get; set; }
+
     public int? From { get; set; }
 
     public int? To { get; set; }
