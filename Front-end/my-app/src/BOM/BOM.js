@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, FileDown, FileUp, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, FileDown, FileUp, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, AppNotification, CustomConfirm, Modal, CustomSelect } from '../customComponent/customComponent';
@@ -16,6 +16,9 @@ import { getWarehouseBins } from '../controller/warehouseBinsController';
 import { createWarehouseRack, deleteWarehouseRack, getWarehouseRacks, updateWarehouseRack } from '../controller/warehouseRacksController';
 import { createWarehouseLocation, getWarehouseLocations, updateWarehouseLocation } from '../controller/warehouseLocationsController';
 import { createWarehouseType, deleteWarehouseType, getWarehouseTypes, updateWarehouseType } from '../controller/warehouseTypesController';
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
+
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const BOM = () => {
   const [boms, setBoms] = useState([]);
@@ -23,6 +26,11 @@ export const BOM = () => {
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isBomBulkSelectMode, setIsBomBulkSelectMode] = useState(false);
+  const [selectedBomIds, setSelectedBomIds] = useState([]);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
 
   // States cho Quản lý Hàng hóa (giống items.js)
   const [isItemMgmtModalOpen, setIsItemMgmtModalOpen] = useState(false);
@@ -145,7 +153,7 @@ export const BOM = () => {
   const [bomErrors, setBomErrors] = useState({});
   const [itemErrors, setItemErrors] = useState({});
   const [modalMode, setModalMode] = useState('add');
-  const [currentEditingItem, setCurrentEditingItem] = useState({ item: '', materialCategory: '', requiredQuantity: 0 });
+  const [currentEditingItem, setCurrentEditingItem] = useState({ bomCode: '', item: '', materialCategory: '', requiredQuantity: 0 });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
 
   // Alias để tương thích với code copy từ items.js
@@ -251,6 +259,8 @@ export const BOM = () => {
           getWarehouseTypes()
         ]);
         setBoms(bomData);
+        setSelectedBomIds([]);
+        setIsBomBulkSelectMode(false);
         setRawItems(itemData);
         // Lấy Name từ ItemsController hiển thị lên Label của Select
         setItems(itemData.map(i => ({ value: i.id, label: i.name })));
@@ -329,6 +339,32 @@ export const BOM = () => {
       );
     });
   }, [boms, searchTerm, items, materials]);
+
+  const getBomId = (bom) => bom?.id || bom?.ID || bom?.Id;
+
+  const getExcelCellText = (cell) => {
+    const value = cell?.value;
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') {
+      if (value.text !== undefined) return String(value.text);
+      if (value.result !== undefined) return String(value.result);
+      if (Array.isArray(value.richText)) return value.richText.map(part => part.text || '').join('');
+      if (value.hyperlink && value.text) return String(value.text);
+    }
+    return String(value);
+  };
+
+  const normalizeImportText = (value) => String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
+  const parseImportQuantity = (value) => {
+    if (typeof value === 'number') return value;
+    const text = String(value || '').trim();
+    const match = text.match(/-?\d+(?:[.,]\d+)?/);
+    return match ? parseFloat(match[0].replace(',', '.')) : NaN;
+  };
 
   const filteredMaterialsForMgmt = useMemo(() => {
     return rawMaterialsList.filter(m => {
@@ -619,7 +655,7 @@ export const BOM = () => {
 
   const handleAddItem = () => {
     setModalMode('add');
-    setCurrentEditingItem({ item: '', materialCategory: '', requiredQuantity: 0 });
+    setCurrentEditingItem({ bomCode: '', item: '', materialCategory: '', requiredQuantity: 0 });
     setBomErrors({});
     setIsModalOpen(true);
   };
@@ -633,7 +669,7 @@ export const BOM = () => {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setCurrentEditingItem({ item: '', materialCategory: '', requiredQuantity: 0 });
+    setCurrentEditingItem({ bomCode: '', item: '', materialCategory: '', requiredQuantity: 0 });
     setBomErrors({});
     setIsModalMaximized(false);
   };
@@ -758,6 +794,122 @@ export const BOM = () => {
     });
   };
 
+  const handleOpenImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(false);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    window.location.href = `${API_BASE_URL}/Templates/import/boms`;
+  };
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
+    }
+
+    if (!selectedImportFile.name.toLowerCase().endsWith('.xlsx')) {
+      showNotification("Vui lòng chọn file .xlsx để nhập dữ liệu.", "error");
+      return;
+    }
+
+    setIsImportingExcel(true);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có dữ liệu.", "error");
+        return;
+      }
+
+      const bomMap = new Map(
+        boms
+          .filter(bom => bom.bomCode || bom.BomCode)
+          .map(bom => [normalizeImportText(bom.bomCode || bom.BomCode), bom])
+      );
+
+      const itemMap = new Map(
+        rawItems
+          .filter(item => item.name || item.Name)
+          .map(item => [normalizeImportText(item.name || item.Name), item.id || item.ID || item.Id])
+      );
+
+      const materialCategoryMap = new Map(
+        materialCategories
+          .filter(category => category.label || category.name || category.Name)
+          .map(category => [
+            normalizeImportText(category.label || category.name || category.Name),
+            category.value || category.id || category.ID || category.Id
+          ])
+      );
+
+      let createdCount = 0;
+      let updatedCount = 0;
+      let skippedCount = 0;
+
+      for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+        const row = worksheet.getRow(rowNumber);
+        const bomCode = getExcelCellText(row.getCell(2)).trim();
+        const itemName = getExcelCellText(row.getCell(3)).trim();
+        const materialName = getExcelCellText(row.getCell(4)).trim();
+        const quantityText = getExcelCellText(row.getCell(5));
+
+        if (!bomCode && !itemName && !materialName && !quantityText) continue;
+
+        const itemId = itemMap.get(normalizeImportText(itemName));
+        const materialCategoryId = materialCategoryMap.get(normalizeImportText(materialName));
+        const requiredQuantity = parseImportQuantity(quantityText);
+
+        if (!bomCode || !itemId || !materialCategoryId || !Number.isFinite(requiredQuantity) || requiredQuantity <= 0) {
+          skippedCount += 1;
+          continue;
+        }
+
+        const existingBom = bomMap.get(normalizeImportText(bomCode));
+        const payload = {
+          ...(existingBom || {}),
+          bomCode,
+          item: parseInt(itemId, 10),
+          materialCategory: parseInt(materialCategoryId, 10),
+          requiredQuantity
+        };
+
+        if (existingBom) {
+          const bomId = getBomId(existingBom);
+          const updated = await updateBOM(bomId, { ...payload, id: bomId });
+          bomMap.set(normalizeImportText(bomCode), updated);
+          updatedCount += 1;
+        } else {
+          const created = await createBOM(payload);
+          bomMap.set(normalizeImportText(created.bomCode || created.BomCode || bomCode), created);
+          createdCount += 1;
+        }
+      }
+
+      const latestBoms = await getBOMs();
+      setBoms(latestBoms);
+      setSelectedBomIds([]);
+      setIsBomBulkSelectMode(false);
+
+      const skippedMessage = skippedCount > 0 ? ` Bỏ qua ${skippedCount} dòng không hợp lệ.` : '';
+      showNotification(`Nhập Excel thành công: thêm ${createdCount}, cập nhật ${updatedCount}.${skippedMessage}`, "success");
+      handleCloseImportModal();
+    } catch (err) {
+      showNotification("Lỗi khi nhập file Excel BOM.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
+  };
+
   const handleCancelImport = (id) => {
     // Chỉ xóa trạng thái nhập của dòng cụ thể
     setImportingStates(prev => {
@@ -796,6 +948,7 @@ export const BOM = () => {
 
       worksheet.columns = [
         { header: 'STT', key: 'stt', width: 10 },
+        { header: 'Mã định mức', key: 'bomCode', width: 20 },
         { header: 'Sản phẩm', key: 'item', width: 35 },
         { header: 'Nguyên liệu', key: 'material', width: 35 },
         { header: 'Số lượng định mức', key: 'quantity', width: 25 },
@@ -809,6 +962,7 @@ export const BOM = () => {
 
         worksheet.addRow({
           stt: index + 1,
+          bomCode: bom.bomCode || bom.BomCode || '',
           item: itemLabel,
           material: materialLabel,
           quantity: `${bom.requiredQuantity} ${unit}`
@@ -832,14 +986,14 @@ export const BOM = () => {
             top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
           };
           // Căn giữa cột STT
-          if (colNumber === 1) {
+          if (colNumber === 1 || colNumber === 2) {
             cell.alignment = { vertical: 'middle', horizontal: 'center' };
           }
         });
       });
 
       const buffer = await workbook.xlsx.writeBuffer();
-      saveAs(new Blob([buffer]), `Danh_sach_BOM.xlsx`);
+      saveAs(new Blob([buffer]), `Danh sách định mức.xlsx`);
       showNotification("Xuất file Excel thành công!");
     } catch (err) {
       console.error("Export Excel Error:", err);
@@ -870,10 +1024,21 @@ export const BOM = () => {
     if (type === 'delete') {
       try {
         await deleteBOM(id);
-        setBoms(prev => prev.filter(b => b.id !== id));
+        setBoms(prev => prev.filter(b => getBomId(b) !== id));
+        setSelectedBomIds(prev => prev.filter(bomId => bomId !== id));
         showNotification("Xóa định mức thành công!");
       } catch (err) {
         showNotification("Lỗi khi xóa dữ liệu.", "error");
+      }
+    } else if (type === 'bulkDelete') {
+      try {
+        await Promise.all(id.map(bomId => deleteBOM(bomId)));
+        setBoms(prev => prev.filter(b => !id.includes(getBomId(b))));
+        setSelectedBomIds([]);
+        setIsBomBulkSelectMode(false);
+        showNotification(`Xóa ${id.length} định mức thành công!`);
+      } catch (err) {
+        showNotification("Lỗi khi xóa nhiều định mức.", "error");
       }
     } else if (type === 'deleteMaterial') {
       try {
@@ -932,6 +1097,45 @@ export const BOM = () => {
       await handleExportExcel();
     }
     setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' });
+  };
+
+  const handleBulkDelete = () => {
+    if (!isBomBulkSelectMode) {
+      setIsBomBulkSelectMode(true);
+      setSelectedBomIds([]);
+      return;
+    }
+
+    if (selectedBomIds.length === 0) {
+      setIsBomBulkSelectMode(false);
+      setSelectedBomIds([]);
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      id: selectedBomIds,
+      type: 'bulkDelete',
+      title: 'Xác nhận xóa nhiều định mức',
+      message: `Bạn có chắc chắn muốn xóa ${selectedBomIds.length} định mức đã chọn không? Hành động này không thể hoàn tác.`
+    });
+  };
+
+  const handleSelectAllBoms = () => {
+    const visibleBomIds = filteredData.map(bom => getBomId(bom)).filter(Boolean);
+    setSelectedBomIds(visibleBomIds);
+  };
+
+  const handleClearSelectedBoms = () => {
+    setSelectedBomIds([]);
+  };
+
+  const handleToggleSelectBom = (row) => {
+    const rowId = getBomId(row);
+    setSelectedBomIds(prev => prev.includes(rowId)
+      ? prev.filter(id => id !== rowId)
+      : [...prev, rowId]
+    );
   };
 
   const filteredCategoriesForMgmt = useMemo(() => {
@@ -1987,11 +2191,44 @@ export const BOM = () => {
   };
 
   const columns = [
-    { header: 'STT', className: 'w-[30px] sm:w-[50px] !px-1 sm:!px-6 text-center', headerCellClassName: 'text-[10px] sm:text-sm', render: (row, { index }) => index },
+    {
+      header: '',
+      headerCellClassName: 'sm:hidden',
+      render: (row, { isExpanded, toggleExpand }) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
+          className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
+        >
+          <ChevronRight
+            size={18}
+            className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`}
+          />
+        </button>
+      ),
+      className: 'sm:hidden w-[20px] !px-1 sm:!px-6 text-center',
+    },
+    { header: 'STT', className: 'w-[36px] sm:w-[50px] !px-1 sm:!px-6 text-center', headerCellClassName: 'text-[10px] sm:text-sm', render: (row, { index }) => index },
+    {
+      header: 'Mã định mức',
+      headerCellClassName: 'text-[10px] sm:text-sm',
+      className: 'min-w-[160px] sm:w-[130px] !px-2 sm:!px-6 text-[11px] sm:text-sm text-gray-700 font-medium',
+      render: (row, { isExpanded, toggleExpand }) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleExpand();
+          }}
+          className="flex w-full items-center justify-between gap-2 text-left sm:pointer-events-none"
+        >
+          <span>{row.bomCode || row.BomCode || ''}</span>
+        </button>
+      )
+    },
     {
       header: <div className="flex justify-center items-center w-full text-[11px] sm:text-sm">Sản phẩm</div>,
-      headerCellClassName: 'text-[10px] sm:text-sm',
-      className: 'min-w-[100px] sm:min-w-[150px] !px-1 sm:!px-6 text-[11px] sm:text-sm',
+      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
+      className: 'hidden sm:table-cell min-w-[100px] sm:min-w-[150px] !px-1 sm:!px-6 text-[11px] sm:text-sm',
       render: (row) => {
         const isOpen = openItemMenuId === row.id;
         return (
@@ -2055,8 +2292,8 @@ export const BOM = () => {
     },
     {
       header: 'Nguyên liệu',
-      headerCellClassName: 'text-[10px] sm:text-sm',
-      className: 'min-w-[100px] sm:min-w-[200px] !px-1 sm:!px-6 text-[10px] sm:text-sm',
+      headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
+      className: 'hidden sm:table-cell min-w-[100px] sm:min-w-[200px] !px-1 sm:!px-6 text-[10px] sm:text-sm',
       render: (row) => {
         const isOpen = openMaterialMenuId === row.id;
         const matObj = materials.find(m => String(m.value) === String(row.materialCategory));
@@ -2141,9 +2378,9 @@ export const BOM = () => {
                             const qty = focusedMaterialId === m.value ? tempQuantity : row.requiredQuantity;
                             handleBOMQuickUpdate(row, m.value, qty);
                           }}
-                          className="ml-0.5 bg-green-600 text-white px-2 py-0.5 rounded text-[9px] hover:bg-green-700 active:scale-95 transition-all cursor-pointer"
+                          className="ml-0.5 text-green-600 px-2 py-0.5 rounded text-[9px] hover:bg-green-700 active:scale-95 transition-all cursor-pointer"
                         >
-                          Lưu
+                          Chọn
                         </div>
                       </div>
                     </button>
@@ -2172,7 +2409,7 @@ export const BOM = () => {
       }
     },
     {
-      header: 'Số lượng định mức',
+      header: 'Số lượng',
       headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm', // Ẩn trên mobile
       className: 'hidden sm:table-cell min-w-[150px] !px-2 sm:!px-6 text-[11px] sm:text-sm', // Ẩn trên mobile
       render: (row) => {
@@ -2181,26 +2418,151 @@ export const BOM = () => {
       }
     },
     {
-      header: <div className="flex justify-center items-center w-full text-[11px] sm:text-sm">Hành động</div>,
+      header: (
+        isBomBulkSelectMode ? (
+          <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-sm">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelectAllBoms();
+              }}
+              className="font-semibold text-red-600 hover:text-red-700"
+            >
+              Tất cả
+            </button>
+            <span className="text-gray-300">/</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClearSelectedBoms();
+              }}
+              className="font-semibold text-gray-500 hover:text-gray-700"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        ) : (
+          <div className="flex justify-center items-center w-full text-[11px] sm:text-sm">Hành động</div>
+        )
+      ),
       headerCellClassName: 'text-[10px] sm:text-sm',
-      className: 'text-right !px-2 sm:!px-6 w-[100px] sm:w-[150px]', // Điều chỉnh chiều rộng và padding
+      className: 'text-right !px-2 sm:!px-6 w-[90px] sm:w-[150px]', // Điều chỉnh chiều rộng và padding
       render: (row) => (
-        <div className="flex gap-1 sm:gap-2 justify-end"> {/* Điều chỉnh khoảng cách giữa các nút */}
-          <button onClick={() => handleEditItem(row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-[10px] sm:text-sm transition-colors active:scale-95">Sửa</button> {/* Điều chỉnh cỡ chữ */}
-          <button
-            onClick={() => setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa định mức này?' })}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-[10px] sm:text-sm transition-colors active:scale-95" // Điều chỉnh cỡ chữ
-          >
-            Xóa
-          </button>
+        <div className="flex gap-1 sm:gap-2 justify-end">
+          {isBomBulkSelectMode ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleSelectBom(row);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              title={selectedBomIds.includes(getBomId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
+            >
+              {selectedBomIds.includes(getBomId(row)) ? (
+                <FaRegSquareMinus size={20} className="text-red-600" />
+              ) : (
+                <FaRegSquare size={20} className="text-gray-400" />
+              )}
+            </button>
+          ) : (
+            <>
+              <button onClick={() => handleEditItem(row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-[10px] sm:text-sm transition-colors active:scale-95">Sửa</button>
+              <button
+                onClick={() => setConfirmModal({ isOpen: true, id: getBomId(row), type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa định mức này?' })}
+                className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-[10px] sm:text-sm transition-colors active:scale-95"
+              >
+                Xóa
+              </button>
+            </>
+          )}
         </div>
       ),
     },
   ];
 
+  const renderBomMobileExpansion = (row) => {
+    const matObj = materials.find(m => String(m.value) === String(row.materialCategory));
+    const materialLabel = matObj?.label || 'N/A';
+
+    return (
+      <div className="grid grid-cols-2 gap-2 p-3 sm:hidden">
+        <div className="min-w-0 space-y-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Sản phẩm</span>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setIsItemMgmtModalOpen(true); }}
+              className="absolute right-1 top-[-9px] z-20 bg-gray-50 px-0.5 text-[9px] font-bold leading-none text-blue-500 underline hover:text-blue-700"
+            >
+              hiệu chỉnh
+            </button>
+            <button
+              ref={(el) => { itemMenuAnchorRefs.current[`bom-mobile-item-${row.id}`] = el; }}
+              onClick={(e) => {
+                toggleItemMenu(e, row.id, `bom-mobile-item-${row.id}`);
+              }}
+              className="relative block min-h-[34px] w-full cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white p-2 pr-7 text-left text-[11px] font-bold text-blue-600 outline-none transition-colors hover:border-blue-400"
+            >
+              <span className="block truncate">
+                {items.find(i => String(i.value) === String(row.item))?.label || '-- Chọn sản phẩm --'}
+              </span>
+              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
+                <ChevronDown size={14} />
+              </div>
+            </button>
+            {renderItemMenu(row, `bom-mobile-item-${row.id}`)}
+          </div>
+        </div>
+
+        <div className="min-w-0 space-y-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Nguyên liệu</span>
+          <div className={`relative ${openMaterialMenuId === row.id ? 'z-30' : 'z-10'}`}>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setIsMaterialMgmtModalOpen(true); }}
+              className="absolute right-1 top-[-9px] text-blue-500 hover:text-blue-700 text-[9px] font-bold underline z-20 leading-none bg-white px-0.5"
+            >
+              hiệu chỉnh
+            </button>
+            <button
+              ref={(el) => { materialMenuAnchorRefs.current[`bom-material-${row.id}`] = el; }}
+              onClick={(e) => {
+                toggleMaterialMenu(e, row.id, `bom-material-${row.id}`);
+              }}
+              className="w-full text-left outline-none transition-all p-0"
+            >
+              <div className="hidden sm:flex items-center bg-white border border-gray-300 text-black text-sm rounded-lg p-1 pr-8 appearance-none cursor-pointer relative min-h-[28px] font-normal hover:border-blue-400 transition-colors">
+                <span className="truncate flex-1">{materialLabel}</span>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-gray-400">
+                  <ChevronDown size={14} />
+                </div>
+              </div>
+              <div className="sm:hidden bg-white border border-gray-300 text-black px-2 py-1.5 rounded-lg flex items-center justify-between shadow-sm">
+                <span className="truncate text-[11px] sm:text-sm">{row.requiredQuantity} x {materialLabel}</span>
+                <ChevronDown size={14} className="text-gray-500 ml-1 shrink-0" />
+              </div>
+            </button>
+
+            {renderMaterialMenu(row, `bom-material-${row.id}`)}
+          </div>
+        </div>
+
+        <div className="hidden">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Số lượng</span>
+            <span className="text-sm font-medium text-gray-900">{row.requiredQuantity} {matObj?.unit || ''}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="p-2 lg:p-6">
-      <h2 className="text-2xl font-bold mb-4">Quản lý Định mức (BOM)</h2>
+      <h2 className="text-2xl font-bold mb-4">Danh sách định mức (BOM)</h2>
 
       <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-4 gap-4">
         <div className="relative w-full lg:max-w-[300px]">
@@ -2216,21 +2578,25 @@ export const BOM = () => {
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-          {/* Nhóm nút Excel để hiển thị cùng dòng trên Mobile */}
-          <div className="flex flex-row gap-2 w-full sm:w-auto">
-            <button className="flex-1 justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
-              <FileUp size={18} />
-              Nhập Excel
-            </button>
-            <button onClick={handleRequestExportExcel} className="flex-1 justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
-              <FileDown size={18} />
-              Xuất Excel
-            </button>
-          </div>
-          {/* Nút thêm mới sẽ nằm ở dòng riêng trên mobile, full width */}
-          <button onClick={handleAddItem} className="w-full sm:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors text-sm">
-            Thêm định mức mới
+        <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:flex-wrap">
+          <button onClick={handleOpenImportModal} className="order-1 lg:order-2 w-full lg:w-auto justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
+            <FileUp size={18} />
+            Nhập Excel
+          </button>
+          <button onClick={handleRequestExportExcel} className="order-2 lg:order-3 w-full lg:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+            <FileDown size={18} />
+            Xuất Excel
+          </button>
+          <button
+            onClick={handleBulkDelete}
+            className={`order-3 lg:order-1 w-full lg:w-auto justify-center text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm ${selectedBomIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+          >
+            <Trash2 size={18} />
+            Xóa nhiều dòng {selectedBomIds.length > 0 && `(${selectedBomIds.length})`}
+          </button>
+          <button onClick={handleAddItem} className="order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors text-sm">
+            <span className="lg:hidden">Thêm mới</span>
+            <span className="hidden lg:inline">Thêm định mức mới</span>
           </button>
         </div>
       </div>
@@ -2241,6 +2607,7 @@ export const BOM = () => {
         <CustomDatatable
           columns={columns}
           data={filteredData}
+          renderExpansion={renderBomMobileExpansion}
           bodyCellClassName="!py-2 lg:!py-3"
         />
       )}
@@ -2253,6 +2620,15 @@ export const BOM = () => {
         onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}
       >
         <form onSubmit={handleModalSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Mã định mức</label>
+            <input
+              type="text"
+              value={currentEditingItem?.bomCode || currentEditingItem?.BomCode || ''}
+              disabled
+              className="mt-1 block w-full cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 p-2 text-sm text-gray-500 shadow-sm outline-none"
+            />
+          </div>
           <CustomSelect
             label="Sản phẩm áp dụng (Thành phẩm)"
             options={items}
@@ -2297,6 +2673,62 @@ export const BOM = () => {
       </Modal>
 
       {/* Modal Quản lý Hàng hóa (Items) - Thiết kế giống items.js */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="bom-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel để nhập'}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
+              <input
+                id="bom-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button
+              type="button"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleImportExcel}
+              disabled={isImportingExcel}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isImportingExcel ? 'Đang nhập...' : 'Nhập Excel'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={isItemMgmtModalOpen}
         onClose={() => { setIsItemMgmtModalOpen(false); setIsItemMgmtMaximized(false); }}

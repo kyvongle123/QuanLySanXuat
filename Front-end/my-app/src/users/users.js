@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, ChevronDown, ChevronRight, FileUp, FileDown, Trash2, Plus, Edit2 } from 'lucide-react';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+import { Search, ChevronDown, ChevronRight, FileUp, FileDown, Trash2, Plus, Edit2, Upload, FileText } from 'lucide-react';
 import { CustomDatatable, Modal, CustomSelect, AppNotification, CustomConfirm } from '../customComponent/customComponent'; // Thêm CustomSelect vào import
 import { getUsers, deleteUser, createUser, updateUser } from '../controller/usersController'; // Sửa đường dẫn thành số nhiều
 import { getRoles, createRole, updateRole, deleteRole } from '../controller/rolesController';
@@ -8,6 +10,7 @@ import { getStatuses, createStatus, updateStatus, deleteStatus } from '../contro
 import { Tooltip } from 'react-tooltip'; // Import Tooltip
 import { RxDrawingPinFilled } from "react-icons/rx";
 import { RiUnpinFill } from "react-icons/ri";
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 
 export const Users = () => {
   const [users, setUsers] = useState([]);
@@ -25,14 +28,18 @@ export const Users = () => {
   const [openDepartmentMenuId, setOpenDepartmentMenuId] = useState(null);
   const [openBranchMenuId, setOpenBranchMenuId] = useState(null);
   const [openRoleMenuAnchorKey, setOpenRoleMenuAnchorKey] = useState(null);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
   const [roleMenuRect, setRoleMenuRect] = useState(null);
   const roleMenuAnchorRefs = useRef({});
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
   const [isModalMaximized, setIsModalMaximized] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [errors, setErrors] = useState({});
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // States cho quản lý Chức vụ (Roles)
   const [isRolesModalOpen, setIsRolesModalOpen] = useState(false);
@@ -153,26 +160,255 @@ export const Users = () => {
   }, []);
 
   const handleDeleteUser = (userId) => {
-    setConfirmModal({ isOpen: true, id: userId });
+    setConfirmModal({
+      isOpen: true,
+      id: userId,
+      type: 'delete',
+      title: 'Xác nhận xóa',
+      message: 'Bạn có chắc chắn muốn xóa người dùng này? Hành động này không thể hoàn tác.'
+    });
   };
 
-  const handleSelectUser = (id) => {
+  const handleBulkDelete = () => {
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
+      setSelectedUserIds([]);
+      return;
+    }
+    if (selectedUserIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedUserIds([]);
+      return;
+    }
+    setConfirmModal({
+      isOpen: true,
+      id: selectedUserIds,
+      type: 'bulkDelete',
+      title: 'Xác nhận xóa nhiều người dùng',
+      message: `Bạn có chắc chắn muốn xóa ${selectedUserIds.length} người dùng đã chọn không? Hành động này không thể hoàn tác.`
+    });
+  };
+
+  const handleSelectAllUsers = () => {
+    setSelectedUserIds(filteredUsers.map(user => user.id));
+  };
+
+  const handleClearSelectedUsers = () => {
+    setSelectedUserIds([]);
+  };
+
+  const handleToggleSelectUser = (row) => {
+    const rowId = row.id;
     setSelectedUserIds(prev =>
-      prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
+      prev.includes(rowId) ? prev.filter(id => id !== rowId) : [...prev, rowId]
     );
   };
 
-  const handleConfirmDelete = async () => {
-    try {
-      await deleteUser(confirmModal.id);
-      setUsers(users.filter(user => user.id !== confirmModal.id));
-      showNotification("Người dùng đã được xóa thành công!");
-    } catch (err) {
-      console.error("Error deleting user:", err);
-      showNotification("Lỗi khi xóa người dùng.", "error");
-    } finally {
-      setConfirmModal({ isOpen: false, id: null });
+  const handleRequestExportExcel = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'export',
+      title: 'Xác nhận xuất Excel',
+      message: 'Bạn có chắc chắn muốn xuất danh sách người dùng ra tệp Excel không?'
+    });
+  };
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
     }
+
+    setIsImportingExcel(true);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có dữ liệu.", "error");
+        return;
+      }
+
+      const getExcelText = (cell) => {
+        if (!cell) return '';
+        if (cell.text !== undefined && cell.text !== null) return String(cell.text).trim();
+        if (cell.value === undefined || cell.value === null) return '';
+        if (typeof cell.value === 'object') {
+          if (cell.value.text !== undefined) return String(cell.value.text).trim();
+          if (cell.value.result !== undefined) return String(cell.value.result).trim();
+          if (Array.isArray(cell.value.richText)) return cell.value.richText.map(part => part.text || '').join('').trim();
+        }
+        return String(cell.value).trim();
+      };
+
+      const roleMap = new Map(roles.map(r => [String(r.label).toLowerCase(), r.value]));
+      const userMap = new Map(users.map(u => [String(u.userCode || u.UserCode || '').toLowerCase(), u]));
+
+      let successCount = 0;
+      let totalProcessed = 0;
+
+      const rowNumbers = [];
+      worksheet.eachRow({ includeEmpty: false }, (_, rowNumber) => {
+        if (rowNumber >= 2) rowNumbers.push(rowNumber);
+      });
+
+      for (const rowNumber of rowNumbers) {
+        const row = worksheet.getRow(rowNumber);
+
+        const userCode = getExcelText(row.getCell(2));
+        const name = getExcelText(row.getCell(3));
+        const email = getExcelText(row.getCell(4));
+        const roleName = getExcelText(row.getCell(5));
+        const phone = getExcelText(row.getCell(6));
+        const address = getExcelText(row.getCell(7));
+
+        if (!userCode) continue;
+        totalProcessed++;
+
+        const roleId = roleMap.get(roleName.toLowerCase()) || null;
+        const existingUser = userMap.get(userCode.toLowerCase());
+
+        const userData = {
+          userCode,
+          name: name || (existingUser ? (existingUser.name || existingUser.Name) : ''),
+          email: email || (existingUser ? (existingUser.email || existingUser.Email) : ''),
+          role: roleId !== null ? roleId : (existingUser ? (existingUser.role || existingUser.Role) : null),
+          phone: phone || (existingUser ? (existingUser.phone || existingUser.Phone) : ''),
+          address: address || (existingUser ? (existingUser.address || existingUser.Address) : ''),
+        };
+
+        try {
+          if (existingUser) {
+            await updateUser(existingUser.id, { ...existingUser, ...userData });
+            successCount++;
+          } else {
+            const newPayload = {
+              ...userData,
+              username: userCode,
+              password: 'Password123!',
+              status: statuses.length > 0 ? statuses[0].value : null
+            };
+            await createUser(newPayload);
+            successCount++;
+          }
+        } catch (err) {
+          console.error(`Lỗi xử lý tại dòng ${rowNumber}:`, err);
+        }
+      }
+
+      const data = await getUsers();
+      setUsers(data);
+      showNotification(`Đã xử lý thành công ${successCount}/${totalProcessed} dòng dữ liệu.`);
+      setIsImportModalOpen(false);
+      setSelectedImportFile(null);
+    } catch (err) {
+      console.error("Import Excel Error:", err);
+      showNotification("Lỗi khi xử lý file Excel.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Danh sách người dùng');
+
+      worksheet.columns = [
+        { header: 'STT', key: 'stt', width: 8 },
+        { header: 'Mã người dùng', key: 'userCode', width: 15 },
+        { header: 'Tên người dùng', key: 'name', width: 25 },
+        { header: 'Email', key: 'email', width: 30 },
+        { header: 'Tên chức vụ', key: 'role', width: 20 },
+        { header: 'Số điện thoại', key: 'phone', width: 15 },
+        { header: 'Địa chỉ', key: 'address', width: 40 },
+      ];
+
+      filteredUsers.forEach((user, index) => {
+        const roleLabel = roles.find(r => String(r.value) === String(user.role))?.label || 'N/A';
+        worksheet.addRow({
+          stt: index + 1,
+          userCode: user.userCode || 'N/A',
+          name: user.name,
+          email: user.email,
+          roleId: user.role || 'N/A',
+          role: roleLabel,
+          phone: user.phone,
+          address: user.address,
+        });
+      });
+
+      worksheet.eachRow((row, rowNumber) => {
+        row.font = { name: 'Times New Roman', size: 12 };
+        row.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+
+        if (rowNumber === 1) {
+          row.height = 30;
+          row.font = { name: 'Times New Roman', size: 12, bold: true };
+          row.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        } else {
+          row.height = 25;
+        }
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(new Blob([buffer]), 'Danh sách người dùng.xlsx');
+      showNotification("Xuất file Excel thành công!");
+    } catch (err) {
+      console.error("Export Excel Error:", err);
+      showNotification("Lỗi khi xuất file Excel.", "error");
+    }
+  };
+
+  const handleDownloadSample = async () => {
+    try {
+      const response = await fetch('https://quanlysanxuat-back-end.onrender.com/api/Templates/import/users');
+      if (!response.ok) throw new Error('Không thể tải file mẫu từ máy chủ.');
+      const blob = await response.blob();
+      saveAs(blob, 'UserTemplate.xlsx');
+      showNotification("Tải file mẫu thành công!");
+    } catch (err) {
+      console.error("Download Sample Error:", err);
+      showNotification("Lỗi khi tải file mẫu.", "error");
+    }
+  };
+
+
+  const handleConfirmAction = async () => {
+    if (confirmModal.type === 'export') {
+      await handleExportExcel();
+    } else if (confirmModal.type === 'delete') {
+      try {
+        await deleteUser(confirmModal.id);
+        setUsers(users.filter(user => user.id !== confirmModal.id));
+        showNotification("Người dùng đã được xóa thành công!");
+      } catch (err) {
+        console.error("Error deleting user:", err);
+        showNotification("Lỗi khi xóa người dùng.", "error");
+      }
+    } else if (confirmModal.type === 'bulkDelete') {
+      try {
+        await Promise.all(confirmModal.id.map(userId => deleteUser(userId)));
+        setUsers(prev => prev.filter(u => !confirmModal.id.includes(u.id)));
+        setSelectedUserIds([]);
+        setIsBulkSelectMode(false);
+        showNotification(`Đã xóa ${confirmModal.id.length} người dùng thành công!`, "success");
+      } catch (err) {
+        showNotification("Có lỗi xảy ra khi xóa nhiều người dùng.", "error");
+      }
+    }
+    setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' });
   };
 
   const handleEditUser = (user) => {
@@ -380,6 +616,11 @@ export const Users = () => {
       console.error("Error updating role:", err);
       showNotification("Lỗi khi cập nhật chức vụ.", "error");
     }
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(false);
   };
 
   const handleModalSubmit = async (e) => {
@@ -681,32 +922,51 @@ export const Users = () => {
       }
     },
     {
-      header: (
+      header: isBulkSelectMode ? (
+        <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-sm">
+          <button type="button" onClick={(e) => { e.stopPropagation(); handleSelectAllUsers(); }} className="font-semibold text-red-600 hover:text-red-700">Tất cả</button>
+          <span className="text-gray-300">/</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); handleClearSelectedUsers(); }} className="font-semibold text-gray-500 hover:text-gray-700">Bỏ chọn</button>
+        </div>
+      ) : (
         <div className="flex items-center justify-center gap-2">
           <span>Hành động</span>
         </div>
       ),
       className: 'text-center w-[100px] sm:w-[180px]',
       render: (row) => {
-        const isSelected = selectedUserIds.includes(row.id);
         return (
           <div className="flex justify-center items-center gap-3">
-            {/* Ẩn Sửa/Xóa khi chọn từ 2 dòng trở lên */}
-            {selectedUserIds.length < 2 && (
-              <div className="flex gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleEditUser(row); }}
-                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
-                >
-                  Sửa
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDeleteUser(row.id); }}
-                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
-                >
-                  Xóa
-                </button>
-              </div>
+            {isBulkSelectMode ? (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleToggleSelectUser(row); }}
+                className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+                title={selectedUserIds.includes(row.id) ? 'Bỏ chọn' : 'Chọn dòng'}
+              >
+                {selectedUserIds.includes(row.id) ? (
+                  <FaRegSquareMinus size={20} className="text-red-600" />
+                ) : (
+                  <FaRegSquare size={20} className="text-gray-400" />
+                )}
+              </button>
+            ) : (
+              selectedUserIds.length < 2 && (
+                <div className="flex gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleEditUser(row); }}
+                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
+                  >
+                    Sửa
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteUser(row.id); }}
+                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              )
             )}
           </div>
         );
@@ -782,7 +1042,7 @@ export const Users = () => {
       <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Danh sách người dùng</h2>
 
 
-      <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4">
         {/* Thanh tìm kiếm */}
         <div className="relative w-full lg:max-w-[350px]">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -797,26 +1057,22 @@ export const Users = () => {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          {
-            selectedUserIds.length >= 2 && (
-              <button
-                onClick={() => { /* Logic xóa nhiều dòng */ }}
-                className="flex-1 lg:flex-none bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all shadow-md active:scale-95 animate-in zoom-in duration-200 text-sm"
-              >
-                Xóa nhiều dòng ({selectedUserIds.length})
-              </button>
-            )
-          }
-
-          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+        <div className="grid grid-cols-2 lg:flex lg:flex-row gap-2 w-full lg:w-auto">
+          <button onClick={() => { setIsImportModalOpen(true); setSelectedImportFile(null); }} className="order-1 lg:order-2 flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+          <button onClick={handleRequestExportExcel} className="order-2 lg:order-3 flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileDown size={18} /> <span>Xuất Excel</span>
           </button>
-          <button onClick={handleAddUser} className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+          <button
+            onClick={handleBulkDelete}
+            className={`order-3 lg:order-1 flex-1 lg:flex-none justify-center text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm ${selectedUserIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+          >
+            <Trash2 size={18} />
+            Xóa nhiều dòng {selectedUserIds.length > 0 && `(${selectedUserIds.length})`}
+          </button>
+          <button onClick={handleAddUser} className="order-4 lg:order-4 w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
             Thêm mới
           </button>
         </div>
@@ -992,6 +1248,63 @@ export const Users = () => {
         {userForm}
       </Modal>
 
+      {/* Modal Nhập Excel */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={() => { setIsImportModalOpen(false); setSelectedImportFile(null); }}
+        title="Nhập excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="item-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel để nhập'}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
+              <input
+                id="item-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadSample}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button
+              type="button"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleImportExcel}
+              disabled={isImportingExcel}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isImportingExcel ? 'Đang nhập...' : 'Nhập Excel'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Modal quản lý Chức vụ (Roles) */}
       <Modal
         isOpen={isRolesModalOpen}
@@ -1121,10 +1434,11 @@ export const Users = () => {
 
       <CustomConfirm
         isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ isOpen: false, id: null })}
-        onConfirm={handleConfirmDelete}
-        title="Xác nhận xóa"
-        message="Bạn có chắc chắn muốn xóa người dùng này? Hành động này không thể hoàn tác."
+        onClose={() => setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' })}
+        onConfirm={handleConfirmAction}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type === 'export' ? 'success' : (confirmModal.type === 'bulkDelete' || confirmModal.type === 'delete' ? 'danger' : 'success')}
       />
 
       {/* App Notification */}

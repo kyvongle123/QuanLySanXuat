@@ -7,12 +7,14 @@ const normalizeRoleData = (data) => {
   if (Array.isArray(data)) {
     return data.map(item => ({
       id: item.id || item.Id,
+      roleCode: item.roleCode || item.RoleCode,
       name: item.name || item.Name,
       // Thêm các trường khác nếu roles có chúng
     }));
   }
   return {
     id: data.id || data.Id,
+    roleCode: data.roleCode || data.RoleCode,
     name: data.name || data.Name,
     // Thêm các trường khác nếu roles có chúng
   };

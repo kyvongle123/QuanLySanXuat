@@ -8,6 +8,7 @@ const normalizeSupplierData = (data) => {
         return data.map(item => ({
             id: item.id || item.Id,
             name: item.name || item.Name,
+            supplierCode: item.supplierCode || item.SupplierCode,
             contactPerson: item.contactPerson || item.ContactPerson,
             phone: item.phone || item.Phone,
             email: item.email || item.Email,
@@ -20,6 +21,7 @@ const normalizeSupplierData = (data) => {
     return {
         id: data.id || data.Id,
         name: data.name || data.Name,
+        supplierCode: data.supplierCode || data.SupplierCode,
         contactPerson: data.contactPerson || data.ContactPerson,
         phone: data.phone || data.Phone,
         email: data.email || data.Email,

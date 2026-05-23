@@ -13,7 +13,7 @@ namespace MyProject.Backend.Controller
     [ApiController]
     public class RolesController : ControllerBase
     {
-        private const string RoleCodePrefix = "ROLE00";
+        private const string RoleCodePrefix = "CV00";
         private const int MaxCreateRoleCodeAttempts = 10;
         private readonly AppDbContext _context;
         public RolesController(AppDbContext context) => _context = context;

@@ -217,6 +217,10 @@ namespace MyProject.Backend.Migrations
                     b.Property<int?>("Inventory")
                         .HasColumnType("int");
 
+                    b.Property<string>("ItemCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<int?>("Location")
                         .HasColumnType("int");
 
@@ -253,6 +257,9 @@ namespace MyProject.Backend.Migrations
                         .HasColumnType("decimal(18, 2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ItemCode")
+                        .IsUnique();
 
                     b.ToTable("Items");
                 });

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Plus, ChevronDown, FileDown, FileUp, ChevronRight } from 'lucide-react';
+import { Search, Plus, ChevronDown, FileDown, FileUp, ChevronRight, Trash2 } from 'lucide-react';
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import {
@@ -28,6 +29,8 @@ import {
   updateMachineStatus,
   deleteMachineStatus
 } from '../controller/machineStatusesController';
+
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 // Component Searchable Select tùy chỉnh dành riêng cho các ô trong bảng
 const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", className, disabled = false, error = false, errorMessage = '' }) => {
@@ -149,6 +152,113 @@ export const Machines = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [errors, setErrors] = useState({});
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
+  const [selectedMachineIds, setSelectedMachineIds] = useState([]);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
+
+  // Hàm chuẩn hóa text để so sánh (giống stages.js)
+  const normalizeImportText = (value) => String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
+  // Hàm lấy text từ cell Excel (xử lý richText, hyperlink...)
+  const getExcelCellText = (cell) => {
+    const value = cell?.value;
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') {
+      if (value.text !== undefined) return String(value.text);
+      if (value.result !== undefined) return String(value.result);
+      if (Array.isArray(value.richText)) return value.richText.map(part => part.text || '').join('');
+      if (value.hyperlink && value.text) return String(value.text);
+    }
+    return String(value);
+  };
+
+  const handleOpenImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(false);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    // Tải file mẫu từ thư mục Templates\ImportTemplate ở Back-end
+    window.location.href = `${API_BASE_URL}/Machines/import-template`;
+  };
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
+    }
+    setIsImportingExcel(true);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có dữ liệu.", "error");
+        return;
+      }
+
+      let createdCount = 0;
+      let updatedCount = 0;
+
+      for (let i = 2; i <= worksheet.rowCount; i++) {
+        const row = worksheet.getRow(i);
+        const machineCode = getExcelCellText(row.getCell(2)).trim(); // Cột B
+        if (!machineCode) continue;
+
+        const typeName = getExcelCellText(row.getCell(3)).trim(); // Cột C
+        const statusName = getExcelCellText(row.getCell(4)).trim(); // Cột D
+        const oeeTarget = parseFloat(getExcelCellText(row.getCell(5))) || 0; // Cột E
+        const runningHours = parseFloat(getExcelCellText(row.getCell(6))) || 0; // Cột F
+
+        // Dò ID dựa trên tên
+        const typeId = rawMachineTypes.find(t => normalizeImportText(t.name) === normalizeImportText(typeName))?.id;
+        const statusId = rawMachineStatuses.find(s => normalizeImportText(s.name) === normalizeImportText(statusName))?.id;
+
+        const existingMachine = machines.find(m => normalizeImportText(m.machineCode) === normalizeImportText(machineCode));
+
+        const payload = {
+          machineCode,
+          machineType: typeId || null,
+          status: statusId || null,
+          oeeTarget,
+          totalRunningHours: runningHours,
+          // Giữ nguyên các ngày cũ nếu có, hoặc để trống cho DB xử lý
+          productionDate: existingMachine?.productionDate || new Date().toISOString(),
+          commissioningDate: existingMachine?.commissioningDate || new Date().toISOString(),
+          lastMaintainance: existingMachine?.lastMaintainance || new Date().toISOString(),
+        };
+
+        if (existingMachine) {
+          await updateMachine(existingMachine.id, payload);
+          updatedCount++;
+        } else {
+          await createMachine(payload);
+          createdCount++;
+        }
+      }
+
+      showNotification("Nhập Excel thành công", "success");
+      fetchData();
+      handleCloseImportModal();
+    } catch (err) {
+      console.error(err);
+      showNotification("Lỗi khi nhập file Excel máy móc.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
+  };
 
   // State quản lý Modal và Chế độ (Thêm/Sửa/Xem)
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -232,6 +342,7 @@ export const Machines = () => {
         getMachineStatuses()
       ]);
       setMachines(machinesData);
+      setSelectedMachineIds([]);
       setRawMachineTypes(typesData);
       setRawMachineStatuses(statusesData);
       setMachineTypes(typesData.map(t => ({ value: t.id, label: t.name })));
@@ -487,7 +598,6 @@ export const Machines = () => {
     e.preventDefault();
 
     const newErrors = {};
-    if (!currentMachine?.machineCode?.trim()) newErrors.machineCode = "Bắt buộc nhập Mã máy";
     if (!currentMachine?.machineType) newErrors.machineType = "Bắt buộc nhập Loại máy";
     if (!currentMachine?.productionDate) newErrors.productionDate = "Bắt buộc nhập Ngày sản xuất";
     if (!currentMachine?.commissioningDate) newErrors.commissioningDate = "Bắt buộc nhập Ngày đưa vào sử dụng";
@@ -609,8 +719,57 @@ export const Machines = () => {
       } catch (err) {
         showNotification("Lỗi khi xóa máy", "error");
       }
+    } else if (confirmModal.type === 'bulkDelete') {
+      try {
+        await Promise.all(confirmModal.id.map(id => deleteMachine(id)));
+        showNotification(`Đã xóa ${confirmModal.id.length} máy thành công!`);
+        setSelectedMachineIds([]);
+        setIsBulkSelectMode(false);
+        fetchData();
+      } catch (err) {
+        showNotification("Lỗi khi xóa nhiều máy", "error");
+      }
     }
     setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' });
+  };
+
+  const handleBulkDelete = () => {
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
+      setSelectedMachineIds([]);
+      return;
+    }
+
+    if (selectedMachineIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedMachineIds([]);
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      id: selectedMachineIds,
+      type: 'bulkDelete',
+      title: 'Xác nhận xóa nhiều máy',
+      message: `Bạn có chắc chắn muốn xóa ${selectedMachineIds.length} máy đã chọn không? Hành động này không thể hoàn tác.`
+    });
+  };
+
+  const handleSelectAllMachines = () => {
+    const visibleMachineIds = filteredData.map(machine => machine.id).filter(Boolean);
+    setSelectedMachineIds(visibleMachineIds);
+  };
+
+  const handleClearSelectedMachines = () => {
+    setSelectedMachineIds([]);
+  };
+
+  const handleToggleSelectMachine = (row) => {
+    const rowId = row.id;
+    setSelectedMachineIds(prev => prev.includes(rowId)
+      ? prev.filter(id => id !== rowId)
+      : [...prev, rowId]
+    );
   };
 
   const handleMachineTypeChange = async (machine, newTypeId) => {
@@ -714,12 +873,56 @@ export const Machines = () => {
       render: (row) => <span>{row.totalRunningHours?.toLocaleString()} h</span>
     },
     {
-      header: 'Hành động',
-      className: 'text-right pr-2 sm:pr-4 w-[100px] sm:w-[150px]',
+      header: isBulkSelectMode ? (
+        <div className="flex w-full items-center justify-center gap-1 text-[10px] sm:text-xs">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelectAllMachines();
+            }}
+            className="font-semibold text-red-600 hover:text-red-700"
+          >
+            Tất cả
+          </button>
+          <span className="text-gray-300">/</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClearSelectedMachines();
+            }}
+            className="font-semibold text-gray-500 hover:text-gray-700"
+          >
+            Bỏ chọn
+          </button>
+        </div>
+      ) : 'Hành động',
+      className: 'text-center pr-2 sm:pr-4 w-[100px] sm:w-[150px]',
       render: (row) => (
-        <div className="flex gap-1.5 justify-end whitespace-nowrap">
-          <button onClick={() => handleOpenModal('edit', row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
-          <button onClick={() => handleDeleteRequest(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Xóa</button>
+        <div className="flex justify-center items-center gap-3 whitespace-nowrap">
+          {isBulkSelectMode ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleSelectMachine(row);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              title={selectedMachineIds.includes(row.id) ? 'Bỏ chọn' : 'Chọn dòng'}
+            >
+              {selectedMachineIds.includes(row.id) ? (
+                <FaRegSquareMinus size={20} className="text-red-600" />
+              ) : (
+                <FaRegSquare size={20} className="text-gray-400" />
+              )}
+            </button>
+          ) : (
+            <div className="flex gap-1.5 justify-end animate-in slide-in-from-left-2 duration-200">
+              <button onClick={(e) => { e.stopPropagation(); handleOpenModal('edit', row); }} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
+              <button onClick={(e) => { e.stopPropagation(); handleDeleteRequest(row.id); }} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Xóa</button>
+            </div>
+          )}
         </div>
       ),
     }
@@ -744,23 +947,34 @@ export const Machines = () => {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
-            <FileUp size={18} />
-            Nhập Excel
-          </button>
+        <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:flex-wrap">
           <button
             onClick={handleRequestExportExcel}
-            className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center justify-center gap-2 shadow-sm text-sm"
+            className="order-1 lg:order-3 w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
           >
-            <FileDown size={18} />Xuất Excel
+            <FileDown size={16} />
+            <span>Xuất Excel</span>
+          </button>
+          <button
+            onClick={handleOpenImportModal}
+            className="order-2 lg:order-2 w-full lg:w-auto bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center justify-center gap-2 shadow-sm text-xs sm:text-sm"
+          >
+            <FileUp size={16} />
+            <span>Nhập Excel</span>
+          </button>
+          <button
+            onClick={handleBulkDelete}
+            className={`order-3 lg:order-1 w-full lg:w-auto text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-xs sm:text-sm ${selectedMachineIds.length > 0 ? 'bg-red-600 hover:bg-red-700' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+          >
+            <Trash2 size={16} />
+            <span className="truncate">Xóa nhiều dòng {selectedMachineIds.length > 0 && `(${selectedMachineIds.length})`}</span>
           </button>
           <button
             onClick={() => handleOpenModal('add')}
-            className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm"
+            className="order-4 w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-xs sm:text-sm flex items-center justify-center gap-2"
           >
-            <span className="hidden sm:inline">Thêm mới</span>
-            <span className="sm:hidden">Thêm</span>
+            <Plus size={16} />
+            <span>Thêm mới</span>
           </button>
         </div>
       </div>
@@ -831,6 +1045,62 @@ export const Machines = () => {
         )
       }
 
+      {/* Modal Nhập Excel */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập dữ liệu máy móc từ Excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="machine-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel (.xlsx)'}
+              </span>
+              <input
+                id="machine-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800 transition-colors"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t pt-4">
+            <button
+              type="button"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleImportExcel}
+              disabled={isImportingExcel || !selectedImportFile}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isImportingExcel ? 'Đang xử lý...' : 'Nhập dữ liệu'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Modal Form */}
       <Modal
         isOpen={isModalOpen}
@@ -844,9 +1114,8 @@ export const Machines = () => {
           <div className={`space-y-5 ${isModalMaximized ? 'flex-1 overflow-y-auto pr-2 custom-scrollbar' : ''}`}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-2">
               <div className="flex flex-col gap-1">
-                <label className={`text-xs ${errors.machineCode ? 'text-red-500' : 'text-gray-500'}  ml-1`}>Mã máy <span className="text-red-500">*</span></label>
-                <input type="text" name="machineCode" value={currentMachine?.machineCode || ''} onChange={handleInputChange} disabled={modalMode === 'view'} className={`w-full border ${errors.machineCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white shadow-sm`} placeholder="VD: CNC-V1" />
-                {errors.machineCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.machineCode}</p>}
+                <label className="text-xs text-gray-500 ml-1">Mã máy <span className="text-red-500">*</span></label>
+                <input type="text" name="machineCode" value={currentMachine?.machineCode || ''} onChange={handleInputChange} disabled className={`w-full block cursor-not-allowed bg-gray-100 border border-gray-300 focus:ring-blue-500 rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white shadow-sm`} />
               </div>
 
               <div className="flex flex-col gap-1">

@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
+using Microsoft.AspNetCore.Hosting;
+using System.IO;
 
 namespace MyProject.Backend.Controller
 {
@@ -16,10 +18,12 @@ namespace MyProject.Backend.Controller
         private const string MachineCodePrefix = "TB00";
         private const int MaxCreateMachineCodeAttempts = 10;
         private readonly AppDbContext _context;
+        private readonly IWebHostEnvironment _environment;
 
-        public MachinesController(AppDbContext context)
+        public MachinesController(AppDbContext context, IWebHostEnvironment environment)
         {
             _context = context;
+            _environment = environment;
         }
 
         [HttpGet]
@@ -28,12 +32,35 @@ namespace MyProject.Backend.Controller
             return await _context.Machines.ToListAsync();
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<ActionResult<Machine>> GetMachine(int id)
         {
             var machine = await _context.Machines.FindAsync(id);
             if (machine == null) return NotFound();
             return machine;
+        }
+
+        [HttpGet("import-template")]
+        public IActionResult DownloadMachineTemplate()
+        {
+            var filePath = Path.Combine(
+                _environment.ContentRootPath,
+                "Templates",
+                "ImportTemplate",
+                "MachineTemplate.xlsx"
+            );
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound(new { message = "Không tìm thấy file mẫu nhập máy móc." });
+            }
+
+            var stream = System.IO.File.OpenRead(filePath);
+            return File(
+                stream,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "MachineTemplate.xlsx"
+            );
         }
 
         [HttpPost]

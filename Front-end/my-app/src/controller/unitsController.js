@@ -6,12 +6,14 @@ const normalizeData = (data) => {
     if (Array.isArray(data)) {
         return data.map(item => ({
             id: item.id || item.ID,
+            unitCode: item.unitCode || item.UnitCode,
             name: item.name || item.Name,
             // Thêm các trường khác nếu có, xử lý cả camelCase và PascalCase
         }));
     }
     return {
         id: data.id || data.ID,
+        unitCode: data.unitCode || data.UnitCode,
         name: data.name || data.Name,
         // Thêm các trường khác nếu có
     };
@@ -30,6 +32,7 @@ export const getUnits = async () => {
 export const createUnit = async (unitData) => {
     try {
         const response = await axios.post(API_URL, unitData);
+        if (!response) throw new Error("No response from server");
         return normalizeData(response.data);
     } catch (error) {
         console.error("Error creating unit:", error);

@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { Search, FileUp, FileDown, ChevronRight } from 'lucide-react';
+import { Search, FileUp, FileDown, ChevronRight, Trash2 } from 'lucide-react';
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 import { CustomDatatable, Modal, AppNotification, CustomConfirm } from '../customComponent/customComponent';
 import { getSuppliers, deleteSupplier, createSupplier, updateSupplier } from '../controller/suppliersController';
 import { BsLayoutSidebarInset, BsLayoutSidebarInsetReverse } from "react-icons/bs";
@@ -17,7 +18,11 @@ export const Suppliers = () => {
   const [selectedSupplierIds, setSelectedSupplierIds] = useState([]);
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
   const [isModalMaximized, setIsModalMaximized] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
   const [supplierErrors, setSupplierErrors] = useState({});
 
   const showNotification = (message, type = 'success') => {
@@ -31,6 +36,11 @@ export const Suppliers = () => {
       setLoading(true);
       const data = await getSuppliers();
       setSuppliers(data);
+      setSelectedSupplierIds([]);
+      setIsBulkSelectMode(false);
+      // Reset import states on data fetch
+      setSelectedImportFile(null);
+      setIsImportingExcel(false);
     } catch (err) {
       setError("Không thể tải dữ liệu nhà cung cấp.");
       console.error("Lỗi khi tải nhà cung cấp:", err);
@@ -56,15 +66,148 @@ export const Suppliers = () => {
     });
   }, [suppliers, searchTerm]);
 
+  // Hàm chuẩn hóa text để so sánh (giống stages.js)
+  const normalizeImportText = (value) => String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
+  // Hàm lấy text từ cell Excel (xử lý richText, hyperlink...)
+  const getExcelCellText = (cell) => {
+    const value = cell?.value;
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') {
+      if (value.text !== undefined) return String(value.text);
+      if (value.result !== undefined) return String(value.result);
+      if (Array.isArray(value.richText)) return value.richText.map(part => part.text || '').join('');
+      if (value.hyperlink && value.text) return String(value.text);
+    }
+    return String(value);
+  };
+
+  const handleOpenImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(false);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    // Tải file mẫu từ thư mục Templates\ImportTemplate ở Back-end
+    window.location.href = `https://quanlysanxuat-back-end.onrender.com/api/Templates/import/suppliers`;
+  };
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
+    }
+    setIsImportingExcel(true);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có dữ liệu.", "error");
+        return;
+      }
+
+      let createdCount = 0;
+      let updatedCount = 0;
+
+      for (let i = 2; i <= worksheet.rowCount; i++) { // Bắt đầu từ dòng 2 (bỏ qua header)
+        const row = worksheet.getRow(i); // Lấy hàng hiện tại
+        const supplierCode = getExcelCellText(row.getCell(2)).trim(); // Cột B
+        const name = getExcelCellText(row.getCell(3)).trim(); // Cột C
+        const contactPerson = getExcelCellText(row.getCell(4)).trim(); // Cột D
+        const phone = getExcelCellText(row.getCell(5)).trim(); // Cột E
+        const email = getExcelCellText(row.getCell(6)).trim(); // Cột F
+        const address = getExcelCellText(row.getCell(7)).trim(); // Cột G
+        const taxCode = getExcelCellText(row.getCell(8)).trim(); // Cột H
+        const website = getExcelCellText(row.getCell(9)).trim(); // Cột I
+        const notes = getExcelCellText(row.getCell(10)).trim(); // Cột J
+
+        if (!supplierCode || !name) {
+          showNotification(`Bỏ qua dòng ${i} do thiếu Mã nhà cung cấp hoặc Tên nhà cung cấp.`, "warning");
+          continue;
+        }
+
+        const existingSupplier = suppliers.find(s => normalizeImportText(s.supplierCode) === normalizeImportText(supplierCode));
+
+        const payload = {
+          supplierCode,
+          name,
+          contactPerson,
+          phone,
+          email,
+          address,
+          taxCode,
+          website,
+          notes,
+        };
+
+        if (existingSupplier) {
+          await updateSupplier(existingSupplier.id, { ...existingSupplier, ...payload }); // Cập nhật các trường
+          updatedCount++;
+        } else {
+          await createSupplier(payload);
+          createdCount++;
+        }
+      }
+
+      showNotification(`Nhập Excel thành công: thêm mới ${createdCount}, cập nhật ${updatedCount}`, "success");
+      fetchData();
+      handleCloseImportModal();
+    } catch (err) {
+      console.error(err);
+      showNotification("Lỗi khi nhập file Excel nhà cung cấp.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
+  };
+
   const handleBulkDelete = () => {
-    if (selectedSupplierIds.length === 0) return;
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
+      setSelectedSupplierIds([]);
+      return;
+    }
+
+    if (selectedSupplierIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedSupplierIds([]);
+      return;
+    }
+
     setConfirmModal({
       isOpen: true,
       id: selectedSupplierIds,
       type: 'bulkDelete',
       title: 'Xác nhận xóa nhiều nhà cung cấp',
-      message: `Bạn có chắc chắn muốn xóa ${selectedSupplierIds.length} nhà cung cấp đã chọn không?`
+      message: `Bạn có chắc chắn muốn xóa ${selectedSupplierIds.length} nhà cung cấp đã chọn không? Hành động này không thể hoàn tác.`
     });
+  };
+
+  const handleSelectAllSuppliers = () => {
+    const visibleSupplierIds = filteredSuppliers.map(s => s.id).filter(Boolean);
+    setSelectedSupplierIds(visibleSupplierIds);
+  };
+
+  const handleClearSelectedSuppliers = () => {
+    setSelectedSupplierIds([]);
+  };
+
+  const handleToggleSelectSupplier = (row) => {
+    const rowId = row.id;
+    setSelectedSupplierIds(prev => prev.includes(rowId)
+      ? prev.filter(id => id !== rowId)
+      : [...prev, rowId]
+    );
   };
 
   const handleDeleteSupplier = (supplierId) => {
@@ -85,6 +228,12 @@ export const Suppliers = () => {
         await fetchData();
         showNotification("Xóa nhà cung cấp thành công", "success");
         setSelectedSupplierIds(prev => prev.filter(supplierId => supplierId !== id));
+      } else if (type === 'bulkDelete') {
+        await Promise.all(id.map(supplierId => deleteSupplier(supplierId)));
+        await fetchData();
+        showNotification(`Đã xóa ${id.length} nhà cung cấp thành công`, "success");
+        setSelectedSupplierIds([]);
+        setIsBulkSelectMode(false);
       } else if (type === 'export') {
         await handleExportExcel();
       }
@@ -104,6 +253,7 @@ export const Suppliers = () => {
   const handleAddSupplier = () => {
     setModalMode('add');
     setCurrentEditingSupplier({
+      supplierCode: '',
       name: '',
       contactPerson: '',
       phone: '',
@@ -176,6 +326,7 @@ export const Suppliers = () => {
       const worksheet = workbook.addWorksheet('Danh sách nhà cung cấp');
       worksheet.columns = [
         { header: 'STT', key: 'stt', width: 8 },
+        { header: 'Mã nhà cung cấp', key: 'supplierCode', width: 20 },
         { header: 'Tên nhà cung cấp', key: 'name', width: 40 }, // 40 đơn vị ~ 280px
         { header: 'Người liên hệ', key: 'contactPerson', width: 25 },
         { header: 'Điện thoại', key: 'phone', width: 15 },
@@ -189,6 +340,7 @@ export const Suppliers = () => {
       filteredSuppliers.forEach((supplier, index) => {
         worksheet.addRow({
           stt: index + 1,
+          supplierCode: supplier.supplierCode || "",
           name: supplier.name,
           contactPerson: supplier.contactPerson,
           phone: supplier.phone,
@@ -196,7 +348,7 @@ export const Suppliers = () => {
           address: supplier.address,
           taxCode: supplier.taxCode,
           website: supplier.website,
-          notes: supplier.notes,
+          notes: supplier.notes || "",
         });
       });
 
@@ -206,7 +358,7 @@ export const Suppliers = () => {
         // vertical: 'middle' giúp nội dung luôn nằm giữa ô khi chiều cao hàng tăng lên
         row.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
 
-        // Thêm viền cho tất cả các ô và xử lý căn lề riêng cho cột STT
+        // Thêm viền cho tất cả các ô và xử lý căn lề riêng cho cột STT, Mã nhà cung cấp
         row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
           cell.border = {
             top: { style: 'thin' },
@@ -215,8 +367,8 @@ export const Suppliers = () => {
             right: { style: 'thin' }
           };
 
-          // Căn giữa nội dung cho cột STT (Cột số 1)
-          if (colNumber === 1) {
+          // Căn giữa nội dung cho cột STT (1) và Mã nhà cung cấp (2)
+          if (colNumber === 1 || colNumber === 2) {
             cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
           }
         });
@@ -274,26 +426,70 @@ export const Suppliers = () => {
       ),
     },
     { header: 'STT', className: 'w-[50px] text-center !px-1 sm:!px-2', render: (row, { index }) => index },
-    { header: 'Tên nhà cung cấp', accessor: 'name', className: 'font-bold text-blue-600 min-w-[150px]' },
+    { header: 'Mã NCC', accessor: 'supplierCode', className: 'font-medium text-blue-700 w-[80px] sm:w-[120px] !px-1 sm:!px-6' },
+    { header: 'Tên nhà cung cấp', accessor: 'name', className: 'hidden sm:table-cell font-bold text-blue-600 min-w-[150px]' },
     { header: 'Người liên hệ', accessor: 'contactPerson', className: 'hidden md:table-cell w-48 !px-1 sm:!px-2' },
     { header: 'Điện thoại', accessor: 'phone', className: 'hidden sm:table-cell w-32 sm:w-40' },
     {
-      header: 'Hành động',
-      className: 'text-right pr-2 sm:pr-5 w-[120px] sm:w-[160px]',
+      header: isBulkSelectMode ? (
+        <div className="flex w-full items-center justify-center gap-1 text-[10px] sm:text-xs">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelectAllSuppliers();
+            }}
+            className="font-semibold text-red-600 hover:text-red-700"
+          >
+            Tất cả
+          </button>
+          <span className="text-gray-300">/</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClearSelectedSuppliers();
+            }}
+            className="font-semibold text-gray-500 hover:text-gray-700"
+          >
+            Bỏ chọn
+          </button>
+        </div>
+      ) : 'Hành động',
+      className: 'text-center pr-2 sm:pr-5 w-[120px] sm:w-[160px]',
       render: (row) => (
-        <div className="flex gap-2 justify-end items-center">
-          <button
-            onClick={() => handleEditSupplier(row)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
-          >
-            Sửa
-          </button>
-          <button
-            onClick={() => handleDeleteSupplier(row.id)}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
-          >
-            Xóa
-          </button>
+        <div className="flex justify-center items-center gap-2">
+          {isBulkSelectMode ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleSelectSupplier(row);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+            >
+              {selectedSupplierIds.includes(row.id) ? (
+                <FaRegSquareMinus size={20} className="text-red-600" />
+              ) : (
+                <FaRegSquare size={20} className="text-gray-400" />
+              )}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => handleEditSupplier(row)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
+              >
+                Sửa
+              </button>
+              <button
+                onClick={() => handleDeleteSupplier(row.id)}
+                className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 !px-2 sm:!px-3 rounded text-xs transition-all active:scale-95"
+              >
+                Xóa
+              </button>
+            </>
+          )}
         </div>
       ),
     },
@@ -317,16 +513,26 @@ export const Suppliers = () => {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
-            <FileUp size={18} />
+        <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:flex-wrap">
+          <button onClick={handleOpenImportModal} className="order-1 lg:order-2 w-full lg:w-auto justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-xs sm:text-sm">
+            <FileUp size={16} />
             <span>Nhập Excel</span>
           </button>
-          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
-            <FileDown size={18} /> <span>Xuất Excel</span>
+          <button
+            onClick={handleRequestExportExcel}
+            className="order-2 lg:order-3 w-full lg:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-xs sm:text-sm"
+          >
+            <FileDown size={16} /> <span>Xuất Excel</span>
           </button>
-          <button onClick={handleAddSupplier} className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
-            Thêm mới
+          <button
+            onClick={handleBulkDelete}
+            className={`order-3 lg:order-1 w-full lg:w-auto justify-center text-white font-bold py-2 px-3 rounded-lg whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedSupplierIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+          >
+            <Trash2 size={16} />
+            <span className="truncate">Xóa nhiều dòng {selectedSupplierIds.length > 0 && `(${selectedSupplierIds.length})`}</span>
+          </button>
+          <button onClick={handleAddSupplier} className="order-4 w-full lg:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+            <span>Thêm mới</span>
           </button>
         </div>
       </div>
@@ -346,43 +552,51 @@ export const Suppliers = () => {
             bodyCellClassName="!py-2 sm:!py-3"
             renderExpansion={(row) => (
               <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
-                <div className="grid grid-cols-2 w-4/5 md:grid-cols-4 gap-y-6 gap-x-4 md:gap-x-8 text-sm">
-                  {/* Hàng 1: cột Người liên hệ với cột Số điện thoại */}
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Người liên hệ</span>
-                    <span className="text-gray-900 font-medium">{row.contactPerson || '---'}</span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
-                    <span className="text-gray-900 font-medium">{row.phone || '---'}</span>
+                <div className="flex flex-col gap-4 text-sm">
+                  {/* Dòng 1: Tên nhà cung cấp (Chỉ hiện trên mobile vì trên desktop đã có ở bảng chính) */}
+                  <div className="flex flex-col gap-1 sm:hidden">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tên nhà cung cấp</span>
+                    <span className="text-blue-600 font-bold text-base">{row.name || '---'}</span>
                   </div>
 
-                  {/* Hàng 2: cột Email với cột Địa chỉ */}
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
-                    <span className="text-gray-900 font-medium break-all">{row.email || '---'}</span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Địa chỉ</span>
-                    <span className="text-gray-900 font-medium leading-tight">{row.address || '---'}</span>
-                  </div>
+                  <div className="grid grid-cols-2 w-full md:w-4/5 md:grid-cols-4 gap-y-6 gap-x-4 md:gap-x-8">
+                    {/* Dòng 2: cột Người liên hệ với cột Số điện thoại */}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Người liên hệ</span>
+                      <span className="text-gray-900 font-medium">{row.contactPerson || '---'}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
+                      <span className="text-gray-900 font-medium">{row.phone || '---'}</span>
+                    </div>
 
-                  {/* Hàng 3: cột Website với cột Mã số thuế */}
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Website</span>
-                    <span className="text-blue-600 font-medium break-all">
-                      {row.website ? <a href={row.website} target="_blank" rel="noopener noreferrer" className="hover:underline">{row.website}</a> : '---'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mã số thuế</span>
-                    <span className="text-gray-900 font-medium">{row.taxCode || '---'}</span>
-                  </div>
+                    {/* Dòng 3: cột Email với cột Địa chỉ */}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
+                      <span className="text-gray-900 font-medium break-all">{row.email || '---'}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Địa chỉ</span>
+                      <span className="text-gray-900 font-medium leading-tight">{row.address || '---'}</span>
+                    </div>
 
-                  {/* Hàng 4: cột Ghi chú */}
-                  <div className="col-span-2 md:col-span-4 flex flex-col gap-1 mt-2">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ghi chú</span>
-                    <p className="text-gray-600 italic leading-relaxed">{row.notes || 'Không có ghi chú'}</p>
+                    {/* Dòng 4: cột Website với cột Mã số thuế */}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Website</span>
+                      <span className="text-blue-600 font-medium break-all">
+                        {row.website ? <a href={row.website} target="_blank" rel="noopener noreferrer" className="hover:underline">{row.website}</a> : '---'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mã số thuế</span>
+                      <span className="text-gray-900 font-medium">{row.taxCode || '---'}</span>
+                    </div>
+
+                    {/* Dòng 5: cột Ghi chú */}
+                    <div className="col-span-2 md:col-span-4 flex flex-col gap-1 mt-2">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ghi chú</span>
+                      <p className="text-gray-600 italic leading-relaxed">{row.notes || 'Không có ghi chú'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -390,6 +604,51 @@ export const Suppliers = () => {
           />
         </div>
       )}
+
+      {/* Modal Nhập Excel */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập dữ liệu nhà cung cấp từ Excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="supplier-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel (.xlsx)'}
+              </span>
+              <input
+                id="supplier-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800 transition-colors"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t pt-4">
+            <button type="button" onClick={handleCloseImportModal} className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white hover:bg-gray-600">Hủy</button>
+            <button type="button" onClick={handleImportExcel} disabled={isImportingExcel || !selectedImportFile} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
+              {isImportingExcel ? 'Đang xử lý...' : 'Nhập dữ liệu'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={isModalOpen}
@@ -400,9 +659,10 @@ export const Suppliers = () => {
         onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}
       >
         <form onSubmit={handleModalSubmit} className="space-y-4">
+          {/* Dòng 1: Tên nhà cung cấp và Mã nhà cung cấp */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={`text-xs font-medium ${supplierErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên nhà cung cấp</label>
+              <label className={`text-xs font-medium ${supplierErrors.name ? 'text-red-500' : 'text-gray-500'}`}>Tên nhà cung cấp <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="name"
@@ -412,6 +672,20 @@ export const Suppliers = () => {
               />
               {supplierErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.name}</p>}
             </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500">Mã nhà cung cấp</label>
+              <input
+                type="text"
+                name="supplierCode"
+                value={currentEditingSupplier?.supplierCode || ''}
+                disabled
+                className={`mt-1 block w-full border border-gray-300 bg-gray-100 text-gray-500 rounded-md shadow-sm outline-none cursor-not-allowed ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+              />
+            </div>
+          </div>
+
+          {/* Dòng 2: Người liên hệ và Điện thoại */}
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={`text-xs font-medium ${supplierErrors.contactPerson ? 'text-red-500' : 'text-gray-700'}`}>Người liên hệ</label>
               <input
@@ -423,9 +697,6 @@ export const Suppliers = () => {
               />
               {supplierErrors.contactPerson && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.contactPerson}</p>}
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={`text-xs font-medium ${supplierErrors.phone ? 'text-red-500' : 'text-gray-700'}`}>Điện thoại</label>
               <input
@@ -437,19 +708,9 @@ export const Suppliers = () => {
               />
               {supplierErrors.phone && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.phone}</p>}
             </div>
-            <div>
-              <label className={`text-xs font-medium ${supplierErrors.email ? 'text-red-500' : 'text-gray-700'}`}>Email</label>
-              <input
-                type="email"
-                name="email"
-                value={currentEditingSupplier?.email || ''}
-                onChange={handleModalInputChange}
-                className={`mt-1 block w-full border ${supplierErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
-              />
-              {supplierErrors.email && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.email}</p>}
-            </div>
           </div>
 
+          {/* Dòng 3: Địa chỉ */}
           <div>
             <label className={`text-xs font-medium ${supplierErrors.address ? 'text-red-500' : 'text-gray-700'}`}>Địa chỉ</label>
             <input
@@ -462,7 +723,19 @@ export const Suppliers = () => {
             {supplierErrors.address && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.address}</p>}
           </div>
 
+          {/* Dòng 4: Email và Mã số thuế */}
           <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={`text-xs font-medium ${supplierErrors.email ? 'text-red-500' : 'text-gray-700'}`}>Email</label>
+              <input
+                type="email"
+                name="email"
+                value={currentEditingSupplier?.email || ''}
+                onChange={handleModalInputChange}
+                className={`mt-1 block w-full border ${supplierErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+              />
+              {supplierErrors.email && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.email}</p>}
+            </div>
             <div>
               <label className={`text-xs font-medium ${supplierErrors.taxCode ? 'text-red-500' : 'text-gray-700'}`}>Mã số thuế</label>
               <input
@@ -474,19 +747,22 @@ export const Suppliers = () => {
               />
               {supplierErrors.taxCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.taxCode}</p>}
             </div>
-            <div>
-              <label className={`text-xs font-medium ${supplierErrors.website ? 'text-red-500' : 'text-gray-700'}`}>Website</label>
-              <input
-                type="text"
-                name="website"
-                value={currentEditingSupplier?.website || ''}
-                onChange={handleModalInputChange}
-                className={`mt-1 block w-full border ${supplierErrors.website ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
-              />
-              {supplierErrors.website && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.website}</p>}
-            </div>
           </div>
 
+          {/* Dòng 5: Website */}
+          <div>
+            <label className={`text-xs font-medium ${supplierErrors.website ? 'text-red-500' : 'text-gray-700'}`}>Website</label>
+            <input
+              type="text"
+              name="website"
+              value={currentEditingSupplier?.website || ''}
+              onChange={handleModalInputChange}
+              className={`mt-1 block w-full border ${supplierErrors.website ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+            />
+            {supplierErrors.website && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.website}</p>}
+          </div>
+
+          {/* Dòng 6: Ghi chú */}
           <div>
             <label className="text-xs font-medium text-gray-700">Ghi chú</label>
             <textarea

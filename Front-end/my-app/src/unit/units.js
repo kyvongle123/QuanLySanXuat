@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { Search, Plus, FileDown, FileUp, Trash2 } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Search, FileDown, FileUp, Trash2 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, AppNotification, CustomConfirm, Modal } from '../customComponent/customComponent';
 import { getUnits, createUnit, updateUnit, deleteUnit } from '../controller/unitsController';
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
+
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const Units = () => {
   const [units, setUnits] = useState([]);
@@ -15,9 +17,12 @@ export const Units = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
-  const [currentEditingUnit, setCurrentEditingUnit] = useState({ name: '' });
+  const [currentEditingUnit, setCurrentEditingUnit] = useState({ id: '', unitCode: '', name: '' });
   const [unitErrors, setUnitErrors] = useState({}); // New state for validation errors
   const [isModalMaximized, setIsModalMaximized] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
 
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
@@ -93,14 +98,14 @@ export const Units = () => {
 
   const handleOpenModal = (mode, unit = null) => {
     setModalMode(mode);
-    setCurrentEditingUnit(unit ? { ...unit } : { name: '' });
+    setCurrentEditingUnit(unit ? { ...unit, id: getEntityId(unit) } : { id: '', unitCode: '', name: '' });
     setUnitErrors({}); // Reset errors when opening modal
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setCurrentEditingUnit({ name: '' });
+    setCurrentEditingUnit({ id: '', unitCode: '', name: '' });
     setUnitErrors({}); // Reset errors when closing modal
     setIsModalMaximized(false);
   };
@@ -188,6 +193,138 @@ export const Units = () => {
     });
   };
 
+  const handleOpenImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(false);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    window.location.href = `${API_BASE_URL}/Templates/import/units`;
+  };
+
+  const getExcelText = (cell) => {
+    const value = cell?.value;
+    if (value == null) return '';
+    if (typeof value === 'object') {
+      if (value.text) return String(value.text).trim();
+      if (value.result != null) return String(value.result).trim();
+      if (Array.isArray(value.richText)) {
+        return value.richText.map(part => part.text || '').join('').trim();
+      }
+    }
+    return String(value).trim();
+  };
+
+  const normalizeImportText = (value) => String(value || '').trim().toLowerCase();
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
+    }
+
+    if (!selectedImportFile.name.toLowerCase().endsWith('.xlsx')) {
+      showNotification("Vui lòng chọn file .xlsx để nhập dữ liệu.", "error");
+      return;
+    }
+
+    try {
+      setIsImportingExcel(true);
+
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có sheet dữ liệu.", "error");
+        return;
+      }
+
+      const unitMap = new Map(units.map(unit => [
+        normalizeImportText(unit.unitCode || unit.UnitCode),
+        unit
+      ]));
+      const importedUnits = [];
+      const skippedRows = [];
+
+      const rowNumbers = [];
+      worksheet.eachRow({ includeEmpty: false }, (_, rowNumber) => {
+        if (rowNumber >= 2) rowNumbers.push(rowNumber);
+      });
+
+      for (const rowNumber of rowNumbers) {
+        const row = worksheet.getRow(rowNumber);
+        try {
+          const unitCode = getExcelText(row.getCell(2));
+          const unitName = getExcelText(row.getCell(3));
+
+          if (!unitCode && !unitName) continue;
+
+          if (!unitCode) {
+            skippedRows.push(`Dòng ${rowNumber}: thiếu Mã đơn vị`);
+            continue;
+          }
+
+          if (!unitName) {
+            skippedRows.push(`Dòng ${rowNumber}: thiếu Tên đơn vị`);
+            continue;
+          }
+
+          const existingUnit = unitMap.get(normalizeImportText(unitCode));
+
+          if (existingUnit) {
+            const updatedUnit = await updateUnit(getEntityId(existingUnit), {
+              ID: getEntityId(existingUnit),
+              UnitCode: existingUnit.unitCode || existingUnit.UnitCode || unitCode,
+              Name: unitName
+            });
+            const mergedUnit = { ...existingUnit, ...updatedUnit, id: getEntityId(existingUnit), name: unitName };
+            importedUnits.push(mergedUnit);
+            unitMap.set(normalizeImportText(mergedUnit.unitCode || mergedUnit.UnitCode), mergedUnit);
+          } else {
+            const createdUnit = await createUnit({
+              UnitCode: unitCode || undefined,
+              Name: unitName
+            });
+            const mergedUnit = { ...createdUnit, unitCode: createdUnit.unitCode || unitCode, name: createdUnit.name || unitName };
+            importedUnits.push(mergedUnit);
+            unitMap.set(normalizeImportText(mergedUnit.unitCode || mergedUnit.UnitCode), mergedUnit);
+          }
+        } catch (rowError) {
+          console.error(`Error importing unit row ${rowNumber}:`, rowError);
+          skippedRows.push(`Dòng ${rowNumber}: lỗi khi lưu dữ liệu`);
+        }
+      }
+
+      if (importedUnits.length > 0) {
+        setUnits(prevUnits => {
+          const importedMap = new Map(importedUnits.map(unit => [getEntityId(unit), unit]));
+          const nextUnits = prevUnits.map(unit => importedMap.get(getEntityId(unit)) || unit);
+          const existingIds = new Set(prevUnits.map(unit => getEntityId(unit)));
+          importedUnits.forEach(unit => {
+            if (!existingIds.has(getEntityId(unit))) nextUnits.push(unit);
+          });
+          return nextUnits;
+        });
+      }
+
+      handleCloseImportModal();
+      showNotification("Nhập Excel thành công");
+      if (skippedRows.length) console.warn("Các dòng không nhập được:", skippedRows);
+    } catch (err) {
+      console.error("Error importing units from Excel:", err);
+      showNotification("Lỗi khi nhập Excel. Vui lòng kiểm tra lại file.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
+  };
+
   const handleExportExcel = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -195,12 +332,14 @@ export const Units = () => {
 
       worksheet.columns = [
         { header: 'STT', key: 'stt', width: 10 },
-        { header: 'Tên đơn vị', key: 'name', width: 30 },
+        { header: 'Mã đơn vị', key: 'unitCode', width: 20 },
+        { header: 'Tên đơn vị', key: 'name', width: 20 },
       ];
 
       filteredData.forEach((unit, index) => {
         worksheet.addRow({
           stt: index + 1,
+          unitCode: unit.unitCode || unit.UnitCode || '',
           name: unit.name,
         });
       });
@@ -232,6 +371,11 @@ export const Units = () => {
 
   const columns = [
     { header: 'STT', className: 'w-[40px] text-center !px-1', render: (_, { index }) => index },
+    {
+      header: 'Mã đơn vị',
+      className: 'w-[110px] text-center !px-1 text-gray-700',
+      render: (row) => row.unitCode || row.UnitCode || ''
+    },
     { header: 'Tên đơn vị', accessor: 'name', className: 'font-medium text-blue-600 !px-1' },
     {
       header: (
@@ -294,7 +438,7 @@ export const Units = () => {
   ];
 
   return (
-    <div className="p-2 sm:p-6 bg-gray-50/50 min-h-screen">
+    <div className="p-2 sm:p-6">
       <div className="mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Danh sách đơn vị tính</h2>
       </div>
@@ -313,7 +457,10 @@ export const Units = () => {
           />
         </div>
         <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
-          <button className="order-1 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
+          <button
+            onClick={handleOpenImportModal}
+            className="order-1 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm"
+          >
             <FileUp size={16} /> Nhập Excel
           </button>
           <button
@@ -364,6 +511,16 @@ export const Units = () => {
       >
         <form onSubmit={handleModalSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-700">Mã đơn vị</label>
+            <input
+              type="text"
+              name="unitCode"
+              value={currentEditingUnit?.unitCode || ''}
+              disabled
+              className="w-full cursor-not-allowed rounded-md border border-gray-200 bg-gray-100 p-2 text-sm text-gray-500 shadow-sm outline-none"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
             <label className={`text-xs font-medium ${unitErrors.name ? 'text-red-600' : 'text-gray-700'}`}>Tên đơn vị</label>
             <input
               type="text"
@@ -380,6 +537,62 @@ export const Units = () => {
             <button type="submit" className="bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 transition-colors text-sm font-bold">Lưu</button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="unit-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel để nhập'}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
+              <input
+                id="unit-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button
+              type="button"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleImportExcel}
+              disabled={isImportingExcel}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isImportingExcel ? 'Đang nhập...' : 'Nhập Excel'}
+            </button>
+          </div>
+        </div>
       </Modal>
 
       <CustomConfirm

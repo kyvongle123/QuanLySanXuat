@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Plus, FileDown, ChevronDown, FileUp, ChevronRight } from 'lucide-react';
+import { Search, Plus, FileDown, ChevronDown, FileUp, ChevronRight, Trash2 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, AppNotification, CustomConfirm, Modal, CustomSelect } from '../customComponent/customComponent';
@@ -11,6 +11,9 @@ import {
   updateProductionSection,
   deleteProductionSection
 } from '../controller/productionSectionsController';
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
+
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const Stages = () => {
   const [stages, setStages] = useState([]);
@@ -25,6 +28,11 @@ export const Stages = () => {
   const [sectionConfirmModal, setSectionConfirmModal] = useState({ isOpen: false, id: null });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
+  const [selectedStageIds, setSelectedStageIds] = useState([]);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
@@ -99,6 +107,8 @@ export const Stages = () => {
       ]);
       // Đảm bảo dữ liệu có trường id nhất quán (hỗ trợ cả id và ID từ backend)
       setStages(stageData.map(s => ({ ...s, id: s.id || s.ID })));
+      setSelectedStageIds([]);
+      setIsBulkSelectMode(false);
       // Chuyển đổi đồng nhất dữ liệu tổ sản xuất
       setProductionSections(sectionData.map(s => ({
         value: s.id || s.ID,
@@ -222,6 +232,32 @@ export const Stages = () => {
     });
   }, [stages, searchTerm]);
 
+  const getStageId = (stage) => stage?.id || stage?.ID || stage?.Id;
+
+  const getExcelCellText = (cell) => {
+    const value = cell?.value;
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') {
+      if (value.text !== undefined) return String(value.text);
+      if (value.result !== undefined) return String(value.result);
+      if (Array.isArray(value.richText)) return value.richText.map(part => part.text || '').join('');
+      if (value.hyperlink && value.text) return String(value.text);
+    }
+    return String(value);
+  };
+
+  const normalizeImportText = (value) => String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
+  const parseImportSequence = (value) => {
+    if (typeof value === 'number') return value;
+    const text = String(value || '').trim();
+    const match = text.match(/-?\d+(?:[.,]\d+)?/);
+    return match ? parseInt(match[0].replace(',', '.'), 10) : NaN;
+  };
+
   const handleAddItem = () => {
     setModalMode('add');
     setCurrentEditingItem({
@@ -268,6 +304,108 @@ export const Stages = () => {
     setIsModalOpen(false);
     setIsModalMaximized(false);
     setErrors({});
+  };
+
+  const handleOpenImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(false);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    window.location.href = `${API_BASE_URL}/Templates/import/stages`;
+  };
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
+    }
+
+    if (!selectedImportFile.name.toLowerCase().endsWith('.xlsx')) {
+      showNotification("Vui lòng chọn file .xlsx để nhập dữ liệu.", "error");
+      return;
+    }
+
+    setIsImportingExcel(true);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có dữ liệu.", "error");
+        return;
+      }
+
+      const stageMap = new Map(
+        stages
+          .filter(stage => stage.stageCode || stage.StageCode)
+          .map(stage => [normalizeImportText(stage.stageCode || stage.StageCode), stage])
+      );
+
+      const sectionMap = new Map(
+        productionSections
+          .filter(section => section.label)
+          .map(section => [normalizeImportText(section.label), section.value])
+      );
+
+      let createdCount = 0;
+      let updatedCount = 0;
+      let skippedCount = 0;
+
+      for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+        const row = worksheet.getRow(rowNumber);
+        const stageCode = getExcelCellText(row.getCell(3)).trim();
+        const stageName = getExcelCellText(row.getCell(4)).trim();
+        const sectionName = getExcelCellText(row.getCell(2)).trim();
+        const sequence = parseImportSequence(getExcelCellText(row.getCell(5)));
+
+        if (!stageCode && !stageName && !sectionName && !Number.isFinite(sequence)) continue;
+
+        const sectionId = sectionMap.get(normalizeImportText(sectionName));
+
+        if (!stageCode || !stageName || !sectionId || !Number.isFinite(sequence) || sequence <= 0) {
+          skippedCount += 1;
+          continue;
+        }
+
+        const existingStage = stageMap.get(normalizeImportText(stageCode));
+        const payload = {
+          ID: existingStage ? getStageId(existingStage) : 0,
+          StageCode: stageCode,
+          Name: stageName,
+          ProductionSection: parseInt(sectionId, 10),
+          Sequence: sequence
+        };
+
+        if (existingStage) {
+          const stageId = getStageId(existingStage);
+          const updated = await updateStage(stageId, { ...payload, ID: stageId });
+          stageMap.set(normalizeImportText(stageCode), updated);
+          updatedCount += 1;
+        } else {
+          const created = await createStage(payload);
+          stageMap.set(normalizeImportText(created.stageCode || created.StageCode || stageCode), created);
+          createdCount += 1;
+        }
+      }
+
+      await fetchData();
+
+      const skippedMessage = skippedCount > 0 ? ` Bỏ qua ${skippedCount} dòng không hợp lệ.` : '';
+      showNotification(`Nhập Excel thành công: thêm ${createdCount}, cập nhật ${updatedCount}.${skippedMessage}`, "success");
+      handleCloseImportModal();
+    } catch (err) {
+      showNotification("Lỗi khi nhập file Excel công đoạn.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
   };
 
   const handleModalSubmit = async (e) => {
@@ -326,9 +464,9 @@ export const Stages = () => {
       const worksheet = workbook.addWorksheet('Danh sách công đoạn');
       worksheet.columns = [
         { header: 'STT', key: 'stt', width: 10 },
-        { header: 'Tổ sản xuất', key: 'section', width: 25 },
         { header: 'Mã công đoạn', key: 'stageCode', width: 20 },
         { header: 'Tên công đoạn', key: 'name', width: 40 },
+        { header: 'Tổ sản xuất', key: 'section', width: 25 },
         { header: 'Thứ tự', key: 'sequence', width: 10 },
       ];
       console.log("filteredData la", filteredData);
@@ -367,8 +505,8 @@ export const Stages = () => {
             right: { style: 'thin' }
           };
 
-          // Căn giữa cho cột STT (colNumber === 1)
-          if (colNumber === 1) {
+          // Căn giữa cho cột STT và Mã công đoạn
+          if (colNumber === 1 || colNumber === 2) {
             cell.alignment = { vertical: 'middle', horizontal: 'center' };
           }
         });
@@ -388,13 +526,65 @@ export const Stages = () => {
     } else if (confirmModal.type === 'delete') {
       try {
         await deleteStage(confirmModal.id);
-        setStages(prev => prev.filter(s => s.id !== confirmModal.id));
+        setStages(prev => prev.filter(s => getStageId(s) !== confirmModal.id));
+        setSelectedStageIds(prev => prev.filter(id => id !== confirmModal.id));
         showNotification("Xóa công đoạn thành công!");
       } catch (err) {
         showNotification("Lỗi khi xóa dữ liệu.", "error");
       }
+    } else if (confirmModal.type === 'bulkDelete') {
+      try {
+        await Promise.all(confirmModal.id.map(stageId => deleteStage(stageId)));
+        setStages(prev => prev.filter(stage => !confirmModal.id.includes(getStageId(stage))));
+        setSelectedStageIds([]);
+        setIsBulkSelectMode(false);
+        showNotification(`Xóa ${confirmModal.id.length} công đoạn thành công!`);
+      } catch (err) {
+        showNotification("Lỗi khi xóa nhiều công đoạn.", "error");
+      }
     }
     setConfirmModal({ isOpen: false, id: null, type: null, title: '', message: '' });
+  };
+
+  const handleBulkDelete = () => {
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
+      setSelectedStageIds([]);
+      return;
+    }
+
+    if (selectedStageIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedStageIds([]);
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      id: selectedStageIds,
+      type: 'bulkDelete',
+      title: 'Xác nhận xóa nhiều công đoạn',
+      message: `Bạn có chắc chắn muốn xóa ${selectedStageIds.length} công đoạn đã chọn không? Hành động này không thể hoàn tác.`
+    });
+  };
+
+  const handleSelectAllStages = () => {
+    setSelectedStageIds(filteredData.map(stage => getStageId(stage)).filter(Boolean));
+  };
+
+  const handleClearSelectedStages = () => {
+    setSelectedStageIds([]);
+  };
+
+  const handleToggleSelectStage = (stage) => {
+    const stageId = getStageId(stage);
+    if (!stageId) return;
+
+    setSelectedStageIds(prev =>
+      prev.includes(stageId)
+        ? prev.filter(id => id !== stageId)
+        : [...prev, stageId]
+    );
   };
 
   const columns = [
@@ -510,12 +700,60 @@ export const Stages = () => {
       render: (row) => row.sequence || row.Sequence
     },
     {
-      header: 'Hành động',
-      className: 'text-right pr-2 sm:pr-4 w-[100px] sm:w-[150px]',
+      header: (
+        isBulkSelectMode ? (
+          <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-sm">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelectAllStages();
+              }}
+              className="font-semibold text-red-600 hover:text-red-700"
+            >
+              Tất cả
+            </button>
+            <span className="text-gray-300">/</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClearSelectedStages();
+              }}
+              className="font-semibold text-gray-500 hover:text-gray-700"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        ) : (
+          <div className="flex w-full items-center justify-center text-[11px] sm:text-sm">Hành động</div>
+        )
+      ),
+      className: 'text-center pr-2 sm:pr-4 w-[100px] sm:w-[150px]',
       render: (row) => (
-        <div className="flex gap-1.5 justify-end">
-          <button onClick={(e) => { e.stopPropagation(); handleEditItem(row); }} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
-          <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, id: row.id, type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa công đoạn này?' }); }} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Xóa</button>
+        <div className="flex justify-center items-center gap-3">
+          {isBulkSelectMode ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleSelectStage(row);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              title={selectedStageIds.includes(getStageId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
+            >
+              {selectedStageIds.includes(getStageId(row)) ? (
+                <FaRegSquareMinus size={20} className="text-red-600" />
+              ) : (
+                <FaRegSquare size={20} className="text-gray-400" />
+              )}
+            </button>
+          ) : (
+            <div className="flex gap-1.5 justify-end animate-in slide-in-from-left-2 duration-200">
+              <button onClick={(e) => { e.stopPropagation(); handleEditItem(row); }} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
+              <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, id: getStageId(row), type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa công đoạn này?' }); }} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Xóa</button>
+            </div>
+          )}
         </div>
       ),
     },
@@ -593,7 +831,7 @@ export const Stages = () => {
   return (
     <div className="p-2 lg:p-6">
       <div className="mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Quản lý Công đoạn sản xuất</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Danh sách công đoạn sản xuất</h2>
       </div>
 
       <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-4 gap-4">
@@ -610,23 +848,29 @@ export const Stages = () => {
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="flex flex-row gap-2 w-full sm:w-auto">
-            <button className="flex-1 sm:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
-              <FileUp size={16} /> Nhập Excel
-            </button>
-            <button
-              onClick={handleRequestExportExcel}
-              className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
-            >
-              <FileDown size={16} /> Xuất Excel
-            </button>
-          </div>
+        <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:flex-wrap">
+          <button onClick={handleOpenImportModal} className="order-1 lg:order-2 w-full lg:w-auto justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
+            <FileUp size={16} /> Nhập Excel
+          </button>
+          <button
+            onClick={handleRequestExportExcel}
+            className="order-2 lg:order-3 w-full lg:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
+          >
+            <FileDown size={16} /> Xuất Excel
+          </button>
+          <button
+            onClick={handleBulkDelete}
+            className={`order-3 lg:order-1 w-full lg:w-auto justify-center text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedStageIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+          >
+            <Trash2 size={16} />
+            Xóa nhiều dòng {selectedStageIds.length > 0 && `(${selectedStageIds.length})`}
+          </button>
           <button
             onClick={handleAddItem}
-            className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
+            className="order-4 w-full lg:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
-            Thêm công đoạn
+            <span className="lg:hidden">Thêm mới</span>
+            <span className="hidden lg:inline">Thêm công đoạn</span>
           </button>
         </div>
       </div>
@@ -697,6 +941,62 @@ export const Stages = () => {
       </div>
 
       <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="stage-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel để nhập'}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
+              <input
+                id="stage-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button
+              type="button"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleImportExcel}
+              disabled={isImportingExcel}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isImportingExcel ? 'Đang nhập...' : 'Nhập Excel'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         title={modalMode === 'add' ? 'Thêm công đoạn mới' : 'Chỉnh sửa công đoạn'}
@@ -714,9 +1014,9 @@ export const Stages = () => {
                   setCurrentEditingItem({ ...currentEditingItem, stageCode: e.target.value });
                   if (errors.stageCode) setErrors(prev => ({ ...prev, stageCode: null }));
                 }}
-                className={`w-full border ${errors.stageCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
+                disabled
+                className={`w-full block cursor-not-allowed bg-gray-100 shadow-sm border border-gray-300 focus:ring-blue-500 rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
               />
-              {errors.stageCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.stageCode}</p>}
             </div>
             <div className="flex flex-col gap-1">
               <label className={`text-xs font-medium ${errors.sequence ? 'text-red-500' : 'text-gray-700'}`}>Thứ tự</label>

@@ -13,7 +13,7 @@ namespace MyProject.Backend.Controller
     [ApiController]
     public class BOMController : ControllerBase
     {
-        private const string BomCodePrefix = "BOM00";
+        private const string BomCodePrefix = "ĐM00";
         private const int MaxCreateBomCodeAttempts = 10;
         private readonly AppDbContext _context;
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Plus, ChevronDown, FileDown, FileUp, ChevronRight } from 'lucide-react';
+import { Search, Plus, ChevronDown, FileDown, FileUp, ChevronRight, Trash2 } from 'lucide-react';
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, Modal, CustomSelect, AppNotification, CustomConfirm } from '../customComponent/customComponent';
@@ -11,6 +12,8 @@ import {
   updateProductionSection
 } from '../controller/productionSectionsController';
 import { getUsers } from '../controller/usersController';
+
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const ProductionSections = () => {
   const [sections, setSections] = useState([]);
@@ -28,6 +31,119 @@ export const ProductionSections = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dropdownSearch, setDropdownSearch] = useState('');
   const [errors, setErrors] = useState({});
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
+  const [selectedSectionIds, setSelectedSectionIds] = useState([]);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
+
+  // Hàm chuẩn hóa text để so sánh
+  const normalizeImportText = (value) => String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
+  // Hàm lấy text từ cell Excel
+  const getExcelCellText = (cell) => {
+    const value = cell?.value;
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') {
+      if (value.text !== undefined) return String(value.text);
+      if (value.result !== undefined) return String(value.result);
+      if (Array.isArray(value.richText)) return value.richText.map(part => part.text || '').join('');
+      if (value.hyperlink && value.text) return String(value.text);
+    }
+    return String(value);
+  };
+
+  const handleOpenImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(false);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    window.location.href = `${API_BASE_URL}/Templates/import/production-sections`;
+  };
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
+    }
+    setIsImportingExcel(true);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có dữ liệu.", "error");
+        return;
+      }
+
+      let createdCount = 0;
+      let updatedCount = 0;
+
+      // Cấu trúc yêu cầu:
+      // B (2): Mã tổ - Dùng để kiểm tra tồn tại (Cập nhật nếu có, thêm mới nếu chưa)
+      // C (3): Tên tổ
+      // D (4): Tổ trưởng - Dò theo Name trong danh sách Users để lấy ID
+      // E (5): Chi phí cơ bản
+      for (let i = 2; i <= worksheet.rowCount; i++) {
+        const row = worksheet.getRow(i);
+        const code = getExcelCellText(row.getCell(2)).trim(); // Cột B
+        if (!code) continue;
+
+        const name = getExcelCellText(row.getCell(3)).trim(); // Cột C
+        const leaderName = getExcelCellText(row.getCell(4)).trim(); // Cột D
+        const baseCostRaw = getExcelCellText(row.getCell(5)); // Cột E
+
+        // Dò ID tổ trưởng dựa trên tên trong danh sách users (không phân biệt hoa thường)
+        const leaderObj = users.find(u =>
+          normalizeImportText(u.name || u.Name) === normalizeImportText(leaderName)
+        );
+        const leaderId = leaderObj ? (leaderObj.id || leaderObj.ID) : null;
+
+        // Chuyển đổi chi phí cơ bản, loại bỏ các ký tự không phải số nếu có
+        const baseUnitCost = parseFloat(String(baseCostRaw).replace(/[^0-9.-]+/g, "")) || 0;
+
+        const existingSection = sections.find(s =>
+          normalizeImportText(s.productionSectionCode) === normalizeImportText(code)
+        );
+
+        const payload = {
+          productionSectionCode: code,
+          name: name || (existingSection ? existingSection.name : ""),
+          leader: leaderId,
+          baseUnitCost: baseUnitCost
+        };
+
+        if (existingSection) {
+          const sectionId = existingSection.id || existingSection.ID;
+          await updateProductionSection(sectionId, { ...payload, id: sectionId });
+          updatedCount++;
+        } else {
+          await createProductionSection(payload);
+          createdCount++;
+        }
+      }
+
+      showNotification(`Nhập Excel thành công: thêm mới ${createdCount}, cập nhật ${updatedCount}`, "success");
+      fetchData();
+      handleCloseImportModal();
+    } catch (err) {
+      console.error(err);
+      showNotification("Lỗi khi nhập file Excel tổ sản xuất.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
+  };
 
   const handleRequestExportExcel = () => {
     setConfirmModal({
@@ -103,6 +219,16 @@ export const ProductionSections = () => {
   const handleConfirmAction = async () => {
     if (confirmModal.type === 'delete') {
       await handleConfirmDelete();
+    } else if (confirmModal.type === 'bulkDelete') {
+      try {
+        await Promise.all(confirmModal.id.map(id => deleteProductionSection(id)));
+        showNotification(`Đã xóa ${confirmModal.id.length} tổ sản xuất thành công!`);
+        setSelectedSectionIds([]);
+        setIsBulkSelectMode(false);
+        fetchData();
+      } catch (err) {
+        showNotification("Lỗi khi xóa nhiều tổ sản xuất", "error");
+      }
     } else if (confirmModal.type === 'export') {
       await handleExportExcel();
     }
@@ -185,6 +311,8 @@ export const ProductionSections = () => {
       ]);
       setSections(sectionsData);
       setUsers(usersData);
+      setSelectedSectionIds([]);
+      setIsBulkSelectMode(false);
     } catch (err) {
       showNotification("Không thể tải danh sách tổ sản xuất.", "error");
       console.error(err);
@@ -201,6 +329,45 @@ export const ProductionSections = () => {
       title: 'Xác nhận xóa',
       message: 'Bạn có chắc chắn muốn xóa tổ sản xuất này không?'
     });
+  };
+
+  const handleBulkDelete = () => {
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
+      setSelectedSectionIds([]);
+      return;
+    }
+
+    if (selectedSectionIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedSectionIds([]);
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      id: selectedSectionIds,
+      type: 'bulkDelete',
+      title: 'Xác nhận xóa nhiều tổ sản xuất',
+      message: `Bạn có chắc chắn muốn xóa ${selectedSectionIds.length} tổ sản xuất đã chọn không? Hành động này không thể hoàn tác.`
+    });
+  };
+
+  const handleSelectAllSections = () => {
+    const visibleSectionIds = filteredSections.map(s => s.id || s.ID).filter(Boolean);
+    setSelectedSectionIds(visibleSectionIds);
+  };
+
+  const handleClearSelectedSections = () => {
+    setSelectedSectionIds([]);
+  };
+
+  const handleToggleSelectSection = (row) => {
+    const rowId = row.id || row.ID;
+    setSelectedSectionIds(prev => prev.includes(rowId)
+      ? prev.filter(id => id !== rowId)
+      : [...prev, rowId]
+    );
   };
 
   const handleConfirmDelete = async () => {
@@ -288,9 +455,6 @@ export const ProductionSections = () => {
     e.preventDefault();
 
     const newErrors = {};
-    if (!currentEditingSection?.productionSectionCode?.trim()) {
-      newErrors.productionSectionCode = "Bắt buộc nhập Mã tổ sản xuất";
-    }
     if (!currentEditingSection?.name?.trim()) {
       newErrors.name = "Bắt buộc nhập Tên tổ sản xuất";
     }
@@ -515,12 +679,55 @@ export const ProductionSections = () => {
       render: (row) => row.baseUnitCost?.toLocaleString() + ' VNĐ'
     },
     {
-      header: 'Hành động',
-      className: 'text-right pr-2 sm:pr-5 w-[120px] sm:w-[160px]',
+      header: isBulkSelectMode ? (
+        <div className="flex w-full items-center justify-center gap-1 text-[10px] sm:text-xs">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelectAllSections();
+            }}
+            className="font-semibold text-red-600 hover:text-red-700"
+          >
+            Tất cả
+          </button>
+          <span className="text-gray-300">/</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClearSelectedSections();
+            }}
+            className="font-semibold text-gray-500 hover:text-gray-700"
+          >
+            Bỏ chọn
+          </button>
+        </div>
+      ) : 'Hành động',
+      className: 'text-center pr-2 sm:pr-5 w-[120px] sm:w-[160px]',
       render: (row) => (
-        <div className="flex justify-end items-center gap-2">
-          <button onClick={() => handleEdit(row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 !px-2 sm:px-3 rounded text-xs transition-all active:scale-95">Sửa</button>
-          <button onClick={() => handleDelete(row.id || row.ID)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 !px-2 sm:px-3 rounded text-xs transition-all active:scale-95">Xóa</button>
+        <div className="flex justify-center items-center gap-2">
+          {isBulkSelectMode ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleSelectSection(row);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+            >
+              {selectedSectionIds.includes(row.id || row.ID) ? (
+                <FaRegSquareMinus size={20} className="text-red-600" />
+              ) : (
+                <FaRegSquare size={20} className="text-gray-400" />
+              )}
+            </button>
+          ) : (
+            <>
+              <button onClick={() => handleEdit(row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 !px-2 sm:px-3 rounded text-xs transition-all active:scale-95">Sửa</button>
+              <button onClick={() => handleDelete(row.id || row.ID)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 !px-2 sm:px-3 rounded text-xs transition-all active:scale-95">Xóa</button>
+            </>
+          )}
         </div>
       ),
     },
@@ -529,7 +736,7 @@ export const ProductionSections = () => {
   const formContent = (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex flex-col gap-1"> {/* Mã tổ sản xuất */}
-        <label htmlFor="productionSectionCode" className={`text-xs ml-1 ${errors.productionSectionCode ? 'text-red-500' : 'text-gray-500'}`}>Mã tổ sản xuất <span className="text-red-500">*</span></label>
+        <label htmlFor="productionSectionCode" className="text-xs ml-1 text-gray-500">Mã tổ sản xuất <span className="text-red-500">*</span></label>
         <input
           type="text"
           id="productionSectionCode"
@@ -537,11 +744,10 @@ export const ProductionSections = () => {
           value={currentEditingSection?.productionSectionCode || ''}
           onChange={(e) => {
             handleInputChange(e);
-            if (errors.productionSectionCode) setErrors(prev => ({ ...prev, productionSectionCode: '' }));
           }}
-          className={`mt-1 block w-full border ${errors.productionSectionCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:border-blue-500 outline-none transition-all text-sm`}
+          disabled
+          className="mt-1 block cursor-not-allowed bg-gray-100 w-full border border-gray-300 focus:ring-blue-500 rounded-lg shadow-sm p-2.5 focus:border-blue-500 outline-none transition-all text-sm"
         />
-        {errors.productionSectionCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.productionSectionCode}</p>}
       </div>
       <div className="flex flex-col gap-1"> {/* Tên tổ sản xuất */}
         <label htmlFor="name" className={`text-xs ml-1 ${errors.name ? 'text-red-500' : 'text-gray-500'}`}>Tên tổ sản xuất <span className="text-red-500">*</span></label>
@@ -615,22 +821,32 @@ export const ProductionSections = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
-            <FileUp size={18} />
-            Nhập Excel
-          </button>
+        <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:flex-wrap">
           <button
             onClick={handleRequestExportExcel}
-            className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm"
+            className="order-1 lg:order-3 w-full lg:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-xs sm:text-sm"
           >
-            <FileDown size={18} /> Xuất Excel
+            <FileDown size={16} /> Xuất Excel
+          </button>
+          <button
+            onClick={handleOpenImportModal}
+            className="order-2 lg:order-2 w-full lg:w-auto justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-xs sm:text-sm"
+          >
+            <FileUp size={16} /> Nhập Excel
+          </button>
+          <button
+            onClick={handleBulkDelete}
+            className={`order-3 lg:order-1 w-full lg:w-auto justify-center text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedSectionIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+          >
+            <Trash2 size={16} />
+            <span className="truncate">Xóa nhiều dòng {selectedSectionIds.length > 0 && `(${selectedSectionIds.length})`}</span>
           </button>
           <button
             onClick={handleAdd}
-            className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm"
+            className="order-4 w-full lg:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
-            Thêm mới
+            <Plus size={16} />
+            <span>Thêm mới</span>
           </button>
         </div>
       </div>
@@ -672,6 +888,51 @@ export const ProductionSections = () => {
           </div>
         )
       }
+
+      {/* Modal Nhập Excel */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập dữ liệu tổ sản xuất từ Excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="section-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel (.xlsx)'}
+              </span>
+              <input
+                id="section-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800 transition-colors"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t pt-4">
+            <button type="button" onClick={handleCloseImportModal} className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white hover:bg-gray-600">Hủy</button>
+            <button type="button" onClick={handleImportExcel} disabled={isImportingExcel || !selectedImportFile} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
+              {isImportingExcel ? 'Đang xử lý...' : 'Nhập dữ liệu'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={isModalOpen}
