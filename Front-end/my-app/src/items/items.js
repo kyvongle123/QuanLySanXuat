@@ -19,7 +19,7 @@ import { LuSquarePen } from "react-icons/lu";
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 import { getWarehouseBins } from '../controller/warehouseBinsController';
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com//api';
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 const AnchoredPortalMenu = ({ isOpen, onClose, trigger, children, className = '', anchorClassName = '' }) => {
   const anchorRef = useRef(null);

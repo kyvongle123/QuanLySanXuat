@@ -97,7 +97,7 @@ export const Suppliers = () => {
 
   const handleDownloadImportTemplate = () => {
     // Tải file mẫu từ thư mục Templates\ImportTemplate ở Back-end
-    window.location.href = `https://quanlysanxuat-back-end.onrender.com//api/Templates/import/suppliers`;
+    window.location.href = `https://quanlysanxuat-back-end.onrender.com/api/Templates/import/suppliers`;
   };
 
   const handleImportExcel = async () => {

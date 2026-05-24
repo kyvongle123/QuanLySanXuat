@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://quanlysanxuat-back-end.onrender.com//api/ProductionOrderStatuses'; // Giả định tên Controller là ProductionOrderStatuses
+const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/ProductionOrderStatuses'; // Giả định tên Controller là ProductionOrderStatuses
 
 const normalizeData = (data) => {
     if (Array.isArray(data)) {

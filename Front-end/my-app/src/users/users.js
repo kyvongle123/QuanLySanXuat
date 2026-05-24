@@ -373,7 +373,7 @@ export const Users = () => {
 
   const handleDownloadSample = async () => {
     try {
-      const response = await fetch('https://quanlysanxuat-back-end.onrender.com//api/Templates/import/users');
+      const response = await fetch('https://quanlysanxuat-back-end.onrender.com/api/Templates/import/users');
       if (!response.ok) throw new Error('Không thể tải file mẫu từ máy chủ.');
       const blob = await response.blob();
       saveAs(blob, 'UserTemplate.xlsx');

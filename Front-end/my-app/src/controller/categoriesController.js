@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Định nghĩa URL cơ sở cho API của bạn
-const API_URL = 'https://quanlysanxuat-back-end.onrender.com//api/categories';
+const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/categories';
 
 export const getCategories = async () => {
   try {

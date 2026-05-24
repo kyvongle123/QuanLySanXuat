@@ -10,7 +10,7 @@ import { getWarehouseBins, createWarehouseBin, updateWarehouseBin, deleteWarehou
 import { LuSquarePen } from "react-icons/lu";
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com//api';
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const WarehouseLocations = () => {
   const [locations, setLocations] = useState([]);

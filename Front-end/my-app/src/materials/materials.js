@@ -16,7 +16,7 @@ import { LuSquarePen } from "react-icons/lu";
 import { getWarehouseBins } from '../controller/warehouseBinsController';
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com//api';
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const Material = () => {
   const [materials, setMaterials] = useState([]);

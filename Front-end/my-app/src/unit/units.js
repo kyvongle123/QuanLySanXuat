@@ -6,7 +6,7 @@ import { CustomDatatable, AppNotification, CustomConfirm, Modal } from '../custo
 import { getUnits, createUnit, updateUnit, deleteUnit } from '../controller/unitsController';
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com//api';
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const Units = () => {
   const [units, setUnits] = useState([]);
