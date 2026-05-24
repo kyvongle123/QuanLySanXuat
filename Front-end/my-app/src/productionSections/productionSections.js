@@ -13,7 +13,7 @@ import {
 } from '../controller/productionSectionsController';
 import { getUsers } from '../controller/usersController';
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com//api';
 
 export const ProductionSections = () => {
   const [sections, setSections] = useState([]);
@@ -836,7 +836,7 @@ export const ProductionSections = () => {
           </button>
           <button
             onClick={handleBulkDelete}
-            className={`order-3 lg:order-1 w-full lg:w-auto justify-center text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedSectionIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+            className={`order-3 lg:order-1 w-full lg:w-auto justify-center text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedSectionIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
           >
             <Trash2 size={16} />
             <span className="truncate">Xóa nhiều dòng {selectedSectionIds.length > 0 && `(${selectedSectionIds.length})`}</span>

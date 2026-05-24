@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/materialcategories';
+const API_URL = 'https://quanlysanxuat-back-end.onrender.com//api/materialcategories';
 
 export const getMaterialCategories = async () => {
     try {

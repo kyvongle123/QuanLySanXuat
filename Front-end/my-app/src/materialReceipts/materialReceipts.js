@@ -1,6 +1,8 @@
+
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, Plus, ChevronDown, FileText, Eye, Edit2, Trash2, FileDown, X, Upload, Maximize, Minimize, ChevronRight, FileUp, Calendar } from 'lucide-react';
+import { FaRegSquareMinus, FaRegSquare } from 'react-icons/fa6';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import {
@@ -248,7 +250,7 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
 };
 
 // Component Multi Searchable Select
-const MultiSearchableSelect = ({ selectedValues = [], options, onChange, placeholder = "Chọn nguyên liệu...", error = false, errorMessage = '', disabled = false }) => {
+const MultiSearchableSelect = ({ selectedValues = [], options, onChange, placeholder = "Chọn nguyên liệu...", error = false, errorMessage = '', disabled = false, isCommitteeMode = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const selectRef = useRef(null);
@@ -261,9 +263,19 @@ const MultiSearchableSelect = ({ selectedValues = [], options, onChange, placeho
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredOptions = options.filter(opt =>
-    String(opt.label || '').toLowerCase().includes(search.toLowerCase()) && !selectedValues.includes(opt.value)
-  );
+  const displayOptions = useMemo(() => {
+    const searchLower = search.toLowerCase();
+    return options.filter(opt => {
+      const labelMatch = String(opt.label || '').toLowerCase().includes(searchLower);
+      if (!labelMatch) return false;
+      // Nếu là Tab 3 (Ban kiểm nghiệm), kiểm tra dựa trên userCode của đối tượng
+      if (isCommitteeMode) {
+        return !selectedValues.some(e => String(e?.userCode || '').includes(String(opt.value)));
+      }
+      // Nếu là Tab 2 (Nguyên liệu), kiểm tra dựa trên ID đơn thuần
+      return !selectedValues.includes(opt.value);
+    });
+  }, [options, search, selectedValues, isCommitteeMode]);
 
   return (
     <div className="relative w-full" ref={selectRef}>
@@ -275,10 +287,25 @@ const MultiSearchableSelect = ({ selectedValues = [], options, onChange, placeho
         className={`bg-white border ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} text-gray-900 text-xs rounded-lg p-2 flex flex-wrap gap-1 min-h-[38px] hover:border-blue-400 transition-all shadow-sm ${disabled ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         {selectedValues.length > 0 ? (
-          options.filter(o => selectedValues.includes(o.value)).map(o => (
+          options.filter(o => {
+            if (isCommitteeMode) return selectedValues.some(e => String(e?.userCode || '').includes(String(o.value)));
+            return selectedValues.includes(o.value);
+          }).map(o => (
             <span key={o.value} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded flex items-center gap-1 font-medium">
               {o.label}
-              {!disabled && <X size={12} className="hover:text-red-500" onClick={(e) => { e.stopPropagation(); onChange(selectedValues.filter(v => v !== o.value)); }} />}
+              {!disabled && (
+                <X
+                  size={12}
+                  className="hover:text-red-500"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newValue = isCommitteeMode
+                      ? selectedValues.filter(v => String(v.userCode) !== String(o.value))
+                      : selectedValues.filter(v => String(v) !== String(o.value));
+                    onChange(newValue);
+                  }}
+                />
+              )}
             </span>
           ))
         ) : <span className="text-gray-400 pl-1">{placeholder}</span>}
@@ -300,15 +327,23 @@ const MultiSearchableSelect = ({ selectedValues = [], options, onChange, placeho
             </div>
           </div>
           <div className="max-h-44 overflow-y-auto">
-            {filteredOptions.length > 0 ? filteredOptions.map(opt => (
-              <div
-                key={opt.value}
-                onClick={() => { onChange([...selectedValues, opt.value]); setSearch(''); }}
-                className="p-2.5 text-xs hover:bg-blue-50 cursor-pointer text-gray-700 border-b last:border-0"
-              >
-                {opt.label}
-              </div>
-            )) : <div className="p-3 text-xs text-gray-400 italic text-center">Không còn kết quả</div>}
+            {
+              displayOptions.length > 0 ? displayOptions.map(opt => (
+                <div
+                  key={opt.value}
+                  onClick={() => {
+                    const newValue = isCommitteeMode
+                      ? [...selectedValues, { userCode: opt.value, name: opt.label, isLeader: opt.label.includes("Trưởng ban") }]
+                      : [...selectedValues, opt.value];
+                    onChange(newValue);
+                    setSearch('');
+                  }}
+                  className="p-2.5 text-xs hover:bg-blue-50 cursor-pointer text-gray-700 border-b last:border-0"
+                >
+                  {opt.label}
+                </div>
+              )) : <div className="p-3 text-xs text-gray-400 italic text-center">Không còn kết quả</div>
+            }
           </div>
         </div>
       )}
@@ -334,6 +369,8 @@ export const MaterialReceipts = () => {
   const [currentReceipt, setCurrentReceipt] = useState(null);
   const [receiptErrors, setReceiptErrors] = useState({});
   const [isModalMaximized, setIsModalMaximized] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
   const currentUser = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem('user') || 'null');
@@ -402,6 +439,10 @@ export const MaterialReceipts = () => {
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
   const [mobileDateModal, setMobileDateModal] = useState({ isOpen: false, value: '', label: '', field: '', materialId: null });
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
+  const [selectedReceiptIds, setSelectedReceiptIds] = useState([]);
 
   const qualityOptions = [
     { value: 1, label: 'Đạt chất lượng (Passed)' },
@@ -432,6 +473,8 @@ export const MaterialReceipts = () => {
       ]);
       setWarehousesRawData(warehousesData); // Store all raw warehouses data
       setReceipts(receiptsData);
+      setSelectedReceiptIds([]);
+      setIsBulkSelectMode(false);
 
       setWarehouseTypes(warehouseTypesData.map(wt => ({ value: wt.id, label: wt.name })));
       setWarehouseStatuses(warehouseStatusesData.map(ws => ({ value: ws.id, label: ws.name })));
@@ -515,7 +558,7 @@ export const MaterialReceipts = () => {
       String(u.role || u.Role) === String(tbknRole?.id) ||
       String(u.role || u.Role) === String(ubknRole?.id)
     ).map(u => ({
-      value: u.id || u.Id,
+      value: u.userCode || u.UserCode,
       label: `${u.name || u.Name} (${String(u.role || u.Role) === String(tbknRole?.id) ? 'Trưởng ban' : 'Ủy ban'})`,
       roleId: u.role || u.Role
     }));
@@ -550,14 +593,18 @@ export const MaterialReceipts = () => {
     const tbknRoleId = roles.find(r => r.name === "Trưởng ban kiểm nghiệm")?.id;
     const ubknRoleId = roles.find(r => r.name === "Ủy ban kiểm nghiệm")?.id;
 
-    const selectedUsers = usersRawData.filter(u => newIds.includes(u.id || u.Id));
+    // LƯU Ý: Vì inspectorOptions dùng userCode làm value, nên newIds chứa các chuỗi userCode
+    const selectedUsers = usersRawData.filter(u =>
+      newIds.some(e => e?.userCode.includes(u.userCode || u.UserCode))
+    );
+
     const tbknCount = selectedUsers.filter(u => String(u.role || u.Role) === String(tbknRoleId)).length;
     const ubknCount = selectedUsers.filter(u => String(u.role || u.Role) === String(ubknRoleId)).length;
 
     if (tbknCount > 1) return showNotification("Chỉ được chọn tối đa 1 Trưởng ban kiểm nghiệm", "error");
     if (ubknCount > 2) return showNotification("Chỉ được chọn tối đa 2 Ủy ban kiểm nghiệm", "error");
 
-    setCurrentReceipt(prev => ({ ...prev, inspectorPanel: newIds }));
+    setCurrentReceipt(prev => ({ ...prev, inspectationCommitteeList: newIds }));
     if (receiptErrors.inspectorPanel) setReceiptErrors(prev => ({ ...prev, inspectorPanel: null }));
   };
 
@@ -572,7 +619,6 @@ export const MaterialReceipts = () => {
         deliveryNoteNumber: '',
         receivingDate: '',
         status: 1,
-        warehouse: '',
         items: [], // { materialId, shippedQuantity, mfgDate, expiredDate }
         specialStorageCondition: '',
         inspectationReport: '',
@@ -599,7 +645,10 @@ export const MaterialReceipts = () => {
         }));
       }
 
-      formatted.inspectorPanel = receipt.inspectorPanel ? (Array.isArray(receipt.inspectorPanel) ? receipt.inspectorPanel : receipt.inspectorPanel.split(',').map(Number)) : [];
+      // Khởi tạo inspectorPanel từ inspectationCommitteeList của backend trả về
+      formatted.inspectorPanel = (receipt.inspectationCommitteeList || receipt.InspectationCommitteeList || [])
+        .map(item => item.userCode || item.usercode || item.UserCode)
+        .filter(Boolean);
 
       setCurrentReceipt(formatted);
     }
@@ -615,6 +664,152 @@ export const MaterialReceipts = () => {
     });
   };
 
+  const handleOpenImportModal = () => {
+    setIsImportModalOpen(true);
+    setImportFile(null);
+  };
+
+  const handleCloseImportModal = () => {
+    setIsImportModalOpen(false);
+    setImportFile(null);
+  };
+
+  const handleImportFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) setImportFile(file);
+  };
+
+  const handleImportExcel = async (e) => {
+    e.preventDefault();
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel.", "error");
+      return;
+    }
+
+    setIsImportingExcel(true);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(selectedImportFile);
+      const worksheet = workbook.getWorksheet(1);
+
+      const importedData = [];
+      const lookupErrors = [];
+
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber < 2) return; // Bỏ qua dòng tiêu đề
+
+        const receiptCode = row.getCell(2).text?.trim(); // Cột B
+        if (!receiptCode) return;
+
+        const supplierName = row.getCell(3).text?.trim(); // Cột C
+        const deliveryNote = row.getCell(4).text?.trim(); // Cột D
+        const receivingDateRaw = row.getCell(5).value;    // Cột E
+        const materialsRaw = row.getCell(6).text?.trim(); // Cột F
+        const committeeRaw = row.getCell(7).text?.trim(); // Cột G
+        const receiverName = row.getCell(8).text?.trim(); // Cột H
+
+        // 1. Dò Nhà cung cấp (Bảng Suppliers)
+        const supplier = suppliers.find(s => s.label?.toLowerCase() === supplierName?.toLowerCase());
+        if (supplierName && !supplier) lookupErrors.push(`Dòng ${rowNumber}: Không thấy NCC "${supplierName}"`);
+
+        // 2. Dò Người nhận (Bảng Users)
+        const receiverUser = usersRawData.find(u => (u.name || u.Name)?.toLowerCase() === receiverName?.toLowerCase());
+        if (receiverName && !receiverUser) lookupErrors.push(`Dòng ${rowNumber}: Không thấy Người nhận "${receiverName}"`);
+
+        // 3. Phân tích Nguyên liệu (Cột F) -> MaterialReceipt_Batches
+        const batchList = [];
+        if (materialsRaw) {
+          const lines = materialsRaw.split('\n').filter(Boolean);
+          lines.forEach(line => {
+            // Tách "a Tên nguyên liệu" (Số lượng và Tên)
+            const match = line.trim().match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
+            if (match) {
+              const qty = parseFloat(match[1]);
+              const mName = match[2].trim();
+              const material = allMaterials.find(m => m.label?.toLowerCase() === mName.toLowerCase());
+              if (material) {
+                batchList.push({
+                  MaterialId: material.value,
+                  ShippedQuantity: qty,
+                  DeliveredQuantity: qty,
+                  MFGDate: null,
+                  ExpiredDate: null,
+                  BatchCode: ""
+                });
+              } else {
+                lookupErrors.push(`Dòng ${rowNumber}: Không thấy NL "${mName}"`);
+              }
+            }
+          });
+        }
+
+        // 4. Phân tích Ban kiểm nghiệm (Cột G)
+        let leaderCode = "";
+        let comm1Code = "";
+        let comm2Code = "";
+        if (committeeRaw) {
+          const names = committeeRaw.split('\n')
+            .map(l => l.split('(')[0].trim()) // Lấy phần tên trước dấu ngoặc
+            .filter(Boolean);
+
+          const userCodes = names.map(name => {
+            const u = usersRawData.find(user => (user.name || user.Name)?.toLowerCase() === name.toLowerCase());
+            return u ? (u.userCode || u.UserCode) : null;
+          });
+
+          leaderCode = userCodes[0] || "";
+          comm1Code = userCodes[1] || "";
+          comm2Code = userCodes[2] || "";
+        }
+
+        // 5. Xử lý Ngày nhận
+        let receivingDate = "";
+        if (receivingDateRaw instanceof Date) {
+          receivingDate = receivingDateRaw.toISOString().split('T')[0];
+        } else if (receivingDateRaw) {
+          const d = new Date(receivingDateRaw);
+          if (!isNaN(d.getTime())) receivingDate = d.toISOString().split('T')[0];
+        }
+
+        const existingReceipt = receipts.find(r => r.materialReceiptCode === receiptCode);
+
+        importedData.push({
+          id: existingReceipt ? (existingReceipt.id || existingReceipt.Id) : 0,
+          materialReceiptCode: receiptCode,
+          supplier: supplier?.value || "",
+          deliveryNoteNumber: deliveryNote || "",
+          receivingDate: receivingDate || new Date().toISOString().split('T')[0],
+          receiver: receiverUser ? (receiverUser.id || receiverUser.Id) : 0,
+          InspectationCommitteeLeader: leaderCode,
+          InspectationCommittee1: comm1Code,
+          InspectationCommittee2: comm2Code,
+          materialReceiptBatchList: batchList
+        });
+      });
+
+      if (lookupErrors.length > 0) {
+        showNotification("Lỗi dò tìm: " + lookupErrors.slice(0, 3).join("; ") + (lookupErrors.length > 3 ? "..." : ""), "error");
+        setIsImportingExcel(false);
+        return;
+      }
+
+      // Thực hiện gọi API lưu dữ liệu (Thêm mới hoặc Cập nhật)
+      for (const payload of importedData) {
+        if (payload.id > 0) await updateMaterialReceipt(payload.id, payload);
+        else await createMaterialReceipt(payload);
+      }
+
+      showNotification(`Đã nhập/cập nhật thành công ${importedData.length} phiếu nhập!`);
+      fetchData();
+      handleCloseImportModal();
+    } catch (err) {
+      console.error("Import Error:", err);
+      showNotification("Lỗi khi xử lý file Excel hoặc lưu dữ liệu.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
+  };
+
   const handleExportExcel = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -623,25 +818,41 @@ export const MaterialReceipts = () => {
       worksheet.columns = [
         { header: 'STT', key: 'stt', width: 8 },
         { header: 'Mã phiếu', key: 'materialReceiptCode', width: 20 },
+        { header: 'Nhà cung cấp', key: 'supplier', width: 30 },
         { header: 'Số vận đơn', key: 'deliveryNoteNumber', width: 20 },
         { header: 'Ngày nhận', key: 'receivingDate', width: 15 },
-        { header: 'Kho', key: 'warehouse', width: 25 },
-        { header: 'Chất lượng', key: 'status', width: 20 },
+        { header: 'Nguyên liệu', key: 'items', width: 40 },
+        { header: 'Ban kiểm nghiệm sản phẩm', key: 'inspectorPanel', width: 35 },
         { header: 'Người nhận', key: 'receiver', width: 20 },
       ];
 
       filteredData.forEach((receipt, index) => {
-        const warehouseLabel = warehouses.find(w => w.value === receipt.warehouse)?.label || 'N/A';
-        const qualityLabel = qualityOptions.find(q => q.value === receipt.status)?.label || 'N/A';
+        const supplierLabel = suppliers.find(s => s.value === receipt.supplier)?.label || 'N/A';
         const receiverLabel = users.find(u => u.value === receipt.receiver)?.label || 'N/A';
+
+        // Xử lý chuỗi danh sách nguyên liệu
+        const materialsString = (receipt.materialReceiptBatchList || []).map(batch => {
+          const materialName = allMaterials.find(m => String(m.value) === String(batch.materialId))?.label || `NL #${batch.materialId}`;
+          const qty = batch.deliveredQuantity ?? batch.shippedQuantity ?? 0;
+          return `${qty} ${materialName}`;
+        }).join('\n');
+
+        // Xử lý chuỗi ban kiểm nghiệm
+        const panelUserCodes = receipt.inspectationCommitteeList
+          ? (Array.isArray(receipt.inspectationCommitteeList) ? receipt.inspectationCommitteeList.map(item => item.userCode) : receipt.inspectationCommitteeList.split(',').map(Number))
+          : [];
+        const inspectorPanelNames = panelUserCodes.map(userCode => {
+          return inspectorOptions.find(opt => opt.value === userCode)?.label || `UserCode: ${userCode}`;
+        }).join('\n');
 
         worksheet.addRow({
           stt: index + 1,
           materialReceiptCode: receipt.materialReceiptCode,
+          supplier: supplierLabel,
           deliveryNoteNumber: receipt.deliveryNoteNumber,
           receivingDate: receipt.receivingDate ? new Date(receipt.receivingDate).toLocaleDateString('vi-VN') : 'N/A',
-          warehouse: warehouseLabel,
-          status: qualityLabel,
+          items: materialsString,
+          inspectorPanel: inspectorPanelNames,
           receiver: receiverLabel,
         });
       });
@@ -653,8 +864,6 @@ export const MaterialReceipts = () => {
           row.height = 30;
           row.font = { name: 'Times New Roman', size: 12, bold: true };
           row.alignment = { vertical: 'middle', horizontal: 'center' };
-        } else {
-          row.height = 25;
         }
         row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
           cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
@@ -760,17 +969,16 @@ export const MaterialReceipts = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
-    if (!currentReceipt?.materialReceiptCode?.trim()) newErrors.materialReceiptCode = "Bắt buộc nhập Mã phiếu nhập";
     if (!currentReceipt?.supplier) newErrors.supplier = "Bắt buộc nhập Nhà cung cấp";
     if (!currentReceipt?.deliveryNoteNumber?.trim()) newErrors.deliveryNoteNumber = "Bắt buộc nhập Số vận đơn";
     if (!currentReceipt?.receivingDate) newErrors.receivingDate = "Bắt buộc nhập Ngày nhận hàng";
     if (!currentReceipt?.items?.length) newErrors.items = "Bắt buộc nhập nguyên liệu nhập";
     if (!currentReceipt?.receiver) newErrors.receiver = "Bắt buộc nhập Người nhận hàng";
-    if (!currentReceipt?.inspectorPanel?.length) newErrors.inspectorPanel = "Bắt buộc nhập Ban kiểm nghiệm sản phẩm";
+    if (!currentReceipt?.inspectationCommitteeList?.length) newErrors.inspectorPanel = "Bắt buộc nhập Ban kiểm nghiệm sản phẩm";
 
     if (Object.keys(newErrors).length > 0) {
       setReceiptErrors(newErrors);
-      if (newErrors.materialReceiptCode || newErrors.supplier || newErrors.deliveryNoteNumber || newErrors.receivingDate) setActiveTab(1);
+      if (newErrors.supplier || newErrors.deliveryNoteNumber || newErrors.receivingDate) setActiveTab(1);
       else if (newErrors.items) setActiveTab(2);
       else setActiveTab(3);
       return;
@@ -778,6 +986,16 @@ export const MaterialReceipts = () => {
     setReceiptErrors({});
 
     try {
+      // Tìm ID của các chức vụ để phân loại thành viên
+      const tbknRoleId = roles.find(r => r.name === "Trưởng ban kiểm nghiệm")?.id;
+      const ubknRoleId = roles.find(r => r.name === "Ủy ban kiểm nghiệm")?.id;
+
+      // Lấy thông tin người dùng đầy đủ từ danh sách ID đã chọn trong Ban kiểm nghiệm
+      const selectedInspectors = usersRawData.filter(u => (currentReceipt.inspectationCommitteeList || []).some(e => e.userCode.includes(u.userCode || u.UserCode)));
+
+      const leaderUser = selectedInspectors.find(u => String(u.role || u.Role) === String(tbknRoleId));
+      const committeeMembers = selectedInspectors.filter(u => String(u.role || u.Role) === String(ubknRoleId));
+
       // Xây dựng payload sạch sẽ theo cấu trúc DTO ở Back-end
       const payload = {
         id: currentReceipt.id,
@@ -786,10 +1004,12 @@ export const MaterialReceipts = () => {
         deliveryNoteNumber: currentReceipt.deliveryNoteNumber,
         receivingDate: currentReceipt.receivingDate,
         status: modalMode === 'edit' && isPurchasingEmployee ? 5 : currentReceipt.status,
-        warehouse: currentReceipt.warehouse,
         specialStorageCondition: currentReceipt.specialStorageCondition || "", // Giữ nguyên nội dung textarea bao gồm cả xuống dòng
         receiver: currentReceipt.receiver,
-        InspectorPanel: currentReceipt.inspectorPanel || [], // Đổi thành PascalCase để khớp với DTO ở Back-end
+        InspectorCommitteeList: currentReceipt.inspectationCommitteeList || [], // Đổi thành PascalCase để khớp với DTO ở Back-end
+        InspectationCommitteeLeader: leaderUser?.userCode || leaderUser?.UserCode || "",
+        InspectationCommittee1: committeeMembers[0]?.userCode || committeeMembers[0]?.UserCode || "",
+        InspectationCommittee2: committeeMembers[1]?.userCode || committeeMembers[1]?.UserCode || "",
         materialReceiptBatchList: (currentReceipt.items || []).map(item => ({
           MaterialId: item.materialId,
           ShippedQuantity: parseFloat(item.shippedQuantity) || 0,
@@ -807,6 +1027,7 @@ export const MaterialReceipts = () => {
       if (currentReceipt.inspectationReport instanceof File) payload.inspectationReport = currentReceipt.inspectationReport;
 
       if (modalMode === 'add') {
+        console.log("payload la", payload);
         await createMaterialReceipt(payload);
         showNotification("Thêm phiếu nhập mới thành công!");
       } else if (modalMode === 'edit') {
@@ -830,6 +1051,41 @@ export const MaterialReceipts = () => {
     });
   };
 
+  const handleBulkDelete = () => {
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
+      setSelectedReceiptIds([]);
+      return;
+    }
+    if (selectedReceiptIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedReceiptIds([]);
+      return;
+    }
+    setConfirmModal({
+      isOpen: true,
+      id: selectedReceiptIds,
+      type: 'bulkDelete',
+      title: 'Xác nhận xóa nhiều phiếu nhập',
+      message: `Bạn có chắc chắn muốn xóa ${selectedReceiptIds.length} phiếu nhập đã chọn không? Hành động này không thể hoàn tác.`
+    });
+  };
+
+  const handleSelectAllReceipts = () => {
+    setSelectedReceiptIds(filteredData.map(r => r.id || r.Id));
+  };
+
+  const handleClearSelectedReceipts = () => {
+    setSelectedReceiptIds([]);
+  };
+
+  const handleToggleSelectReceipt = (row) => {
+    const rowId = row.id || row.Id;
+    setSelectedReceiptIds(prev =>
+      prev.includes(rowId) ? prev.filter(id => id !== rowId) : [...prev, rowId]
+    );
+  };
+
   const handleConfirmAction = async () => {
     if (confirmModal.type === 'export') {
       await handleExportExcel();
@@ -841,6 +1097,16 @@ export const MaterialReceipts = () => {
       } catch (err) {
         console.error("Error deleting material receipt:", err);
         showNotification("Lỗi khi xóa phiếu", "error");
+      }
+    } else if (confirmModal.type === 'bulkDelete') {
+      try {
+        await Promise.all(confirmModal.id.map(receiptId => deleteMaterialReceipt(receiptId)));
+        setReceipts(prev => prev.filter(r => !confirmModal.id.includes(r.id || r.Id)));
+        setSelectedReceiptIds([]);
+        setIsBulkSelectMode(false);
+        showNotification(`Đã xóa ${confirmModal.id.length} phiếu nhập thành công!`, "success");
+      } catch (err) {
+        showNotification("Có lỗi xảy ra khi xóa nhiều phiếu nhập.", "error");
       }
     } else if (confirmModal.type === 'download') {
       try {
@@ -1223,6 +1489,19 @@ export const MaterialReceipts = () => {
     }
   };
 
+  const handleDownloadSample = async () => {
+    try {
+      const response = await fetch('https://quanlysanxuat-back-end.onrender.com//api/Templates/import/material-receipts');
+      if (!response.ok) throw new Error('Không thể tải file mẫu từ máy chủ.');
+      const blob = await response.blob();
+      saveAs(blob, 'MaterialReceiptTemplate.xlsx');
+      showNotification("Tải file mẫu thành công!");
+    } catch (err) {
+      console.error("Download Sample Error:", err);
+      showNotification("Lỗi khi tải file mẫu.", "error");
+    }
+  };
+
   const columns = [
     {
       header: '',
@@ -1239,7 +1518,11 @@ export const MaterialReceipts = () => {
         </button>
       ),
     },
-    { header: 'STT', className: 'w-[25px] text-center !px-1 sm:!px-2', render: (_, { index }) => index },
+    {
+      header: 'STT',
+      className: 'w-[50px] text-center hidden sm:table-cell',
+      render: (_, { index }) => index
+    },
     {
       header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Mã phiếu</div>
       , accessor: 'materialReceiptCode', className: 'font-medium text-blue-600 !px-1 sm:!px-6 w-[50px] sm:w-[120px]'
@@ -1251,36 +1534,35 @@ export const MaterialReceipts = () => {
     },
     { header: 'Số vận đơn', accessor: 'deliveryNoteNumber', className: 'hidden sm:table-cell' },
     {
-      header: 'Kho lưu trữ',
-      className: 'hidden lg:table-cell w-68',
-      render: (row) => {
-        const isCompletedReceipt = getReceiptStatus(row) === "4";
-        const isRowSelectDisabled = isWarehouseEmployee || isCompletedReceipt;
-
-        return (
-          <div className="relative w-full">
-            {!isRowSelectDisabled && <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); handleOpenWarehousesModal(); }}
-              className="absolute right-1 top-[-10px] text-blue-600 hover:text-blue-800 text-[10px] font-bold underline z-20 leading-none bg-white px-1 rounded border border-blue-50 transition-colors"
-            >
-              hiệu chỉnh
-            </button>}
-            <SearchableSelect
-              value={row.warehouse}
-              options={warehouses} // Use the 'warehouses' state which now contains all mapped options
-              onChange={(val) => handleWarehouseChange(row, val)}
-              disabled={isRowSelectDisabled}
-              className="w-full flex items-center border border-gray-300 rounded-md px-2 !bg-white !text-xs !min-h-[30px]"
-            />
-          </div>
-        );
-      }
-    },
-    {
-      header: <div className="flex justify-center items-center w-full text-[10px] sm:text-sm" > Hành động</div>,
+      header: isBulkSelectMode ? (
+        <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-xs">
+          <button type="button" onClick={(e) => { e.stopPropagation(); handleSelectAllReceipts(); }} className="font-semibold text-red-600 hover:text-red-700">Tất cả</button>
+          <span className="text-gray-300">/</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); handleClearSelectedReceipts(); }} className="font-semibold text-gray-500 hover:text-gray-700">Bỏ chọn</button>
+        </div>
+      ) : (
+        <div className="flex justify-center items-center w-full text-[10px] sm:text-sm">Hành động</div>
+      ),
       className: 'text-right pr-2 sm:pr-4 w-[60px] sm:w-[150px]',
       render: (row) => {
+        if (isBulkSelectMode) {
+          const rowId = row.id || row.Id;
+          return (
+            <div className="flex justify-center pr-2">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleToggleSelectReceipt(row); }}
+                className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              >
+                {selectedReceiptIds.includes(rowId) ? (
+                  <FaRegSquareMinus size={20} className="text-red-600" />
+                ) : (
+                  <FaRegSquare size={20} className="text-gray-400" />
+                )}
+              </button>
+            </div>
+          );
+        }
         const rowStatus = getReceiptStatus(row);
 
         if (rowStatus === "4") {
@@ -1395,7 +1677,7 @@ export const MaterialReceipts = () => {
   ];
 
   return (
-    <div className="p-2 sm:p-6 bg-gray-50/50 min-h-screen">
+    <div className="p-2 sm:p-6">
       <div className="mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Danh sách phiếu nhập nguyên liệu</h2>
       </div>
@@ -1413,25 +1695,43 @@ export const MaterialReceipts = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        {!isWarehouseEmployee && <div className="flex flex-col sm:flex-row gap-2">
-          <div className="flex flex-row gap-2 w-full sm:w-auto">
-            <button className="flex-1 sm:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
+        {!isWarehouseEmployee && (
+          <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full lg:w-auto">
+            <button
+              onClick={handleOpenImportModal}
+              className="w-full sm:w-auto justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm order-1 sm:order-2"
+            >
               <FileUp size={16} /> Nhập Excel
             </button>
             <button
               onClick={handleRequestExportExcel}
-              className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
+              className="w-full sm:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm order-2 sm:order-3"
             >
               <FileDown size={16} /> Xuất Excel
             </button>
+            {isBulkSelectMode ? (
+              <button
+                onClick={handleBulkDelete}
+                className="w-full sm:w-auto justify-center bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-3 sm:order-1"
+              >
+                <Trash2 size={16} /> Xóa đã chọn ({selectedReceiptIds.length})
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsBulkSelectMode(true)}
+                className="w-full sm:w-auto justify-center bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-3 sm:order-1"
+              >
+                <Trash2 size={16} /> Xóa nhiều dòng
+              </button>
+            )}
+            <button
+              onClick={() => handleOpenModal('add')}
+              className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm order-4 sm:order-4"
+            >
+              Thêm phiếu mới
+            </button>
           </div>
-          <button
-            onClick={() => handleOpenModal('add')}
-            className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
-          >
-            Thêm phiếu mới
-          </button>
-        </div>}
+        )}
       </div>
 
       {loading ? (
@@ -1499,6 +1799,25 @@ export const MaterialReceipts = () => {
                       {(!row.materialReceiptBatchList || row.materialReceiptBatchList.length === 0) && <span className="text-gray-400 italic">Chưa có nguyên liệu</span>}
                     </div>
                   </div>
+
+                  <div className="flex flex-col gap-1 lg:col-span-2">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ban kiểm nghiệm sản phẩm</span>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {row.inspectationCommitteeList?.length > 0 ? (
+                        row.inspectationCommitteeList.map((inspector, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5 bg-white border border-gray-100 px-2 py-1 rounded-md shadow-sm">
+                            <div className={`w-1.5 h-1.5 rounded-full ${inspector.isLeader === 1 ? 'bg-orange-500' : 'bg-blue-500'}`} />
+                            <span className="text-[11px] font-bold text-gray-700">{inspector.Name || inspector.name}</span>
+                            <span className="text-[10px] text-gray-400 italic">
+                              ({inspector.isLeader === 1 ? 'Trưởng ban' : 'Ủy viên'})
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-gray-400 italic text-xs">Chưa gán ban kiểm nghiệm</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1537,15 +1856,21 @@ export const MaterialReceipts = () => {
             {/* Tab 1: Thông tin đối chiếu */}
             {activeTab === 1 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in duration-300">
-                {/* Dòng 1: Mã phiếu nhập chiếm 1/2 */}
+                {/* Mã phiếu nhập */}
                 <div className="flex flex-col gap-1">
-                  <label className={`text-sm font-semibold ${receiptErrors.materialReceiptCode ? 'text-red-500' : 'text-gray-700'}`}>Mã phiếu nhập <span className="text-red-500">*</span></label>
-                  <input type="text" name="materialReceiptCode" value={currentReceipt?.materialReceiptCode || ''} onChange={handleInputChange} disabled={isReceiveMode} className={`w-full border ${receiptErrors.materialReceiptCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-1.5 h-[38px] text-sm focus:ring-2 outline-none ${isReceiveMode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} placeholder="VD: PN-2024-001" />
-                  {receiptErrors.materialReceiptCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{receiptErrors.materialReceiptCode}</p>}
+                  <label className="text-sm font-semibold text-gray-700">Mã phiếu nhập</label>
+                  <input
+                    type="text"
+                    name="materialReceiptCode"
+                    value={currentReceipt?.materialReceiptCode || ''}
+                    disabled
+                    className="w-full border border-gray-300 rounded-md p-1.5 h-[38px] text-sm outline-none bg-gray-100 text-gray-500 cursor-not-allowed"
+                    placeholder="Hệ thống tự tạo"
+                  />
                 </div>
-                <div className="hidden md:block"></div>
+                <div className="hidden md:block"></div> {/* Dòng 1 chiếm nửa dòng */}
 
-                {/* Dòng 2: Nhà cung cấp và Số vận đơn */}
+                {/* Nhà cung cấp */}
                 <div className="flex flex-col gap-1">
                   <label className={`text-sm font-semibold ${receiptErrors.supplier ? 'text-red-500' : 'text-gray-700'}`}>Nhà cung cấp</label>
                   <div className="relative">
@@ -1559,33 +1884,15 @@ export const MaterialReceipts = () => {
                     <SearchableSelect value={currentReceipt?.supplier || ''} options={suppliers} onChange={(val) => handleInputChange(val, 'supplier')} placeholder="Chọn nhà cung cấp..." error={!!receiptErrors.supplier} errorMessage={receiptErrors.supplier} disabled={isReceiveMode} />
                   </div>
                 </div>
+
+                {/* Số vận đơn */}
                 <div className="flex flex-col gap-1">
                   <label className={`text-sm font-semibold ${receiptErrors.deliveryNoteNumber ? 'text-red-500' : 'text-gray-700'}`}>Số vận đơn</label>
                   <input type="text" name="deliveryNoteNumber" value={currentReceipt?.deliveryNoteNumber || ''} onChange={handleInputChange} disabled={isReceiveMode} className={`w-full border ${receiptErrors.deliveryNoteNumber ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-1.5 h-[38px] text-sm focus:ring-2 outline-none ${isReceiveMode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} placeholder="Nhập số vận đơn" />
                   {receiptErrors.deliveryNoteNumber && <p className="text-red-500 text-[10px] mt-1 font-medium">{receiptErrors.deliveryNoteNumber}</p>}
                 </div>
 
-                {/* Dòng 3: Kho lưu trữ và Ngày nhận hàng */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Kho lưu trữ</label>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); handleOpenWarehousesModal(); }}
-                      className="absolute right-1 top-[-18px] text-blue-600 hover:text-blue-800 text-[10px] font-bold underline z-20 leading-none bg-white px-1 rounded"
-                    >
-                      hiệu chỉnh
-                    </button>
-                    <SearchableSelect
-                      value={currentReceipt?.warehouse || ''}
-                      options={warehouses}
-                      onChange={(val) => handleInputChange(val, 'warehouse')}
-                      placeholder="Chọn kho..."
-                      placement={window.innerWidth < 768 ? "top" : "bottom"}
-                      disabled={isReceiveMode}
-                    />
-                  </div>
-                </div>
+                {/* Ngày nhận hàng */}
                 <DateInput
                   label="Ngày nhận hàng"
                   name="receivingDate"
@@ -1597,6 +1904,8 @@ export const MaterialReceipts = () => {
                   compactCalendar
                   className={`w-full pr-10 border ${receiptErrors.receivingDate ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md focus:outline-none focus:ring-2 transition-all text-left flex items-center p-1.5 min-h-[38px] text-sm ${isReceiveMode ? 'bg-gray-100 text-gray-500 pointer-events-none cursor-not-allowed' : 'bg-white cursor-pointer'}`}
                 />
+
+                <div className="hidden md:block"></div> {/* Dòng 3 chiếm nửa dòng */}
               </div>
             )}
 
@@ -1642,17 +1951,40 @@ export const MaterialReceipts = () => {
 
                 {/* Thành phần mới: Ban kiểm nghiệm sản phẩm */}
                 <div className="md:col-span-2 flex flex-col gap-1">
-                  <label className={`text-sm font-semibold ${receiptErrors.inspectorPanel ? 'text-red-500' : 'text-gray-700'}`}>Ban kiểm nghiệm sản phẩm</label>
-                  <MultiSearchableSelect
-                    placeholder="Chọn thành viên ban kiểm nghiệm (1 Trưởng ban, tối đa 2 Ủy ban)..."
-                    selectedValues={currentReceipt?.inspectorPanel || []}
-                    options={inspectorOptions}
-                    onChange={handleInspectorChange}
-                    error={!!receiptErrors.inspectorPanel}
-                    errorMessage={receiptErrors.inspectorPanel}
-                    disabled={isReceiveMode}
-                  />
                   <p className="text-[10px] text-gray-500 italic mt-0.5">* Quy định: 1 Trưởng ban và tối đa 2 Ủy ban kiểm nghiệm</p>
+                  <label className={`text-sm font-semibold ${receiptErrors.inspectorPanel ? 'text-red-500' : 'text-gray-700'}`}>
+                    Ban kiểm nghiệm sản phẩm
+                  </label>
+                  {isReceiveMode ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                      {currentReceipt?.inspectationCommitteeList?.length > 0 ? (
+                        currentReceipt.inspectationCommitteeList.map((inspector, idx) => (
+                          <div key={idx} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm transition-all hover:border-blue-300">
+                            <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${inspector.isLeader === 1 ? 'bg-orange-500 ring-4 ring-orange-50' : 'bg-blue-500 ring-4 ring-blue-50'}`} />
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-xs font-bold text-gray-800 truncate">{inspector.Name || inspector.name}</span>
+                              <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">
+                                {inspector.isLeader === 1 ? 'Trưởng ban kiểm nghiệm' : 'Ủy ban kiểm nghiệm'}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      ) : <span className="text-sm italic text-gray-400">Chưa có thông tin ban kiểm nghiệm</span>}
+                    </div>
+                  ) : (
+                    <MultiSearchableSelect
+                      placeholder="Chọn thành viên ban kiểm nghiệm (1 Trưởng ban, tối đa 2 Ủy ban)..."
+                      selectedValues={currentReceipt?.inspectationCommitteeList || []}
+                      options={inspectorOptions}
+                      onChange={handleInspectorChange}
+                      error={!!receiptErrors.inspectorPanel}
+                      errorMessage={receiptErrors.inspectorPanel}
+                      isCommitteeMode={true}
+                    />
+                  )}
+                  {!isReceiveMode && (
+                    <p className="text-[10px] text-gray-500 italic mt-0.5">* Quy định: 1 Trưởng ban và tối đa 2 Ủy ban kiểm nghiệm</p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1">
@@ -2027,6 +2359,63 @@ export const MaterialReceipts = () => {
             )}
           </div>
         </form>
+      </Modal>
+
+      {/* Modal Nhập Excel */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={() => { setIsImportModalOpen(false); setSelectedImportFile(null); }}
+        title="Nhập excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="item-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel để nhập'}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
+              <input
+                id="item-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadSample}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button
+              type="button"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleImportExcel}
+              disabled={isImportingExcel}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isImportingExcel ? 'Đang nhập...' : 'Nhập Excel'}
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* Modal chọn ngày dành riêng cho Mobile Picker */}

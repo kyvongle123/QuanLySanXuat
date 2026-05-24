@@ -24,7 +24,6 @@ namespace MyProject.Dto
         public DateTime? ReceivingDate { get; set; }
         public DateTime? ExpiredDate { get; set; }
         public int? Status { get; set; }
-        public int? Warehouse { get; set; }
         public int? Supplier { get; set; }
         public string? SpecialStorageCondition { get; set; }
         public string? InspectationReport { get; set; }
@@ -36,7 +35,11 @@ namespace MyProject.Dto
         public IFormFile? CertificateOfQualityFile { get; set; }
         public string? CreatedBy { get; set; }
         public List<MaterialReceiptBatchDto> MaterialReceiptBatchList { get; set; } = new();
-        public List<int>? InspectorPanel { get; set; }
+        public string? InspectationCommitteeLeader { get; set; }
+
+        public string? InspectationCommittee1 { get; set; }
+
+        public string? InspectationCommittee2 { get; set; }
     }
 
     public class ReceiveMaterialReceiptBatchDto

@@ -13,7 +13,7 @@ import {
 } from '../controller/productionSectionsController';
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com//api';
 
 export const Stages = () => {
   const [stages, setStages] = useState([]);
@@ -361,9 +361,9 @@ export const Stages = () => {
 
       for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
         const row = worksheet.getRow(rowNumber);
-        const stageCode = getExcelCellText(row.getCell(3)).trim();
-        const stageName = getExcelCellText(row.getCell(4)).trim();
-        const sectionName = getExcelCellText(row.getCell(2)).trim();
+        const stageCode = getExcelCellText(row.getCell(2)).trim();
+        const stageName = getExcelCellText(row.getCell(3)).trim();
+        const sectionName = getExcelCellText(row.getCell(4)).trim();
         const sequence = parseImportSequence(getExcelCellText(row.getCell(5)));
 
         if (!stageCode && !stageName && !sectionName && !Number.isFinite(sequence)) continue;
@@ -413,7 +413,6 @@ export const Stages = () => {
 
     // Logic xác thực dữ liệu
     const newErrors = {};
-    if (!currentEditingItem?.stageCode?.trim()) newErrors.stageCode = "Bắt buộc nhập Mã công đoạn";
     if (!currentEditingItem?.name?.trim()) newErrors.name = "Bắt buộc nhập Tên công đoạn";
     if (currentEditingItem?.sequence === '' || currentEditingItem?.sequence === null || currentEditingItem?.sequence === undefined || currentEditingItem?.sequence <= 0) {
       newErrors.sequence = "Bắt buộc nhập Thứ tự";
@@ -860,7 +859,7 @@ export const Stages = () => {
           </button>
           <button
             onClick={handleBulkDelete}
-            className={`order-3 lg:order-1 w-full lg:w-auto justify-center text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedStageIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+            className={`order-3 lg:order-1 w-full lg:w-auto justify-center text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedStageIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
           >
             <Trash2 size={16} />
             Xóa nhiều dòng {selectedStageIds.length > 0 && `(${selectedStageIds.length})`}
@@ -1006,7 +1005,7 @@ export const Stages = () => {
         <form onSubmit={handleModalSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className={`text-xs font-medium ${errors.stageCode ? 'text-red-500' : 'text-gray-700'}`}>Mã công đoạn</label>
+              <label className="text-xs font-medium text-gray-700">Mã công đoạn</label>
               <input
                 type="text"
                 value={currentEditingItem?.stageCode || ''}

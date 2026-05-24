@@ -141,7 +141,7 @@ export const Roles = () => {
 
   const handleDownloadSample = async () => {
     try {
-      const response = await fetch('https://quanlysanxuat-back-end.onrender.com/api/Templates/import/roles');
+      const response = await fetch('https://quanlysanxuat-back-end.onrender.com//api/Templates/import/roles');
       if (!response.ok) throw new Error('Không thể tải file mẫu từ máy chủ.');
       const blob = await response.blob();
       saveAs(blob, 'RoleTemplate.xlsx');
@@ -412,7 +412,7 @@ export const Roles = () => {
           </button>
           <button
             onClick={handleBulkDelete}
-            className={`order-3 lg:order-1 flex-1 lg:flex-none justify-center text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm ${selectedRoleIds.length > 0 ? 'bg-red-600 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+            className={`order-3 lg:order-1 flex-1 lg:flex-none justify-center text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm ${selectedRoleIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
           >
             <Trash2 size={18} />
             Xóa nhiều dòng {selectedRoleIds.length > 0 && `(${selectedRoleIds.length})`}

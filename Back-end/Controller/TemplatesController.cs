@@ -290,5 +290,28 @@ namespace MyProject.Backend.Controller
                 "RoleTemplate.xlsx"
             );
         }
+
+        [HttpGet("import/material-receipts")]
+        public IActionResult DownloadMaterialReceiptImportTemplate()
+        {
+            var filePath = Path.Combine(
+                _environment.ContentRootPath,
+                "Templates",
+                "ImportTemplate",
+                "MaterialReceiptTemplate.xlsx"
+            );
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound(new { message = "Không tìm thấy file mẫu nhập phiếu nhập nguyên liệu." });
+            }
+
+            var stream = System.IO.File.OpenRead(filePath);
+            return File(
+                stream,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "MaterialReceiptTemplate.xlsx"
+            );
+        }
     }
 }

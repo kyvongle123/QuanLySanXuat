@@ -13,7 +13,7 @@ namespace MyProject.Backend.Controller
     [ApiController]
     public class StagesController : ControllerBase
     {
-        private const string StageCodePrefix = "CĐ00";
+        private const string StageCodePrefix = "QT00";
         private const int MaxCreateStageCodeAttempts = 10;
         private readonly AppDbContext _context;
 

@@ -97,7 +97,7 @@ export const Suppliers = () => {
 
   const handleDownloadImportTemplate = () => {
     // Tải file mẫu từ thư mục Templates\ImportTemplate ở Back-end
-    window.location.href = `https://quanlysanxuat-back-end.onrender.com/api/Templates/import/suppliers`;
+    window.location.href = `https://quanlysanxuat-back-end.onrender.com//api/Templates/import/suppliers`;
   };
 
   const handleImportExcel = async () => {
@@ -428,8 +428,6 @@ export const Suppliers = () => {
     { header: 'STT', className: 'w-[50px] text-center !px-1 sm:!px-2', render: (row, { index }) => index },
     { header: 'Mã NCC', accessor: 'supplierCode', className: 'font-medium text-blue-700 w-[80px] sm:w-[120px] !px-1 sm:!px-6' },
     { header: 'Tên nhà cung cấp', accessor: 'name', className: 'hidden sm:table-cell font-bold text-blue-600 min-w-[150px]' },
-    { header: 'Người liên hệ', accessor: 'contactPerson', className: 'hidden md:table-cell w-48 !px-1 sm:!px-2' },
-    { header: 'Điện thoại', accessor: 'phone', className: 'hidden sm:table-cell w-32 sm:w-40' },
     {
       header: isBulkSelectMode ? (
         <div className="flex w-full items-center justify-center gap-1 text-[10px] sm:text-xs">

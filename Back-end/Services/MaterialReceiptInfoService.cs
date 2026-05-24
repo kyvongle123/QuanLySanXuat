@@ -18,6 +18,8 @@ namespace MyProject.Service
     {
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _environment; // Thêm dòng này
+        private const string ReceiptCodePrefix = "PN00";
+        private const int MaxCreateCodeAttempts = 10;
         private const string FirebaseBucketName = "quanlysanxuat-cb353.firebasestorage.app";
 
         public MaterialReceiptInfoService(AppDbContext context, IWebHostEnvironment environment)
@@ -61,7 +63,6 @@ namespace MyProject.Service
             return receipts.Select(r => {
                 var dto = MapToInfoDto(r);
                 // Gán danh sách ID người dùng vào InspectorPanel nếu tồn tại trong Map
-                dto.InspectorPanel = inspectorMap.ContainsKey(r.Id) ? inspectorMap[r.Id] : new List<int>();
                 return dto;
             }).ToList();
         }
@@ -76,79 +77,101 @@ namespace MyProject.Service
             
             var dto = MapToInfoDto(receipt);
             // Lấy danh sách ID người kiểm nghiệm cho phiếu nhập cụ thể
-            dto.InspectorPanel = await _context.Users
-                .Where(u => u.MaterialReceipt == id)
-                .Select(u => u.Id)
-                .ToListAsync();
-
             return dto;
         }
 
         public async Task<MaterialReceiptInfoDto> CreateReceiptAsync(CreateMaterialReceiptDto dto)
         {
-            // 1. Xử lý upload tệp tin trước để lấy đường dẫn API lưu trữ
-            string? certificateOfOriginPath = null;
-            string? certificateOfQualityPath = null;
-            string? inspectationReportPath = null;
+            var strategy = _context.Database.CreateExecutionStrategy();
+            var hasProvidedCode = !string.IsNullOrWhiteSpace(dto.MaterialReceiptCode);
 
-            if (dto.CertificateOfOriginFile != null)
-                certificateOfOriginPath = SaveUploadedFile(dto.MaterialReceiptCode, dto.CertificateOfOriginFile, "CertificateOfOrigin", "CO");
-            if (dto.CertificateOfQualityFile != null)
-                certificateOfQualityPath = SaveUploadedFile(dto.MaterialReceiptCode, dto.CertificateOfQualityFile, "CertificateOfQuality", "CQ");
-            if (dto.InspectationReportFile != null)
-                inspectationReportPath = SaveUploadedFile(dto.MaterialReceiptCode, dto.InspectationReportFile, "InspectationReports", "IR");
-
-            var receipt = new MaterialReceipt
+            return await strategy.ExecuteAsync(async () =>
             {
-                MaterialReceiptCode = dto.MaterialReceiptCode,
-                DeliveryNoteNumber = dto.DeliveryNoteNumber,
-                ReceivingDate = dto.ReceivingDate,
-                ExpiredDate = dto.ExpiredDate,
-                Status = dto.Status,
-                Warehouse = dto.Warehouse,
-                Supplier = dto.Supplier,
-                SpecialStorageCondition = dto.SpecialStorageCondition,
-                Receiver = dto.Receiver,
-                CertificateOfOrigin = certificateOfOriginPath, // Gán đường dẫn đã upload
-                CertificateOfQuality = certificateOfQualityPath, // Gán đường dẫn đã upload
-                InspectationReport = inspectationReportPath,   // Gán đường dẫn đã upload
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
-            };
-            _context.MaterialReceipts.Add(receipt);
-            await _context.SaveChangesAsync();
-
-            foreach (var batchDto in dto.MaterialReceiptBatchList)
-            {
-                _context.MaterialReceiptBatches.Add(new MaterialReceiptBatch
+                for (var attempt = 0; attempt < MaxCreateCodeAttempts; attempt++)
                 {
-                    MaterialReceiptId = receipt.Id,
-                    MaterialId = batchDto.MaterialId,
-                    ShippedQuantity = batchDto.ShippedQuantity,
-                    DeliveredQuantity = batchDto.DeliveredQuantity,
-                    BatchCode = batchDto.BatchCode,
-                    MFGDate = batchDto.MFGDate,
-                    ExpiredDate = batchDto.ExpiredDate,
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
-                });
-            }
+                    var materialReceiptCode = hasProvidedCode
+                        ? dto.MaterialReceiptCode.Trim()
+                        : await GenerateNextMaterialReceiptCodeAsync();
 
-            await _context.SaveChangesAsync();
+                    await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            // Cập nhật MaterialReceiptId cho các người dùng trong InspectorPanel
-            if (dto.InspectorPanel != null && dto.InspectorPanel.Any())
-            {
-                var usersToUpdate = await _context.Users.Where(u => dto.InspectorPanel.Contains(u.Id)).ToListAsync();
-                foreach (var user in usersToUpdate)
-                {
-                    user.MaterialReceipt = receipt.Id;
+                    try
+                    {
+                        // 1. Xử lý upload tệp tin - Sử dụng mã phiếu vừa xác định
+                        string? certificateOfOriginPath = null;
+                        string? certificateOfQualityPath = null;
+                        string? inspectationReportPath = null;
+
+                        if (dto.CertificateOfOriginFile != null)
+                            certificateOfOriginPath = SaveUploadedFile(materialReceiptCode, dto.CertificateOfOriginFile, "CertificateOfOrigin", "CO");
+                        if (dto.CertificateOfQualityFile != null)
+                            certificateOfQualityPath = SaveUploadedFile(materialReceiptCode, dto.CertificateOfQualityFile, "CertificateOfQuality", "CQ");
+                        if (dto.InspectationReportFile != null)
+                            inspectationReportPath = SaveUploadedFile(materialReceiptCode, dto.InspectationReportFile, "InspectationReports", "IR");
+
+                        var receipt = new MaterialReceipt
+                        {
+                            MaterialReceiptCode = materialReceiptCode,
+                            DeliveryNoteNumber = dto.DeliveryNoteNumber,
+                            ReceivingDate = dto.ReceivingDate,
+                            ExpiredDate = dto.ExpiredDate,
+                            Status = dto.Status,
+                            Supplier = dto.Supplier,
+                            SpecialStorageCondition = dto.SpecialStorageCondition,
+                            Receiver = dto.Receiver,
+                            InspectationCommitteeLeader = dto.InspectationCommitteeLeader,
+                            InspectationCommittee1 = dto.InspectationCommittee1,
+                            InspectationCommittee2 = dto.InspectationCommittee2,
+                            CertificateOfOrigin = certificateOfOriginPath,
+                            CertificateOfQuality = certificateOfQualityPath,
+                            InspectationReport = inspectationReportPath,
+                            CreatedAt = DateTime.Now,
+                            UpdatedAt = DateTime.Now
+                        };
+
+                        _context.MaterialReceipts.Add(receipt);
+                        await _context.SaveChangesAsync();
+
+                        foreach (var batchDto in dto.MaterialReceiptBatchList)
+                        {
+                            _context.MaterialReceiptBatches.Add(new MaterialReceiptBatch
+                            {
+                                MaterialReceiptId = receipt.Id,
+                                MaterialId = batchDto.MaterialId,
+                                ShippedQuantity = batchDto.ShippedQuantity,
+                                DeliveredQuantity = batchDto.DeliveredQuantity,
+                                BatchCode = batchDto.BatchCode,
+                                MFGDate = batchDto.MFGDate,
+                                ExpiredDate = batchDto.ExpiredDate,
+                                CreatedAt = DateTime.Now,
+                                UpdatedAt = DateTime.Now
+                            });
+                        }
+
+                        await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        var result = MapToInfoDto(receipt);
+                        return result;
+                    }
+                    catch (DbUpdateException ex) when (IsUniqueCodeException(ex))
+                    {
+                        await transaction.RollbackAsync();
+
+                        if (hasProvidedCode || attempt >= MaxCreateCodeAttempts - 1)
+                        {
+                            throw new InvalidOperationException("Mã phiếu nhập đã tồn tại.", ex);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
                 }
-                await _context.SaveChangesAsync(); // Lưu thay đổi cho bảng Users
-            }
-            var result = MapToInfoDto(receipt);
-            result.InspectorPanel = dto.InspectorPanel;
-            return result;
+
+                throw new InvalidOperationException("Không thể sinh mã phiếu nhập không trùng sau nhiều lần thử.");
+            });
         }
 
         public async Task<MaterialReceiptInfoDto?> UpdateReceiptAsync(int id, CreateMaterialReceiptDto dto)
@@ -175,10 +198,12 @@ namespace MyProject.Service
             receipt.ReceivingDate = dto.ReceivingDate;
             receipt.ExpiredDate = dto.ExpiredDate;
             receipt.Status = dto.Status;
-            receipt.Warehouse = dto.Warehouse;
             receipt.Supplier = dto.Supplier;
             receipt.SpecialStorageCondition = dto.SpecialStorageCondition;
             receipt.Receiver = dto.Receiver;
+            receipt.InspectationCommitteeLeader = dto.InspectationCommitteeLeader;
+            receipt.InspectationCommittee1 = dto.InspectationCommittee1;
+            receipt.InspectationCommittee2 = dto.InspectationCommittee2;
             receipt.UpdatedAt = DateTime.Now;
 
             // Xử lý cập nhật InspectorPanel
@@ -186,25 +211,6 @@ namespace MyProject.Service
             var currentInspectorsForThisReceipt = await _context.Users
                 .Where(u => u.MaterialReceipt == receipt.Id)
                 .ToListAsync();
-
-            // 2. Xóa liên kết (set MaterialReceiptId = null) cho những người dùng không còn trong InspectorPanel mới
-            foreach (var inspector in currentInspectorsForThisReceipt)
-            {
-                if (dto.InspectorPanel == null || !dto.InspectorPanel.Contains(inspector.Id))
-                {
-                    inspector.MaterialReceipt = null;
-                }
-            }
-
-            // 3. Cập nhật MaterialReceiptId cho những người dùng có trong InspectorPanel mới
-            if (dto.InspectorPanel != null && dto.InspectorPanel.Any())
-            {
-                var usersToUpdate = await _context.Users.Where(u => dto.InspectorPanel.Contains(u.Id)).ToListAsync();
-                foreach (var user in usersToUpdate)
-                {
-                    user.MaterialReceipt = receipt.Id;
-                }
-            }
 
             // Cập nhật danh sách lô hàng (Xóa cũ thêm mới)
             _context.MaterialReceiptBatches.RemoveRange(receipt.MaterialReceiptBatches);
@@ -228,7 +234,6 @@ namespace MyProject.Service
 
             await _context.SaveChangesAsync();
             var result = MapToInfoDto(receipt);
-            result.InspectorPanel = dto.InspectorPanel;
             return result;
         }
 
@@ -259,7 +264,7 @@ namespace MyProject.Service
 
                 var additionalQuantity = deliveredQuantity - batch.DeliveredQuantity;
                 if (additionalQuantity < 0)
-                    throw new InvalidOperationException("Sá»‘ lÆ°á»£ng nháº­n má»›i khÃ´ng Ä‘Æ°á»£c nhá» hÆ¡n sá»‘ lÆ°á»£ng Ä‘Ã£ nháº­n trÆ°á»›c Ä‘Ã³.");
+                    throw new InvalidOperationException("Số lượng nhận mới không được vượt quá số lượng trên phiếu.");
 
                 batch.DeliveredQuantity = deliveredQuantity;
                 batch.UpdatedAt = DateTime.Now;
@@ -294,32 +299,56 @@ namespace MyProject.Service
             return MapToInfoDto(receipt);
         }
 
-        public MaterialReceiptInfoDto MapToInfoDto(MaterialReceipt r) => new MaterialReceiptInfoDto
+        public MaterialReceiptInfoDto MapToInfoDto(MaterialReceipt r)
         {
-            Id = r.Id,
-            MaterialReceiptCode = r.MaterialReceiptCode,
-            DeliveryNoteNumber = r.DeliveryNoteNumber,
-            ReceivingDate = r.ReceivingDate,
-            ExpiredDate = r.ExpiredDate,
-            Status = r.Status,
-            Warehouse = r.Warehouse,
-            Supplier = r.Supplier,
-            SpecialStorageCondition = r.SpecialStorageCondition,
-            Receiver = r.Receiver,
-            CreatedAt = r.CreatedAt,
-            InspectationReport = r.InspectationReport,
-            CertificateOfOrigin = r.CertificateOfOrigin,
-            CertificateOfQuality = r.CertificateOfQuality,
-            UpdatedAt = r.UpdatedAt,
-            MaterialReceiptBatchList = r.MaterialReceiptBatches.Select(b => new MaterialReceiptBatchDto { // Ánh xạ đầy đủ các trường
-                MaterialId = b.MaterialId,
-                ShippedQuantity = b.ShippedQuantity,
-                DeliveredQuantity = b.DeliveredQuantity,
-                BatchCode = b.BatchCode,
-                MFGDate = b.MFGDate,
-                ExpiredDate = b.ExpiredDate
-            }).ToList()
-        };
+            // Thu thập các mã và đánh dấu vai trò Leader
+            var committeeItems = new[]
+            {
+                (Code: r.InspectationCommitteeLeader, IsLeader: 1),
+                (Code: r.InspectationCommittee1, IsLeader: 0),
+                (Code: r.InspectationCommittee2, IsLeader: 0)
+            }.Where(x => !string.IsNullOrWhiteSpace(x.Code)).ToList();
+
+            // Truy vấn bảng Users để lấy Name dựa trên UserCode
+            var userCodes = committeeItems.Select(x => x.Code).ToList();
+            var userNames = _context.Users
+                .Where(u => u.UserCode != null && userCodes.Contains(u.UserCode))
+                .ToDictionary(u => u.UserCode!, u => u.Name ?? "---");
+
+            return new MaterialReceiptInfoDto
+            {
+                Id = r.Id,
+                MaterialReceiptCode = r.MaterialReceiptCode,
+                DeliveryNoteNumber = r.DeliveryNoteNumber,
+                ReceivingDate = r.ReceivingDate,
+                ExpiredDate = r.ExpiredDate,
+                Status = r.Status,
+                Supplier = r.Supplier,
+                SpecialStorageCondition = r.SpecialStorageCondition,
+                Receiver = r.Receiver,
+                CreatedAt = r.CreatedAt,
+                InspectationReport = r.InspectationReport,
+                CertificateOfOrigin = r.CertificateOfOrigin,
+                CertificateOfQuality = r.CertificateOfQuality,
+                InspectationCommitteeList = committeeItems.Select(c => new InspectationCommitteeInfoDto
+                {
+                    userCode = c.Code!,
+                    Name = userNames.TryGetValue(c.Code!, out var name) ? name : "---",
+                    isLeader = c.IsLeader
+                }).ToList(),
+                UpdatedAt = r.UpdatedAt,
+                MaterialReceiptBatchList = r.MaterialReceiptBatches.Select(b => new MaterialReceiptBatchDto
+                {
+                    MaterialReceipt = b.MaterialReceiptId,
+                    MaterialId = b.MaterialId,
+                    ShippedQuantity = b.ShippedQuantity,
+                    DeliveredQuantity = b.DeliveredQuantity,
+                    BatchCode = b.BatchCode,
+                    MFGDate = b.MFGDate,
+                    ExpiredDate = b.ExpiredDate
+                }).ToList()
+            };
+        }
 
         public async Task<byte[]?> ExportInspectionReportPdfAsync(int id)
         {
@@ -452,6 +481,34 @@ namespace MyProject.Service
             await storage.DownloadObjectAsync(FirebaseBucketName, objectName, stream);
             stream.Position = 0;
             return (stream, obj.ContentType);
+        }
+
+        private async Task<string> GenerateNextMaterialReceiptCodeAsync()
+        {
+            var codes = await _context.MaterialReceipts
+                .AsNoTracking()
+                .Where(e => e.MaterialReceiptCode != null && e.MaterialReceiptCode.StartsWith(ReceiptCodePrefix))
+                .Select(e => e.MaterialReceiptCode)
+                .ToListAsync();
+
+            var maxNumber = 0;
+            foreach (var code in codes)
+            {
+                var numberText = code.Substring(ReceiptCodePrefix.Length);
+                if (int.TryParse(numberText, out var number) && number > maxNumber)
+                {
+                    maxNumber = number;
+                }
+            }
+            return $"{ReceiptCodePrefix}{maxNumber + 1}";
+        }
+
+        private static bool IsUniqueCodeException(DbUpdateException exception)
+        {
+            var message = exception.InnerException?.Message ?? exception.Message;
+            return message.Contains("IX_MaterialReceipts_MaterialReceiptCode", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase);
         }
 
         private string SaveUploadedFile(string materialReceiptCode, IFormFile file, string subFolder, string suffix)

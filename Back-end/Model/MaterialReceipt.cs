@@ -22,8 +22,6 @@ namespace MyProject.Backend.Model
 
         public int? Status { get; set; }
 
-        public int? Warehouse { get; set; }
-
         public int? Supplier { get; set; }
 
         [MaxLength(255)]
@@ -45,6 +43,12 @@ namespace MyProject.Backend.Model
         public DateTime? UpdatedAt { get; set; }
 
         public string? CreatedBy { get; set; }
+
+        public string? InspectationCommitteeLeader { get; set; }
+
+        public string? InspectationCommittee1 { get; set; }
+
+        public string? InspectationCommittee2 { get; set; }
 
         // Navigation property để lấy danh sách lô hàng chi tiết
         public virtual ICollection<MaterialReceiptBatch> MaterialReceiptBatches { get; set; } = new List<MaterialReceiptBatch>();

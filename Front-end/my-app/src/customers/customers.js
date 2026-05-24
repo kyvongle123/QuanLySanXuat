@@ -7,7 +7,7 @@ import { CustomDatatable, Modal, AppNotification, CustomConfirm } from '../custo
 import { createCustomer, deleteCustomer, getCustomers, updateCustomer } from '../controller/customersController';
 import { FaPencil } from "react-icons/fa6";
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com//api';
 
 export const Customers = () => {
   const [customers, setCustomers] = useState([]);

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Sử dụng port 49851 thống nhất với các controller khác trong dự án
-const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/MaterialReceipts';
+const API_URL = 'https://quanlysanxuat-back-end.onrender.com//api/MaterialReceipts';
 
 // Hàm chuẩn hóa dữ liệu để xử lý sự khác biệt giữa camelCase và PascalCase từ API
 const normalizeReceiptData = (data) => {
@@ -14,7 +14,6 @@ const normalizeReceiptData = (data) => {
             receivingDate: item.receivingDate || item.ReceivingDate,
             expiredDate: item.expiredDate || item.ExpiredDate,
             status: item.status || item.status,
-            warehouse: item.warehouse || item.Warehouse,
             supplier: item.supplier || item.Supplier,
             specialStorageCondition: item.specialStorageCondition || item.SpecialStorageCondition,
             inspectationReport: item.inspectationReport || item.InspectationReport,
@@ -32,7 +31,7 @@ const normalizeReceiptData = (data) => {
                 mfgDate: batch.mfgDate || batch.MFGDate || batch.mfgdate,
                 expiredDate: batch.expiredDate || batch.ExpiredDate || batch.expireddate
             })),
-            inspectorPanel: item.inspectorPanel || item.InspectorPanel || []
+            inspectationCommitteeList: item.inspectationCommitteeList || item.InspectationCommitteeList || []
         }));
     }
     return {
@@ -42,7 +41,6 @@ const normalizeReceiptData = (data) => {
         receivingDate: data.receivingDate || data.ReceivingDate,
         expiredDate: data.expiredDate || data.ExpiredDate,
         qualityStatus: data.qualityStatus || data.QualityStatus,
-        warehouse: data.warehouse || data.Warehouse,
         supplier: data.supplier || data.Supplier,
         specialStorageCondition: data.specialStorageCondition || data.SpecialStorageCondition,
         inspectationReport: data.inspectationReport || data.InspectationReport,

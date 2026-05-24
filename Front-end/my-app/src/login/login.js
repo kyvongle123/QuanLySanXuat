@@ -52,7 +52,7 @@ export const Login = () => {
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-6">
         <div className="text-center">
           <img
-            src="https://quanlysanxuat-back-end.onrender.com/api/logos/hanghoa"
+            src="https://quanlysanxuat-back-end.onrender.com//api/logos/hanghoa"
             alt="Logo"
             className="w-20 h-18 mx-auto mb-4 object-contain"
           />

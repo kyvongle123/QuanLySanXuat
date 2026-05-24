@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const API_URL_PLANS = 'https://quanlysanxuat-back-end.onrender.com/api/ProductionPlans';
-const API_URL_PLAN_ITEMS = 'https://quanlysanxuat-back-end.onrender.com/api/ProductionPlanItems'; // Giả định có một Controller riêng cho ProductionPlanItems
+const API_URL_PLANS = 'https://quanlysanxuat-back-end.onrender.com//api/ProductionPlans';
+const API_URL_PLAN_ITEMS = 'https://quanlysanxuat-back-end.onrender.com//api/ProductionPlanItems'; // Giả định có một Controller riêng cho ProductionPlanItems
 
 const normalizePlanData = (data) => {
     if (Array.isArray(data)) {

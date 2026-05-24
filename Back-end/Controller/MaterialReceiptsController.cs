@@ -45,7 +45,7 @@ namespace MyProject.Backend.Controller
         public async Task<ActionResult<MaterialReceiptInfoDto>> PostMaterialReceipt([FromForm] CreateMaterialReceiptDto receiptDto)
         {
             var receipt = await _receiptService.CreateReceiptAsync(receiptDto);
-            
+
             return CreatedAtAction(nameof(GetMaterialReceipt), new { id = receipt.Id }, receipt);
         }
 
@@ -55,7 +55,7 @@ namespace MyProject.Backend.Controller
             if (id != receiptDto.Id) return BadRequest();
 
             var updatedReceipt = await _receiptService.UpdateReceiptAsync(id, receiptDto);
-            
+
             if (updatedReceipt == null) return NotFound();
 
             return Ok(updatedReceipt);
@@ -114,6 +114,12 @@ namespace MyProject.Backend.Controller
         {
             var receipt = await _context.MaterialReceipts.FindAsync(id);
             if (receipt == null) return NotFound();
+
+            // Tìm và xóa các lô hàng (batches) liên quan trong bảng MaterialReceiptBatches
+            var batches = await _context.MaterialReceiptBatches
+                .Where(b => b.MaterialReceiptId == id)
+                .ToListAsync();
+            _context.MaterialReceiptBatches.RemoveRange(batches);
 
             _context.MaterialReceipts.Remove(receipt);
             await _context.SaveChangesAsync();

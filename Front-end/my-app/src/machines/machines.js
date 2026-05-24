@@ -30,7 +30,7 @@ import {
   deleteMachineStatus
 } from '../controller/machineStatusesController';
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com//api';
 
 // Component Searchable Select tùy chỉnh dành riêng cho các ô trong bảng
 const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", className, disabled = false, error = false, errorMessage = '' }) => {
@@ -964,7 +964,7 @@ export const Machines = () => {
           </button>
           <button
             onClick={handleBulkDelete}
-            className={`order-3 lg:order-1 w-full lg:w-auto text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-xs sm:text-sm ${selectedMachineIds.length > 0 ? 'bg-red-600 hover:bg-red-700' : 'bg-red-400/70 hover:bg-red-500/80'}`}
+            className={`order-3 lg:order-1 w-full lg:w-auto text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-xs sm:text-sm ${selectedMachineIds.length > 0 ? 'bg-red-700 hover:bg-red-700' : 'bg-red-700 hover:bg-red-700'}`}
           >
             <Trash2 size={16} />
             <span className="truncate">Xóa nhiều dòng {selectedMachineIds.length > 0 && `(${selectedMachineIds.length})`}</span>

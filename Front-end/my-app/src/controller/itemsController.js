@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Định nghĩa URL cơ sở cho API của bạn
 // Bạn có thể thay thế bằng process.env.REACT_APP_API_BASE_URL nếu bạn cấu hình biến môi trường
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com//api';
 
 export const getItems = async () => {
   try {

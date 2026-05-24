@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { Search, FileUp, FileDown, ChevronRight } from 'lucide-react'; // Đã thêm ChevronRight cho expansion
+import { Search, FileUp, FileDown, ChevronRight, Trash2 } from 'lucide-react'; // Đã thêm ChevronRight và Trash2
+import { FaRegSquareMinus, FaRegSquare } from 'react-icons/fa6';
 import { CustomDatatable, Modal, AppNotification, CustomConfirm } from '../customComponent/customComponent';
 import { getTransportVehicles, createTransportVehicle, updateTransportVehicle, deleteTransportVehicle } from '../controller/transportVehiclesController';
 
@@ -17,6 +18,8 @@ export const TransportVehicles = () => {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState([]);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ isOpen: true, message, type });
@@ -71,6 +74,34 @@ export const TransportVehicles = () => {
     setErrors({});
   };
 
+  const handleBulkDelete = () => {
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
+      setSelectedVehicleIds([]);
+      return;
+    }
+    if (selectedVehicleIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedVehicleIds([]);
+      return;
+    }
+    setConfirmModal({
+      isOpen: true,
+      id: selectedVehicleIds,
+      type: 'bulkDelete',
+      title: 'Xác nhận xóa nhiều xe hàng',
+      message: `Bạn có chắc chắn muốn xóa ${selectedVehicleIds.length} xe hàng đã chọn không? Hành động này không thể hoàn tác.`
+    });
+  };
+
+  const handleSelectAllVehicles = () => {
+    setSelectedVehicleIds(filteredVehicles.map(v => v.id));
+  };
+
+  const handleClearSelectedVehicles = () => {
+    setSelectedVehicleIds([]);
+  };
+
   const handleDelete = async (id) => {
     setConfirmModal({
       isOpen: true,
@@ -87,6 +118,17 @@ export const TransportVehicles = () => {
       try {
         await deleteTransportVehicle(id);
         setVehicles(prev => prev.filter(v => v.id !== id));
+        showNotification("Xóa xe hàng thành công!");
+      } catch (err) {
+        console.error("Error deleting vehicle:", err);
+        showNotification("Lỗi khi xóa xe hàng.", "error");
+      }
+    } else if (type === 'bulkDelete') {
+      try {
+        await Promise.all(id.map(vehicleId => deleteTransportVehicle(vehicleId)));
+        setVehicles(prev => prev.filter(v => !id.includes(v.id)));
+        setSelectedVehicleIds([]);
+        setIsBulkSelectMode(false);
         showNotification("Xóa xe hàng thành công!");
       } catch (err) {
         console.error("Error deleting vehicle:", err);
@@ -193,23 +235,66 @@ export const TransportVehicles = () => {
     }
   };
 
+  const handleToggleSelectVehicle = (id) => {
+    setSelectedVehicleIds(prev =>
+      prev.includes(id) ? prev.filter(vehicleId => vehicleId !== id) : [...prev, id]
+    );
+  };
+
   const columns = [
-    { header: 'STT', className: 'w-[50px] text-center hidden sm:table-cell', render: (_, { index }) => index },
     {
-      header: 'Mã số xe', // Đã sửa lại tên cột cho rõ ràng
+      header: '',
+      className: 'w-[30px] text-center !px-1 sm:!px-6',
+      render: (row, { isExpanded, toggleExpand }) => (
+        isBulkSelectMode ? (
+          <input
+            type="checkbox"
+            checked={selectedVehicleIds.includes(row.id)}
+            onChange={() => handleToggleSelectVehicle(row.id)}
+            onClick={(e) => e.stopPropagation()}
+            className="form-checkbox h-4 w-4 text-blue-600 rounded"
+          />
+        ) : (
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
+            className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
+          >
+            <ChevronRight size={18} className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`} />
+          </button>
+        )
+      ),
+    },
+    {
+      header: isBulkSelectMode ? (
+        <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-xs">
+          <button type="button" onClick={(e) => { e.stopPropagation(); handleSelectAllVehicles(); }} className="font-semibold text-red-600 hover:text-red-700">Tất cả</button>
+          <span className="text-gray-300">/</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); handleClearSelectedVehicles(); }} className="font-semibold text-gray-500 hover:text-gray-700">Bỏ chọn</button>
+        </div>
+      ) : 'STT',
+      className: 'w-[50px] text-center hidden sm:table-cell',
+      render: isBulkSelectMode ? null : (_, { index }) => index
+    },
+    {
+      header: 'Mã số xe',
       accessor: 'vehicleCode',
-      className: 'font-bold text-blue-700 min-w-[100px]'
+      className: 'font-bold text-blue-700 min-w-[120px]'
     },
     { header: 'Biển số xe', accessor: 'licensePlate', className: 'min-w-[120px] sm:w-full' },
     {
       header: 'Hành động',
       className: 'text-right pr-2 sm:pr-4 w-[100px] sm:w-[150px]',
-      render: (row) => (
-        <div className="flex gap-1.5 justify-end whitespace-nowrap">
-          <button onClick={() => handleOpenEditModal(row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95 shadow-sm">Sửa</button>
-          <button onClick={() => handleDelete(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95 shadow-sm">Xóa</button>
-        </div>
-      ),
+      render: (row) => {
+        if (isBulkSelectMode) {
+          return null; // Hide action buttons in bulk select mode
+        }
+        return (
+          <div className="flex gap-1.5 justify-end whitespace-nowrap">
+            <button onClick={() => handleOpenEditModal(row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95 shadow-sm">Sửa</button>
+            <button onClick={() => handleDelete(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95 shadow-sm">Xóa</button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -230,15 +315,29 @@ export const TransportVehicles = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
-            <FileUp size={18} />
-            Nhập Excel
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full lg:w-auto">
+          <button className="w-full sm:w-auto justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-1 sm:order-2">
+            <FileUp size={18} /> Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+          <button onClick={handleRequestExportExcel} className="w-full sm:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-2 sm:order-3">
             <FileDown size={18} /> Xuất Excel
           </button>
-          <button onClick={handleOpenAddModal} className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+          {isBulkSelectMode ? (
+            <button
+              onClick={handleBulkDelete}
+              className="w-full sm:w-auto justify-center bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-3 sm:order-1"
+            >
+              <Trash2 size={18} /> Xóa đã chọn ({selectedVehicleIds.length})
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsBulkSelectMode(true)}
+              className="w-full sm:w-auto justify-center bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-3 sm:order-1"
+            >
+              <Trash2 size={18} /> Xóa nhiều dòng
+            </button>
+          )}
+          <button onClick={handleOpenAddModal} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm order-4 sm:order-4">
             + Thêm mới
           </button>
         </div>
@@ -283,25 +382,26 @@ export const TransportVehicles = () => {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         title={modalMode === 'add' ? 'Thêm xe hàng mới' : 'Chỉnh sửa xe hàng'}
-        maxWidth={isModalMaximized ? 'max-w-full' : 'max-w-2xl'}
+        maxWidth={isModalMaximized ? 'max-w-full' : 'max-w-md'}
         isMaximized={isModalMaximized}
         onMaximizeToggle={toggleModalMaximize}
       >
         <form onSubmit={handleSubmit} className={`space-y-5 ${isModalMaximized ? '' : 'max-h-[70vh] overflow-y-auto px-1'}`}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 gap-5">
             <div className="flex flex-col gap-1">
-              <label className={`text-xs font-bold ${errors.vehicleCode ? 'text-red-500' : 'text-gray-500'} uppercase ml-1`}>Mã số xe</label>
+              <label className="text-xs text-gray-500 ml-1">Mã số xe</label>
               <input
                 name="vehicleCode"
                 type="text"
                 value={currentVehicle.vehicleCode || ''}
                 onChange={handleInputChange}
-                className={`mt-1 block w-full border ${errors.vehicleCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-3 text-base' : 'p-2.5 text-sm'} bg-white`}
+                disabled
+                className={`mt-1 block w-full border bg-gray-100 border-gray-300 focus:ring-blue-500 rounded-lg shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-3 text-base' : 'p-2.5 text-sm'} bg-gray-100 cursor-not-allowed`}
               />
               {errors.vehicleCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.vehicleCode}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className={`text-xs font-bold ${errors.licensePlate ? 'text-red-500' : 'text-gray-500'} uppercase ml-1`}>Biển số xe</label>
+              <label className={`text-xs ${errors.licensePlate ? 'text-red-500' : 'text-gray-500'} ml-1`}>Biển số xe</label>
               <input
                 name="licensePlate"
                 type="text"

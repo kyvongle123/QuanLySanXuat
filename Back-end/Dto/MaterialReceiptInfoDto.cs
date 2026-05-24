@@ -3,6 +3,13 @@ using System.Collections.Generic;
 
 namespace MyProject.Dto
 {
+
+    public class InspectationCommitteeInfoDto
+    {
+        public string userCode { get; set; }
+        public string Name { get; set; }
+        public int isLeader { get; set; }
+    }
     public class MaterialReceiptInfoDto
     {
         public int Id { get; set; }
@@ -11,7 +18,6 @@ namespace MyProject.Dto
         public DateTime? ReceivingDate { get; set; }
         public DateTime? ExpiredDate { get; set; }
         public int? Status { get; set; }
-        public int? Warehouse { get; set; }
         public int? Supplier { get; set; }
         public string? SpecialStorageCondition { get; set; }
         public int? Receiver { get; set; }
@@ -19,8 +25,8 @@ namespace MyProject.Dto
         public string? InspectationReport { get; set; }
         public string? CertificateOfOrigin { get; set; }
         public string? CertificateOfQuality { get; set; }
+        public List<InspectationCommitteeInfoDto> InspectationCommitteeList { get; set; } = new();
         public DateTime? UpdatedAt { get; set; }
-        public List<int>? InspectorPanel { get; set; }
         public List<MaterialReceiptBatchDto> MaterialReceiptBatchList { get; set; } = new(); // Danh sách lô hàng chi tiết
     }
 }
