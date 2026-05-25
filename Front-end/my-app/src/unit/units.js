@@ -5,6 +5,7 @@ import { saveAs } from 'file-saver';
 import { CustomDatatable, AppNotification, CustomConfirm, Modal } from '../customComponent/customComponent';
 import { getUnits, createUnit, updateUnit, deleteUnit } from '../controller/unitsController';
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
+import { MdAdd } from "react-icons/md";
 
 const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
@@ -478,8 +479,9 @@ export const Units = () => {
           </button>
           <button
             onClick={() => handleOpenModal('add')}
-            className="order-4 w-full lg:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
+            className="flex gap-2 items-center order-4 w-full lg:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
+            <MdAdd />
             <span className="lg:hidden">Thêm mới</span>
             <span className="hidden lg:inline">Thêm đơn vị mới</span>
           </button>
@@ -487,10 +489,7 @@ export const Units = () => {
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-20 text-gray-400">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-          <p className="italic">Đang tải dữ liệu đơn vị tính...</p>
-        </div>
+        <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <CustomDatatable

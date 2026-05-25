@@ -1,10 +1,13 @@
 ﻿import React, { useEffect, useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useLocation } from 'react-router-dom';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Search, ChevronDown, ChevronRight, FileUp, FileDown, Trash2, ToggleLeft, ToggleRight, Plus } from 'lucide-react';
 import { CustomDatatable, Modal, CustomSelect, AppNotification, CustomConfirm } from '../customComponent/customComponent';
 import { getItems, deleteItem, createItem, updateItem } from '../controller/itemsController';
+import { getUsers } from '../controller/usersController';
+import { createNotification } from '../controller/notificationsController';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../controller/categoriesController';
 import { getItemStatuses } from '../controller/itemStatusesController';
 import { getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse } from '../controller/warehousesController';
@@ -17,7 +20,9 @@ import { VscLayoutSidebarLeftDock, VscLayoutSidebarRightDock } from "react-icons
 import { RxDrawingPinFilled } from "react-icons/rx";
 import { LuSquarePen } from "react-icons/lu";
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
+import { MdAdd } from "react-icons/md";
 import { getWarehouseBins } from '../controller/warehouseBinsController';
+import { getCookie } from '../utils/cookieHelper';
 
 const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
@@ -92,6 +97,11 @@ const AnchoredPortalMenu = ({ isOpen, onClose, trigger, children, className = ''
 };
 
 export const Items = () => {
+  const location = useLocation();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [highlightedItemId, setHighlightedItemId] = useState(null);
+
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -252,6 +262,34 @@ export const Items = () => {
       );
     });
   }, [items, searchTerm, categories, itemStatuses, warehouses]);
+
+  // Reset về trang 1 khi tìm kiếm thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // Logic tự động nhảy trang khi được điều hướng từ thông báo
+  useEffect(() => {
+    const targetId = location.state?.targetItemId;
+    if (targetId && filteredItems.length > 0) {
+      const index = filteredItems.findIndex(item => getEntityId(item) === targetId);
+      if (index !== -1) {
+        const targetPage = Math.floor(index / rowsPerPage) + 1;
+        setCurrentPage(targetPage);
+
+        // Thiết lập highlight
+        setHighlightedItemId(targetId);
+
+        // Xóa highlight sau 3 giây
+        const timer = setTimeout(() => setHighlightedItemId(null), 3000);
+
+        // Xóa state trong location để tránh nhảy trang lại khi F5
+        window.history.replaceState({}, document.title);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [location.state, filteredItems, rowsPerPage]);
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -1173,7 +1211,7 @@ export const Items = () => {
                       value={typeMenuSearchQuery}
                       onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      autoFocus
+                      autoFocus={window.innerWidth >= 768}
                     />
                   </div>
                 </div>
@@ -1240,8 +1278,32 @@ export const Items = () => {
         location: editingWarehouse.location === '' ? null : parseInt(editingWarehouse.location),
       };
       if (warehouseModalMode === 'add') {
-        await createWarehouse(payload);
+        const addedWarehouse = await createWarehouse(payload);
         showNotification("Thêm nhà kho thành công!");
+
+        // Gửi thông báo cho tất cả người dùng
+        try {
+          const userList = await getUsers();
+          const sender = JSON.parse(getCookie('user') || '{}');
+          const typeLabel = warehouseTypes.find(t => String(t.value) === String(payload.type))?.label || 'N/A';
+          const locLabel = warehouseLocations.find(l => String(l.value) === String(payload.location))?.label || 'N/A';
+
+          const notificationPayload = {
+            message: `Người dùng ${sender?.name || sender?.username} vừa tạo một nhà kho ${locLabel} có loại kho ${typeLabel} trong danh sách loại kho`,
+            type: 'warehouse_created',
+            referenceId: getEntityId(addedWarehouse),
+            Sender: sender?.username,
+            isRead: false,
+            createdAt: new Date().toISOString(),
+            ReferenceType: 'warehouse',
+          };
+
+          await Promise.all((userList.$values || userList).map(u =>
+            createNotification({ ...notificationPayload, Receiver: u.username || u.Username })
+          ));
+        } catch (notifErr) {
+          console.error("Lỗi khi gửi thông báo nhà kho:", notifErr);
+        }
       } else {
         await updateWarehouse(editingWarehouse.id, payload);
         showNotification("Cập nhật nhà kho thành công!");
@@ -1290,6 +1352,27 @@ export const Items = () => {
         const newItem = await createItem(payload);
         setItems(prevItems => [...prevItems, newItem]);
         showNotification("Thêm hàng hóa thành công!");
+
+        // Gửi thông báo cho tất cả người dùng
+        try {
+          const userList = await getUsers();
+          const sender = JSON.parse(getCookie('user') || '{}');
+          const notificationPayload = {
+            Message: `Người dùng ${sender?.name || sender?.username} vừa tạo một thành phẩm ${newItem.name} trong danh sách thành phẩm`,
+            Type: 'item_created',
+            Receiver: '', // Sẽ gán trong vòng lặp
+            Sender: sender?.username,
+            ReferenceType: 'item',
+            ReferenceId: getEntityId(newItem)
+          };
+
+          // Gửi thông báo đến từng người dùng
+          await Promise.all((userList.$values || userList).map(u =>
+            createNotification({ ...notificationPayload, Receiver: u.username || u.Username })
+          ));
+        } catch (notifErr) {
+          console.error("Lỗi khi gửi thông báo:", notifErr);
+        }
       } else { // modalMode === 'edit'
         const updatedItem = await updateItem(currentEditingItem.id, payload);
         setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item));
@@ -1555,7 +1638,7 @@ export const Items = () => {
                   value={menuSearchQuery}
                   onChange={(e) => setMenuSearchQuery(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
-                  autoFocus
+                  autoFocus={window.innerWidth >= 768}
                 />
               </div>
             </div>
@@ -1714,17 +1797,17 @@ export const Items = () => {
       render: (_, { index }) => index
     },
     {
-      header: 'Ô (Bin)',
+      header: 'Ô',
       className: '!px-2 sm:!px-6',
       render: (row) => `${row.bin || row.Bin}`
     },
     {
-      header: 'Kệ (Rack)',
+      header: 'Kệ',
       className: '!px-2 sm:!px-6',
       render: (row) => <span className="font-bold text-blue-600">{warehouseRacks.find(r => String(r.id || r.ID) === String(row.racks || row.Racks))?.name || 'N/A'}</span>
     },
     {
-      header: 'Tầng (Level)',
+      header: 'Tầng',
       className: '!px-2 sm:!px-6',
       render: (row) => `Tầng ${row.level || row.Level}`
     },
@@ -1836,7 +1919,8 @@ export const Items = () => {
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors text-sm">
+          <button onClick={handleAddItem} className="flex gap-2 items-center order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors text-sm">
+            <MdAdd />
             <span className="lg:hidden">Thêm mới</span>
             <span className="hidden lg:inline">Thêm hàng hóa mới</span>
           </button>
@@ -1850,6 +1934,18 @@ export const Items = () => {
         <CustomDatatable
           columns={itemColumns}
           data={filteredItems}
+          page={currentPage}
+          onPageChange={setCurrentPage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(val) => {
+            setRowsPerPage(val);
+            setCurrentPage(1);
+          }}
+          rowClassName={(row) =>
+            getEntityId(row) === highlightedItemId
+              ? "transition-all duration-500 animate-pulse"
+              : ""
+          }
           bodyCellClassName="!py-2 lg:!py-3"
           renderExpansion={(row) => (
             (() => {
@@ -1919,7 +2015,7 @@ export const Items = () => {
                               value={menuSearchQuery}
                               onChange={(e) => setMenuSearchQuery(e.target.value)}
                               onClick={(e) => e.stopPropagation()}
-                              autoFocus
+                              autoFocus={window.innerWidth >= 768}
                             />
                           </div>
                         </div>
@@ -2009,7 +2105,7 @@ export const Items = () => {
                                 value={menuSearchQuery}
                                 onChange={(e) => setMenuSearchQuery(e.target.value)}
                                 onClick={(e) => e.stopPropagation()}
-                                autoFocus
+                                autoFocus={window.innerWidth >= 768}
                               />
                             </div>
                           </div>
@@ -2087,7 +2183,7 @@ export const Items = () => {
                               value={menuSearchQuery}
                               onChange={(e) => setMenuSearchQuery(e.target.value)}
                               onClick={(e) => e.stopPropagation()}
-                              autoFocus
+                              autoFocus={window.innerWidth >= 768}
                             />
                           </div>
                         </div>
@@ -2337,7 +2433,7 @@ export const Items = () => {
                                   value={typeMenuSearchQuery}
                                   onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
                                   onClick={(e) => e.stopPropagation()}
-                                  autoFocus
+                                  autoFocus={window.innerWidth >= 768}
                                 />
                               </div>
                             </div>
@@ -2551,7 +2647,7 @@ export const Items = () => {
           <div className="relative">
             <button type="button" onClick={() => setIsRackMgmtOpen(true)} className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 text-[11px] font-bold underline z-10">hiệu chỉnh</button>
             <CustomSelect
-              label="Kệ (Rack)"
+              label="Kệ"
               options={warehouseRacks.map(r => ({ value: r.id || r.ID, label: r.name || r.Name }))}
               value={currentEditingLoc.racks || ''}
               onChange={(e) => {

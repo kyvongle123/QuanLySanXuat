@@ -33,6 +33,7 @@ import { getMaterialCategories } from '../controller/materialCategoriesControlle
 import { getWarehouseTypes, getWarehouseType, createWarehouseType, updateWarehouseType, deleteWarehouseType } from '../controller/warehouseTypesController';
 import { getWarehouseStatuses, getWarehouseStatus, createWarehouseStatus, updateWarehouseStatus, deleteWarehouseStatus } from '../controller/warehouseStatusesController';
 import { getWarehouseBins, getWarehouseBin, createWarehouseBin, updateWarehouseBin, deleteWarehouseBin } from '../controller/warehouseBinsController';
+import { MdAdd } from "react-icons/md";
 import { getRoles } from '../controller/rolesController';
 
 // Component Lịch hiển thị trực tiếp (Inline Calendar) dành cho Mobile
@@ -1726,19 +1727,18 @@ export const MaterialReceipts = () => {
             )}
             <button
               onClick={() => handleOpenModal('add')}
-              className="w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm order-4 sm:order-4"
+              className="flex gap-2 items-center w-full sm:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm order-4 sm:order-4"
             >
-              Thêm phiếu mới
+              <MdAdd />
+              <span className="lg:hidden">Thêm mới</span>
+              <span className="hidden lg:inline">Thêm phiếu mới</span>
             </button>
           </div>
         )}
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-20 text-gray-400">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-          <p className="italic">Đang tải dữ liệu phiếu nhập...</p>
-        </div>
+        <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
           <CustomDatatable
@@ -1806,8 +1806,8 @@ export const MaterialReceipts = () => {
                       {row.inspectationCommitteeList?.length > 0 ? (
                         row.inspectationCommitteeList.map((inspector, idx) => (
                           <div key={idx} className="flex items-center gap-1.5 bg-white border border-gray-100 px-2 py-1 rounded-md shadow-sm">
-                            <div className={`w-1.5 h-1.5 rounded-full ${inspector.isLeader === 1 ? 'bg-orange-500' : 'bg-blue-500'}`} />
-                            <span className="text-[11px] font-bold text-gray-700">{inspector.Name || inspector.name}</span>
+                            <div className={`w-1.2 h-1.2 rounded-full ${inspector.isLeader === 1 ? 'bg-orange-500' : 'bg-blue-500'}`} />
+                            <span className="text-[10px] font-bold text-gray-700">{inspector.Name || inspector.name}</span>
                             <span className="text-[10px] text-gray-400 italic">
                               ({inspector.isLeader === 1 ? 'Trưởng ban' : 'Ủy viên'})
                             </span>
@@ -1951,20 +1951,22 @@ export const MaterialReceipts = () => {
 
                 {/* Thành phần mới: Ban kiểm nghiệm sản phẩm */}
                 <div className="md:col-span-2 flex flex-col gap-1">
-                  <p className="text-[10px] text-gray-500 italic mt-0.5">* Quy định: 1 Trưởng ban và tối đa 2 Ủy ban kiểm nghiệm</p>
-                  <label className={`text-sm font-semibold ${receiptErrors.inspectorPanel ? 'text-red-500' : 'text-gray-700'}`}>
-                    Ban kiểm nghiệm sản phẩm
-                  </label>
+                  <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
+                    <label className={`text-sm font-semibold ${receiptErrors.inspectorPanel ? 'text-red-500' : 'text-gray-700'}`}>
+                      Ban kiểm nghiệm sản phẩm
+                    </label>
+                    <p className="text-[10px] text-gray-500 italic mt-0.5">* Quy định: 1 Trưởng ban và tối đa 2 Ủy ban kiểm nghiệm</p>
+                  </div>
                   {isReceiveMode ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-1.5 p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-1.5 p-1.5 bg-gray-50 border border-gray-200 rounded-xl">
                       {currentReceipt?.inspectationCommitteeList?.length > 0 ? (
                         currentReceipt.inspectationCommitteeList.map((inspector, idx) => (
                           <div key={idx} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm transition-all hover:border-blue-300">
-                            <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${inspector.isLeader === 1 ? 'bg-orange-500 ring-4 ring-orange-50' : 'bg-blue-500 ring-4 ring-blue-50'}`} />
-                            <div className="flex flex-col min-w-0">
+                            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${inspector.isLeader === 1 ? 'bg-orange-500 ring-4 ring-orange-50' : 'bg-blue-500 ring-4 ring-blue-50'}`} />
+                            <div className="flex items-center gap-2 min-w-0">
                               <span className="text-xs font-bold text-gray-800 truncate">{inspector.Name || inspector.name}</span>
-                              <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">
-                                {inspector.isLeader === 1 ? 'Trưởng ban kiểm nghiệm' : 'Ủy ban kiểm nghiệm'}
+                              <span className="text-[10px] text-gray-400 font-medium italic whitespace-nowrap">
+                                ({inspector.isLeader === 1 ? 'Trưởng ban' : 'Ủy viên'})
                               </span>
                             </div>
                           </div>
@@ -1981,9 +1983,6 @@ export const MaterialReceipts = () => {
                       errorMessage={receiptErrors.inspectorPanel}
                       isCommitteeMode={true}
                     />
-                  )}
-                  {!isReceiveMode && (
-                    <p className="text-[10px] text-gray-500 italic mt-0.5">* Quy định: 1 Trưởng ban và tối đa 2 Ủy ban kiểm nghiệm</p>
                   )}
                 </div>
 
@@ -2102,7 +2101,7 @@ export const MaterialReceipts = () => {
 
                 <div className="md:col-span-2 flex flex-col gap-1">
                   <label className="text-sm font-semibold text-gray-700">Điều kiện bảo quản đặc biệt</label>
-                  <textarea name="specialStorageCondition" value={currentReceipt?.specialStorageCondition || ''} onChange={handleInputChange} disabled={isReceiveMode} className={`w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[40px] sm:min-h-[40px] ${isReceiveMode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} ></textarea>
+                  <textarea name="specialStorageCondition" value={currentReceipt?.specialStorageCondition || ''} onChange={handleInputChange} disabled={isReceiveMode} className={`w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[30px] sm:min-h-[30px] ${isReceiveMode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} ></textarea>
                 </div>
               </div>
             )}
@@ -2130,7 +2129,7 @@ export const MaterialReceipts = () => {
                     <button
                       type="button"
                       onClick={handleReceiveWrongInfo}
-                      className="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-6 py-2.5 rounded-lg font-bold transition-colors text-sm"
+                      className="flex-1 sm:flex-none text-black-600 border border-gray-200 px-6 py-2.5 rounded-lg font-bold transition-colors text-sm"
                     >
                       Sai thông tin
                     </button>
@@ -2138,14 +2137,14 @@ export const MaterialReceipts = () => {
                   <button
                     type="button"
                     onClick={handleReceiveConfirm}
-                    className="hidden sm:flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm"
+                    className="hidden sm:flex sm:items-center sm:justify-center bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm sm:flex-none"
                   >
                     Nhận nguyên liệu
                   </button>
                   <button
                     type="button"
                     onClick={handleReceiveConfirm}
-                    className="sm:hidden sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-8 py-1.5 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm"
+                    className="flex items-center justify-center sm:hidden bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm flex-1"
                   >
                     Nhận
                   </button>

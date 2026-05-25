@@ -14,7 +14,7 @@ https://quanlysanxuat.onrender.com
 
 | Username | Password | Vai trò |
 |---|---|---|
-| admin | 123456 | Quản trị viên |
+| admin | 123456 | Nhân viên mua hàng |
 
 > Tài khoản này dùng để trải nghiệm chức năng demo của hệ thống.
 
@@ -43,10 +43,10 @@ Người dùng có thể tiếp cận hệ thống theo luồng sau:
 Vào mục:
 
 ```text
-Nhân viên / Chức vụ
+Nhân sự → Nhân viên / Chức vụ
 ```
 
-Tạo các nhân viên với những chức vụ cần thiết:
+Người dùng có thể tạo nhân viên và chức vụ, nhưng bắt buộc phải có những nhân viên với những chức vụ sau:
 
 - Nhân viên mua hàng
 - Nhân viên kho
@@ -98,11 +98,16 @@ Ví dụ:
 - Đăng nhập bằng tài khoản nhân viên mua hàng
 - Tạo phiếu mua nguyên vật liệu cần thiết
 
-> Tài khoản demo hiện tại sử dụng tài khoản admin
+> Tài khoản admin hiện tại đang là chức vụ nhân viên mua hàng
 
 ---
 
 #### Nhân viên kho nhận nguyên liệu
+
+## 🔐 Tài khoản của nhân viên kho
+| Username | Password | Vai trò |
+|---|---|---|
+| lekyvong | 123456 | Nhân viên kho |
 
 Vào mục:
 
@@ -116,7 +121,7 @@ Thực hiện:
 - Kiểm tra số lượng
 - Kiểm tra thông tin nguyên liệu
 - Đánh dấu báo lỗi nếu có sai sót
-
+- Điền số nguyên liệu đã nhận
 ---
 
 #### Chỉnh sửa phiếu nhập nguyên liệu
@@ -167,10 +172,10 @@ Sau khi kiểm tra nguyên liệu:
 - Quản lý kho
 - Quản lý Tổ sản xuất, nhân viên, chức vụ, máy móc
 - Quản lý Xe hàng, tài xế, giao hàng
-- Chức năng Thêm, Sửa, Xóa, Xuất excel, Thực hiện validation cho tất cả menu
+- Chức năng Thêm, Sửa, Xóa, Xuất excel, Nhập excel, Hiện thông báo, Thực hiện validation cho hầu hết các màn hình
 - Toàn bộ các màn hình đều đã được thiết kế để xem được trên điện thoại
 
-## 🧩 Chức năng chính
+## 🗄️ Chức năng chính
 - Tạo phiếu nhập nguyên liệu
 - Nhận nguyên liệu
 - Tính toán khả năng sản xuất
@@ -205,6 +210,7 @@ Sau khi kiểm tra nguyên liệu:
 **Lê Kỳ Vọng**
 
 Project được xây dựng nhằm phát triển hệ thống quản lý sản xuất cho nhà máy
+Đây là web cá nhân, do chưa dành nhiều thời gian xây dựng nên giao diện và nghiệp vụ của web còn rất nhiều thiếu sót, mong người dùng thông cảm
 
 
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useLocation } from 'react-router-dom';
 import { Search, Plus, FileDown, ChevronDown, Trash2, FileUp, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -11,11 +12,20 @@ import { getWarehouseRacks } from '../controller/warehouseRacksController';
 import { getWarehouseBins } from '../controller/warehouseBinsController';
 import { getWarehouseStatuses, createWarehouseStatus, updateWarehouseStatus, deleteWarehouseStatus } from '../controller/warehouseStatusesController';
 import { LuSquarePen } from "react-icons/lu";
+import { MdAdd } from "react-icons/md";
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
+import { getUsers } from '../controller/usersController';
+import { createNotification } from '../controller/notificationsController';
+import { getCookie } from '../utils/cookieHelper';
 
 const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const Warehouses = () => {
+  const location = useLocation();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [highlightedWarehouseId, setHighlightedWarehouseId] = useState(null);
+
   const [warehouses, setWarehouses] = useState([]);
   const [types, setTypes] = useState([]);
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState([]);
@@ -230,6 +240,33 @@ export const Warehouses = () => {
       );
     });
   }, [warehouses, searchTerm, sections, types]);
+
+  // Reset về trang 1 khi tìm kiếm thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // Logic tự động nhảy trang khi được điều hướng từ thông báo
+  useEffect(() => {
+    const targetId = location.state?.targetWarehouseId;
+    if (targetId && filteredData.length > 0) {
+      const index = filteredData.findIndex(w => getEntityId(w) === targetId);
+      if (index !== -1) {
+        const targetPage = Math.floor(index / rowsPerPage) + 1;
+        setCurrentPage(targetPage);
+
+        // Thiết lập highlight
+        setHighlightedWarehouseId(targetId);
+
+        // Xóa highlight sau 3 giây
+        const timer = setTimeout(() => setHighlightedWarehouseId(null), 3000);
+
+        // Xóa state trong location để tránh nhảy trang lại khi F5
+        window.history.replaceState({}, document.title);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [location.state, filteredData, rowsPerPage]);
 
   const handleAddItem = () => {
     setModalMode('add');
@@ -653,17 +690,17 @@ export const Warehouses = () => {
       render: (_, { index }) => index
     },
     {
-      header: 'Ô (Bin)',
+      header: 'Ô',
       className: '!px-2 sm:!px-6',
       render: (row) => row.bin
     },
     {
-      header: 'Kệ (Rack)',
+      header: 'Kệ',
       className: '!px-2 sm:!px-6',
       render: (row) => <span className="font-bold text-blue-600">{rawRacks.find(r => String(r.value) === String(row.racks || row.Racks))?.label || 'N/A'}</span>
     },
     {
-      header: 'Tầng (Level)',
+      header: 'Tầng',
       className: '!px-2 sm:!px-6',
       render: (row) => `Tầng ${row.level || row.Level}`
     },
@@ -771,8 +808,32 @@ export const Warehouses = () => {
 
     try {
       if (modalMode === 'add') {
-        await createWarehouse(payload);
+        const addedWarehouse = await createWarehouse(payload);
         showNotification("Thêm vị trí kho thành công!");
+
+        // Gửi thông báo cho tất cả người dùng
+        try {
+          const userList = await getUsers();
+          const sender = JSON.parse(getCookie('user') || '{}');
+          const typeLabel = types.find(t => String(t.value) === String(payload.Type))?.label || 'N/A';
+          const locLabel = sections.find(s => String(s.value) === String(payload.Location))?.label || 'N/A';
+
+          const notificationPayload = {
+            message: `Người dùng ${sender?.name || sender?.username} vừa tạo một nhà kho ${locLabel} loại nhà kho ${typeLabel} trong danh sách nhà kho`,
+            type: 'warehouse_created',
+            referenceId: getEntityId(addedWarehouse),
+            Sender: sender?.username,
+            isRead: false,
+            createdAt: new Date().toISOString(),
+            ReferenceType: 'warehouse',
+          };
+
+          await Promise.all((userList.$values || userList).map(u =>
+            createNotification({ ...notificationPayload, Receiver: u.username || u.Username })
+          ));
+        } catch (notifErr) {
+          console.error("Lỗi khi gửi thông báo nhà kho:", notifErr);
+        }
       } else {
         await updateWarehouse(currentEditingItem.id, payload);
         showNotification("Cập nhật vị trí kho thành công!");
@@ -1312,15 +1373,16 @@ export const Warehouses = () => {
             <Trash2 size={18} />
             Xóa nhiều dòng {selectedWarehouseIds.length > 0 && `(${selectedWarehouseIds.length})`}
           </button>
-          <button onClick={handleOpenImportModal} className="order-2 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
+          <button onClick={handleOpenImportModal} className="order-1 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileUp size={18} />
             Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="order-1 lg:order-3 w-full lg:w-auto lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+          <button onClick={handleRequestExportExcel} className="order-2 lg:order-3 w-full lg:w-auto lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+          <button onClick={handleAddItem} className="flex gap-2 items-center order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+            <MdAdd />
             <span className="lg:hidden">Thêm mới</span>
             <span className="hidden lg:inline">Thêm nhà kho mới</span>
           </button>
@@ -1333,6 +1395,18 @@ export const Warehouses = () => {
         <CustomDatatable
           columns={columns}
           data={filteredData}
+          page={currentPage}
+          onPageChange={setCurrentPage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(val) => {
+            setRowsPerPage(val);
+            setCurrentPage(1);
+          }}
+          rowClassName={(row) =>
+            getEntityId(row) === highlightedWarehouseId
+              ? "transition-all duration-500 animate-pulse bg-blue-100"
+              : ""
+          }
           bodyCellClassName="!py-2 lg:!py-3"
           renderExpansion={(row) => (
             <div className="py-4 pl-6 lg:pl-40 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
@@ -1688,7 +1762,7 @@ export const Warehouses = () => {
             {locErrors.bin && <p className="text-xs font-medium text-red-600">{locErrors.bin}</p>}
           </div>
           <CustomSelect
-            label="Kệ (Rack)"
+            label="Kệ"
             options={rawRacks}
             value={currentEditingLoc.racks || ''}
             onChange={(e) => { setLocErrors(prev => ({ ...prev, racks: '' })); setCurrentEditingLoc({ ...currentEditingLoc, racks: e.target.value }); }}

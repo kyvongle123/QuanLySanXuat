@@ -14,6 +14,7 @@ import { getMaterialCategories } from '../controller/materialCategoriesControlle
 import { getProductionSections } from '../controller/productionSectionsController';
 import { getMachines } from '../controller/machinesController';
 import { getUsers } from '../controller/usersController';
+import { MdAdd } from "react-icons/md";
 
 const PortalMultiSelect = ({ label, options, value = [], onChange, placeholder = '-- Chọn --', isModalMaximized = false }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -798,7 +799,8 @@ export const ProductionPlans = () => {
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+          <button onClick={handleAddItem} className="flex gap-2 items-center justify-center w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+            <MdAdd />
             Thêm mới
           </button>
         </div>

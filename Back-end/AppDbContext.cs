@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using MyProject.API.Models;
@@ -95,6 +95,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<MaterialReceiptBatch> MaterialReceiptBatches { get; set; }
 
     public virtual DbSet<MaterialReceiptStatus> MaterialReceiptStatuses { get; set; }
+    public virtual DbSet<Notification> Notifications { get; set; }
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         // Chỉ cấu hình ở đây nếu optionsBuilder chưa được cấu hình từ Program.cs

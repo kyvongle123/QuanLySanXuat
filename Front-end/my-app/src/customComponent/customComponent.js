@@ -2,11 +2,22 @@ import React, { useState, useEffect, useMemo, Fragment, useRef, useLayoutEffect 
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check, ChevronDown, ArrowUp, ArrowDown, CheckCircle, XCircle, Search, Maximize, Minimize, Calendar, X } from 'lucide-react';
 
-export const CustomDatatable = ({ columns, data, renderExpansion, paginationClassName, headerCellClassName, bodyCellClassName, rowClassName }) => {
-  const [currentPage, setCurrentPage] = useState(1);
+export const CustomDatatable = ({ columns, data, renderExpansion, paginationClassName, headerCellClassName, bodyCellClassName, rowClassName, page, onPageChange, rowsPerPage: externalRowsPerPage, onRowsPerPageChange }) => {
+  // Local state chỉ sử dụng nếu không có props điều khiển từ bên ngoài
+  const [internalPage, setInternalPage] = useState(1);
+  const [internalRowsPerPage, setInternalRowsPerPage] = useState(5);
+
+  // Xác định nguồn dữ liệu (ưu tiên Controlled props)
+  const isPageControlled = page !== undefined && onPageChange !== undefined;
+  const currentPage = isPageControlled ? page : internalPage;
+  const setCurrentPage = isPageControlled ? onPageChange : setInternalPage;
+
+  const isRowsPerPageControlled = externalRowsPerPage !== undefined && onRowsPerPageChange !== undefined;
+  const rowsPerPage = isRowsPerPageControlled ? externalRowsPerPage : internalRowsPerPage;
+  const setRowsPerPage = isRowsPerPageControlled ? onRowsPerPageChange : setInternalRowsPerPage;
+
   const [animate, setAnimate] = useState(true);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
-  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [expandedRows, setExpandedRows] = useState({});
 
   const toggleRow = (id) => {
@@ -55,10 +66,6 @@ export const CustomDatatable = ({ columns, data, renderExpansion, paginationClas
     return () => clearTimeout(timer);
   }, [currentPage, sortConfig]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [data?.length, sortConfig]);
-
   if (!data || data.length === 0) {
     return <p className="text-gray-600 p-4">Không có dữ liệu để hiển thị.</p>;
   }
@@ -71,6 +78,9 @@ export const CustomDatatable = ({ columns, data, renderExpansion, paginationClas
 
   const goToPage = (pageNumber) => {
     if (pageNumber >= 1 && pageNumber <= totalPages) {
+      if (onPageChange) {
+        onPageChange(pageNumber);
+      }
       setCurrentPage(pageNumber);
     }
   };
@@ -112,7 +122,7 @@ export const CustomDatatable = ({ columns, data, renderExpansion, paginationClas
             {currentRows.map((row, rowIndex) => {
               const isExpanded = !!expandedRows[row.id];
               const customRowClassName = typeof rowClassName === 'function'
-                ? rowClassName(row, { rowIndex, index: indexOfFirstRow + rowIndex + 1 })
+                ? rowClassName(row, { rowIndex, index: (currentPage - 1) * rowsPerPage + rowIndex + 1 })
                 : rowClassName;
               return (
                 <Fragment key={row.id || rowIndex}>
@@ -120,7 +130,7 @@ export const CustomDatatable = ({ columns, data, renderExpansion, paginationClas
                     {columns.map((column, colIndex) => (
                       <td key={colIndex} className={`px-6 py-4 ${bodyCellClassName || ''} whitespace-nowrap text-sm text-gray-900 ${column.className || ''}`}>
                         {column.render
-                          ? column.render(row, { isExpanded, toggleExpand: () => toggleRow(row.id), index: indexOfFirstRow + rowIndex + 1, rowIndex })
+                          ? column.render(row, { isExpanded, toggleExpand: () => toggleRow(row.id), index: (currentPage - 1) * rowsPerPage + rowIndex + 1, rowIndex })
                           : row[column.accessor]}
                       </td>
                     ))}

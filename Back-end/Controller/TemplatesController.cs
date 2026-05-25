@@ -313,5 +313,28 @@ namespace MyProject.Backend.Controller
                 "MaterialReceiptTemplate.xlsx"
             );
         }
+
+        [HttpGet("import/transport-vehicles")]
+        public IActionResult DownloadTransportVehicleImportTemplate()
+        {
+            var filePath = Path.Combine(
+                _environment.ContentRootPath,
+                "Templates",
+                "ImportTemplate",
+                "TransportVehicleTemplate.xlsx"
+            );
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound(new { message = "Không tìm thấy file mẫu nhập xe vận chuyển." });
+            }
+
+            var stream = System.IO.File.OpenRead(filePath);
+            return File(
+                stream,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "TransportVehicleTemplate.xlsx"
+            );
+        }
     }
 }

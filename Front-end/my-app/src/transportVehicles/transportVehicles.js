@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { MdAdd } from "react-icons/md";
 import { Search, FileUp, FileDown, ChevronRight, Trash2 } from 'lucide-react'; // Đã thêm ChevronRight và Trash2
 import { FaRegSquareMinus, FaRegSquare } from 'react-icons/fa6';
 import { CustomDatatable, Modal, AppNotification, CustomConfirm } from '../customComponent/customComponent';
@@ -20,6 +21,30 @@ export const TransportVehicles = () => {
   const [errors, setErrors] = useState({});
   const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
   const [selectedVehicleIds, setSelectedVehicleIds] = useState([]);
+
+  // States cho Nhập Excel
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [isImporting, setIsImporting] = useState(false);
+
+  // Hàm lấy text từ cell Excel
+  const getExcelText = (cell) => {
+    if (!cell) return '';
+    if (cell.text !== undefined && cell.text !== null) return String(cell.text).trim();
+    if (cell.value === undefined || cell.value === null) return '';
+    if (typeof cell.value === 'object') {
+      if (cell.value.text !== undefined) return String(cell.value.text).trim();
+      if (cell.value.result !== undefined) return String(cell.value.result).trim();
+      if (Array.isArray(cell.value.richText)) return cell.value.richText.map(part => part.text || '').join('').trim();
+    }
+    return String(cell.value).trim();
+  };
+
+  // Hàm chuẩn hóa text để so sánh
+  const normalizeImportText = (value) => String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
 
   const showNotification = (message, type = 'success') => {
     setNotification({ isOpen: true, message, type });
@@ -72,6 +97,85 @@ export const TransportVehicles = () => {
     setIsModalOpen(false);
     setIsModalMaximized(false);
     setErrors({});
+  };
+
+  // Handlers cho Nhập Excel
+  const handleOpenImportModal = () => {
+    setImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setIsImportModalOpen(false);
+    setImportFile(null);
+  };
+
+  const handleProcessImport = async () => {
+    if (!importFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
+    }
+
+    if (!importFile.name.toLowerCase().endsWith('.xlsx')) {
+      showNotification("Vui lòng chọn file định dạng .xlsx", "error");
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      const workbook = new ExcelJS.Workbook();
+      const arrayBuffer = await importFile.arrayBuffer();
+      await workbook.xlsx.load(arrayBuffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có dữ liệu.", "error");
+        return;
+      }
+
+      let createdCount = 0;
+      let updatedCount = 0;
+
+      // Duyệt từ dòng 2 (bỏ qua header)
+      for (let i = 2; i <= worksheet.rowCount; i++) {
+        const row = worksheet.getRow(i);
+        const vehicleCode = getExcelText(row.getCell(2)); // Cột B: Mã số xe
+        const licensePlate = getExcelText(row.getCell(3)); // Cột C: Biển số xe
+
+        if (!vehicleCode) continue;
+
+        // Dò trong danh sách hiện tại
+        const existingVehicle = vehicles.find(v =>
+          normalizeImportText(v.vehicleCode) === normalizeImportText(vehicleCode)
+        );
+
+        const payload = {
+          vehicleCode,
+          licensePlate: licensePlate || (existingVehicle ? existingVehicle.licensePlate : "")
+        };
+
+        if (existingVehicle) {
+          await updateTransportVehicle(existingVehicle.id, { ...existingVehicle, ...payload });
+          updatedCount++;
+        } else {
+          if (!payload.licensePlate) continue; // Bỏ qua nếu thêm mới mà thiếu biển số
+          await createTransportVehicle(payload);
+          createdCount++;
+        }
+      }
+
+      showNotification(`Nhập thành công: Thêm mới ${createdCount}, Cập nhật ${updatedCount}`);
+      handleCloseImportModal();
+      // Tải lại dữ liệu sau khi nhập thành công
+      const vehicleData = await getTransportVehicles();
+      setVehicles(vehicleData);
+
+    } catch (err) {
+      console.error("Import Error:", err);
+      showNotification("Lỗi khi nhập file Excel. Vui lòng kiểm tra lại định dạng file.", "error");
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleBulkDelete = () => {
@@ -243,37 +347,9 @@ export const TransportVehicles = () => {
 
   const columns = [
     {
-      header: '',
-      className: 'w-[30px] text-center !px-1 sm:!px-6',
-      render: (row, { isExpanded, toggleExpand }) => (
-        isBulkSelectMode ? (
-          <input
-            type="checkbox"
-            checked={selectedVehicleIds.includes(row.id)}
-            onChange={() => handleToggleSelectVehicle(row.id)}
-            onClick={(e) => e.stopPropagation()}
-            className="form-checkbox h-4 w-4 text-blue-600 rounded"
-          />
-        ) : (
-          <button
-            onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
-            className="p-1 hover:bg-blue-100 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center"
-          >
-            <ChevronRight size={18} className={`transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-600' : 'text-gray-400'}`} />
-          </button>
-        )
-      ),
-    },
-    {
-      header: isBulkSelectMode ? (
-        <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-xs">
-          <button type="button" onClick={(e) => { e.stopPropagation(); handleSelectAllVehicles(); }} className="font-semibold text-red-600 hover:text-red-700">Tất cả</button>
-          <span className="text-gray-300">/</span>
-          <button type="button" onClick={(e) => { e.stopPropagation(); handleClearSelectedVehicles(); }} className="font-semibold text-gray-500 hover:text-gray-700">Bỏ chọn</button>
-        </div>
-      ) : 'STT',
-      className: 'w-[50px] text-center hidden sm:table-cell',
-      render: isBulkSelectMode ? null : (_, { index }) => index
+      header: 'STT',
+      className: 'w-[50px] text-center !px-1 sm:!px-2',
+      render: (_, { index }) => index
     },
     {
       header: 'Mã số xe',
@@ -282,11 +358,32 @@ export const TransportVehicles = () => {
     },
     { header: 'Biển số xe', accessor: 'licensePlate', className: 'min-w-[120px] sm:w-full' },
     {
-      header: 'Hành động',
-      className: 'text-right pr-2 sm:pr-4 w-[100px] sm:w-[150px]',
+      header: isBulkSelectMode ? (
+        <div className="flex items-center justify-center gap-1 text-[10px] sm:text-[11px] whitespace-nowrap animate-in fade-in duration-300">
+          <button type="button" onClick={(e) => { e.stopPropagation(); handleSelectAllVehicles(); }} className="font-bold text-red-600 hover:text-red-700">Chọn tất cả</button>
+          <span className="text-gray-300">/</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); handleClearSelectedVehicles(); }} className="font-bold text-gray-500 hover:text-gray-700">Bỏ chọn</button>
+        </div>
+      ) : 'Hành động',
+      className: `text-right pr-2 sm:pr-4 ${isBulkSelectMode ? 'w-[140px] sm:w-[200px]' : 'w-[100px] sm:w-[150px]'}`,
       render: (row) => {
         if (isBulkSelectMode) {
-          return null; // Hide action buttons in bulk select mode
+          const isSelected = selectedVehicleIds.includes(row.id);
+          return (
+            <div className="flex justify-center items-center h-full animate-in zoom-in duration-200">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleToggleSelectVehicle(row.id); }}
+                className="transition-all active:scale-90 hover:scale-110"
+              >
+                {isSelected ? (
+                  <FaRegSquareMinus size={22} className="text-red-500" />
+                ) : (
+                  <FaRegSquare size={22} className="text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            </div>
+          );
         }
         return (
           <div className="flex gap-1.5 justify-end whitespace-nowrap">
@@ -316,29 +413,21 @@ export const TransportVehicles = () => {
           />
         </div>
         <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full lg:w-auto">
-          <button className="w-full sm:w-auto justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-1 sm:order-2">
+          <button onClick={handleOpenImportModal} className="w-full sm:w-auto justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-1 sm:order-2">
             <FileUp size={18} /> Nhập Excel
           </button>
           <button onClick={handleRequestExportExcel} className="w-full sm:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-2 sm:order-3">
             <FileDown size={18} /> Xuất Excel
           </button>
-          {isBulkSelectMode ? (
-            <button
-              onClick={handleBulkDelete}
-              className="w-full sm:w-auto justify-center bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-3 sm:order-1"
-            >
-              <Trash2 size={18} /> Xóa đã chọn ({selectedVehicleIds.length})
-            </button>
-          ) : (
-            <button
-              onClick={() => setIsBulkSelectMode(true)}
-              className="w-full sm:w-auto justify-center bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-3 sm:order-1"
-            >
-              <Trash2 size={18} /> Xóa nhiều dòng
-            </button>
-          )}
-          <button onClick={handleOpenAddModal} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm order-4 sm:order-4">
-            + Thêm mới
+          <button
+            onClick={handleBulkDelete}
+            className={`w-full sm:w-auto justify-center ${isBulkSelectMode ? 'bg-red-700 shadow-red-100' : 'bg-red-700'} hover:bg-red-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-md text-sm order-3 sm:order-1`}
+          >
+            <Trash2 size={18} />
+            Xóa nhiều dòng
+          </button>
+          <button onClick={handleOpenAddModal} className="flex gap-2 items-center justify-center w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm order-4 sm:order-4">
+            <MdAdd /> Thêm mới
           </button>
         </div>
       </div>
@@ -417,6 +506,54 @@ export const TransportVehicles = () => {
             <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm">Lưu thông tin</button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal Nhập Excel với thiết kế giống items.js */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="vehicle-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {importFile ? importFile.name : "Chọn file Excel để nhập"}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
+              <input
+                id="vehicle-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => { window.location.href = "https://quanlysanxuat-back-end.onrender.com/api/Templates/import/transport-vehicles"; }}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button type="button" onClick={handleCloseImportModal} className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600">
+              Hủy
+            </button>
+            <button type="button" onClick={handleProcessImport} disabled={isImporting} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
+              {isImporting ? "Đang nhập..." : "Nhập Excel"}
+            </button>
+          </div>
+        </div>
       </Modal>
 
       <CustomConfirm

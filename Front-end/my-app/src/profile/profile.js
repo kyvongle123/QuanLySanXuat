@@ -3,20 +3,25 @@ import { User, Mail, Phone, MapPin, Camera, Save, ArrowLeft, ShieldCheck, Lock }
 import { useNavigate } from 'react-router-dom';
 import { getUser, updateUser, uploadUserAvatar } from '../controller/usersController';
 import { AppNotification } from '../customComponent/customComponent';
+import { getCookie, setCookie } from '../utils/cookieHelper';
 
 export const Profile = () => {
   // Định nghĩa địa chỉ máy chủ Back-end để lấy tệp tĩnh từ wwwroot
-  const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/';
+  const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com';
 
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    username: '',
-    userAvatar: null
+  const [loading, setLoading] = useState(false);
+  const [userData, setUserData] = useState(() => {
+    const storedUser = JSON.parse(getCookie('user') || 'null');
+    return {
+      name: storedUser?.name || '',
+      email: storedUser?.email || '',
+      phone: storedUser?.phone || '',
+      address: storedUser?.address || '',
+      username: storedUser?.username || '',
+      userAvatar: storedUser?.userAvatar || storedUser?.UserAvatar || null,
+      id: storedUser?.id || null
+    };
   });
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [activeTab, setActiveTab] = useState('personalInfo'); // State for active tab
@@ -32,7 +37,7 @@ export const Profile = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const storedUser = JSON.parse(localStorage.getItem('user'));
+        const storedUser = JSON.parse(getCookie('user') || 'null');
         if (!storedUser || !storedUser.id) {
           navigate('/login');
           return;
@@ -71,11 +76,17 @@ export const Profile = () => {
   const getAvatarUrl = () => {
     if (avatarPreviewUrl) return avatarPreviewUrl;
 
-    const path = userData.userAvatar;
+    const path = userData.userAvatar || userData.UserAvatar;
     if (!path) return null;
 
-    // Nếu path bắt đầu bằng 'data:', đó là ảnh base64 người dùng vừa chọn. Ngược lại là đường dẫn từ server.
-    return path.startsWith('data:') ? path : `${API_BASE_URL}${path}`;
+    // Nếu path đã là URL tuyệt đối hoặc base64 thì trả về luôn
+    if (path.startsWith('data:') || path.startsWith('http')) {
+      return path;
+    }
+
+    // Đảm bảo có dấu / hợp lệ giữa host và đường dẫn
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    return `${API_BASE_URL}${normalizedPath}`;
   };
 
   const handleInputChange = (e) => {
@@ -132,9 +143,11 @@ export const Profile = () => {
         });
       }
 
-      // Cập nhật lại tên hiển thị trong localStorage nếu người dùng đổi tên
-      const currentUser = JSON.parse(localStorage.getItem('user'));
-      localStorage.setItem('user', JSON.stringify({ ...currentUser, name: userData.name, userAvatar: updatedData.userAvatar || updatedData.UserAvatar }));
+      // Cập nhật lại thông tin người dùng trong Cookies
+      const currentUser = JSON.parse(getCookie('user') || '{}');
+      const updatedUser = { ...currentUser, name: userData.name, userAvatar: updatedData.userAvatar || updatedData.UserAvatar };
+      setCookie('user', JSON.stringify(updatedUser), 86400);
+
       setUserData(prev => ({ ...prev, userAvatar: updatedData.userAvatar || updatedData.UserAvatar }));
 
       setNotification({ isOpen: true, message: 'Cập nhật hồ sơ thành công!', type: 'success' });

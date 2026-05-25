@@ -11,6 +11,7 @@ import {
   updateProductionSection,
   deleteProductionSection
 } from '../controller/productionSectionsController';
+import { MdAdd } from "react-icons/md";
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 
 const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
@@ -866,8 +867,9 @@ export const Stages = () => {
           </button>
           <button
             onClick={handleAddItem}
-            className="order-4 w-full lg:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
+            className="flex gap-2 items-center order-4 w-full lg:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
+            <MdAdd />
             <span className="lg:hidden">Thêm mới</span>
             <span className="hidden lg:inline">Thêm công đoạn</span>
           </button>

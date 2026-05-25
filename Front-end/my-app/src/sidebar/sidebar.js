@@ -289,7 +289,7 @@ export const Sidebar = ({ isOpen, onToggleSidebar }) => {
         )}
 
         {/* Nhóm Nhân sự với Hover Menu */}
-        {isOpen && isVisible(['Nhân sự', 'Nhân viên', 'Ca', 'Chức vụ']) && (
+        {isOpen && isVisible(['Nhân sự', 'Nhân viên', 'Chức vụ']) && (
           <div
             onClick={() => handleMenuClick('nhansu')}
             className="relative group px-3 py-2 rounded-lg lg:hover:bg-gray-700 cursor-pointer transition-all text-gray-300 hover:text-white"
@@ -308,10 +308,6 @@ export const Sidebar = ({ isOpen, onToggleSidebar }) => {
                 <Link to="/users" onClick={handleSubmenuLinkClick} className={`flex items-center gap-2 px-3 py-2 text-xs transition-colors ${location.pathname === '/users' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${location.pathname === '/users' ? 'bg-white' : 'bg-gray-500'}`}></div>
                   Nhân viên
-                </Link>
-                <Link to="/shifts" onClick={handleSubmenuLinkClick} className={`flex items-center gap-2 px-3 py-2 text-xs transition-colors ${location.pathname === '/shifts' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${location.pathname === '/shifts' ? 'bg-white' : 'bg-gray-500'}`}></div>
-                  Ca
                 </Link>
                 <Link to="/roles" onClick={handleSubmenuLinkClick} className={`flex items-center gap-2 px-3 py-2 text-xs transition-colors ${location.pathname === '/roles' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${location.pathname === '/roles' ? 'bg-white' : 'bg-gray-500'}`}></div>

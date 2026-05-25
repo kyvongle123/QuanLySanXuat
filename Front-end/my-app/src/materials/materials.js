@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useLocation } from 'react-router-dom';
 import { Search, Plus, FileDown, ChevronDown, FileUp, ChevronRight, Trash2 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -12,13 +13,22 @@ import { getWarehouseRacks } from '../controller/warehouseRacksController';
 import { createWarehouseType, deleteWarehouseType, getWarehouseTypes, updateWarehouseType } from '../controller/warehouseTypesController';
 import { getWarehouseStatuses } from '../controller/warehouseStatusesController';
 import { getUnits } from '../controller/unitsController';
+import { MdAdd } from "react-icons/md";
 import { LuSquarePen } from "react-icons/lu";
 import { getWarehouseBins } from '../controller/warehouseBinsController';
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
+import { createNotification } from '../controller/notificationsController';
+import { getUsers } from '../controller/usersController';
+import { getCookie } from '../utils/cookieHelper';
 
 const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const Material = () => {
+  const location = useLocation();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [highlightedMaterialId, setHighlightedMaterialId] = useState(null);
+
   const [materials, setMaterials] = useState([]);
   const [types, setTypes] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -53,6 +63,7 @@ export const Material = () => {
   const [openLocationMenuId, setOpenLocationMenuId] = useState(null);
   const [openLocationMenuAnchorKey, setOpenLocationMenuAnchorKey] = useState(null);
   const [locationMenuRect, setLocationMenuRect] = useState(null);
+  const [newMaterial, setNewMaterial] = useState({});
   const locationMenuAnchorRefs = useRef({});
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [openTypeMenuId, setOpenTypeMenuId] = useState(null);
@@ -90,6 +101,7 @@ export const Material = () => {
   const [warehouseErrors, setWarehouseErrors] = useState({});
 
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
+  const [currentUser, setCurrentUser] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
 
   const getEntityId = (entity) => entity?.id || entity?.ID || entity?.Id;
@@ -142,6 +154,14 @@ export const Material = () => {
     };
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
+  }, []);
+
+  // Lấy thông tin người dùng từ localStorage khi component mount
+  useEffect(() => {
+    const storedUser = getCookie('user');
+    if (storedUser) {
+      setCurrentUser(JSON.parse(storedUser));
+    }
   }, []);
 
   useEffect(() => {
@@ -253,6 +273,33 @@ export const Material = () => {
       );
     });
   }, [materials, searchTerm, categories, warehouses]);
+
+  // Reset về trang 1 khi tìm kiếm thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // Logic tự động nhảy trang khi được điều hướng từ thông báo (Áp dụng từ items.js)
+  useEffect(() => {
+    const targetId = location.state?.targetMaterialId;
+    if (targetId && filteredData.length > 0) {
+      const index = filteredData.findIndex(m => getEntityId(m) === targetId);
+      if (index !== -1) {
+        const targetPage = Math.floor(index / rowsPerPage) + 1;
+        setCurrentPage(targetPage);
+
+        // Thiết lập highlight
+        setHighlightedMaterialId(targetId);
+
+        // Xóa highlight sau 3 giây
+        const timer = setTimeout(() => setHighlightedMaterialId(null), 3000);
+
+        // Xóa state trong location để tránh nhảy trang lại khi F5
+        window.history.replaceState({}, document.title);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [location.state, filteredData, rowsPerPage]);
 
   const handleOpenCategoryEdit = (mode, category = null) => {
     setCategoryModalMode(mode);
@@ -411,8 +458,34 @@ export const Material = () => {
         location: editingWarehouse.location === '' ? null : parseInt(editingWarehouse.location),
       };
       if (warehouseModalMode === 'add') {
-        await createWarehouse(payload);
+        const addedWarehouse = await createWarehouse(payload);
         showNotification("Thêm nhà kho thành công!");
+
+        // Gửi thông báo cho tất cả người dùng
+        try {
+          const userList = await getUsers();
+          const sender = JSON.parse(getCookie('user') || '{}');
+          const typeLabel = warehouseTypes.find(t => String(t.value) === String(payload.type))?.label || 'N/A';
+          const locLabel = warehouseLocations.find(l => String(l.value) === String(payload.location))?.label || 'N/A';
+
+          if (currentUser) {
+            const notificationPayload = {
+              message: `Người dùng ${currentUser.name} vừa tạo một nhà kho ${locLabel} có loại kho ${typeLabel} trong danh sách loại kho`,
+              type: 'warehouse_created',
+              referenceId: getEntityId(addedWarehouse),
+              Sender: sender?.username,
+              isRead: false,
+              createdAt: new Date().toISOString(),
+              ReferenceType: 'warehouse',
+            };
+
+            await Promise.all((userList.$values || userList).map(u =>
+              createNotification({ ...notificationPayload, Receiver: u.username || u.Username })
+            ));
+          }
+        } catch (notifErr) {
+          console.error("Lỗi khi gửi thông báo nhà kho:", notifErr);
+        }
       } else {
         await updateWarehouse(editingWarehouse.id, payload);
         showNotification("Cập nhật nhà kho thành công!");
@@ -521,17 +594,17 @@ export const Material = () => {
       render: (_, { index }) => index
     },
     {
-      header: 'Ô (Bin)',
+      header: 'Ô',
       className: '!px-2 sm:!px-6',
       render: (row) => `${row.bin || row.Bin}`
     },
     {
-      header: 'Kệ (Rack)',
+      header: 'Kệ',
       className: '!px-2 sm:!px-6',
       render: (row) => <span className="font-bold text-blue-600">{warehouseRacks.find(r => String(r.id || r.ID) === String(row.racks || row.Racks))?.name || 'N/A'}</span>
     },
     {
-      header: 'Tầng (Level)',
+      header: 'Tầng',
       className: '!px-2 sm:!px-6',
       render: (row) => `Tầng ${row.level || row.Level}`
     },
@@ -639,9 +712,29 @@ export const Material = () => {
 
     try {
       if (modalMode === 'add') {
-        const newItem = await createMaterial(payload);
-        setMaterials(prev => [...prev, newItem]);
+        const userList = await getUsers();
+        const newMaterial = await createMaterial(payload);
+        const sender = JSON.parse(getCookie('user') || '{}');
+        setMaterials(prev => [...prev, newMaterial]);
         showNotification("Thêm nguyên liệu thành công!");
+        let notificationPayload = null;
+        if (currentUser) {
+          notificationPayload = {
+            receiver: '', // Sẽ gán trong vòng lặp
+            message: `Người dùng ${currentUser.name} vừa tạo một nguyên liệu ${categories.find(c => String(c.value) === String(newMaterial.name))?.label || 'mới'} trong danh sách nguyên liệu`,
+            type: 'material_created',
+            referenceId: newMaterial.id,
+            Sender: sender?.username,
+            isRead: false,
+            createdAt: new Date().toISOString(),
+            ReferenceType: 'material',
+          };
+        }
+
+
+        await Promise.all((userList.$values || userList).map(u =>
+          createNotification({ ...notificationPayload, Receiver: u.username || u.Username })
+        ));
       } else {
         const updated = await updateMaterial(currentEditingItem.id, payload);
         setMaterials(prev => prev.map(m => m.id === updated.id ? updated : m));
@@ -1144,7 +1237,7 @@ export const Material = () => {
                     value={menuSearchQuery}
                     onChange={(e) => setMenuSearchQuery(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
-                    autoFocus
+                    autoFocus={window.innerWidth >= 768}
                   />
                 </div>
               </div>
@@ -1211,7 +1304,7 @@ export const Material = () => {
                       value={typeMenuSearchQuery}
                       onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      autoFocus
+                      autoFocus={window.innerWidth >= 768}
                     />
                   </div>
                 </div>
@@ -1333,7 +1426,7 @@ export const Material = () => {
               value={menuSearchQuery}
               onChange={(e) => setMenuSearchQuery(e.target.value)}
               onClick={(e) => e.stopPropagation()}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
           </div>
         </div>
@@ -1453,7 +1546,7 @@ export const Material = () => {
                     value={menuSearchQuery}
                     onChange={(e) => setMenuSearchQuery(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
-                    autoFocus
+                    autoFocus={window.innerWidth >= 768}
                   />
                 </div>
               </div>
@@ -1583,7 +1676,8 @@ export const Material = () => {
             <FileDown size={18} />
             Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+          <button onClick={handleAddItem} className="flex gap-2 items-center order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+            <MdAdd />
             <span className="lg:hidden">Thêm mới</span>
             <span className="hidden lg:inline">Thêm nguyên liệu mới</span>
           </button>
@@ -1596,6 +1690,18 @@ export const Material = () => {
         <CustomDatatable
           columns={columns}
           data={filteredData}
+          page={currentPage}
+          onPageChange={setCurrentPage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(val) => {
+            setRowsPerPage(val);
+            setCurrentPage(1);
+          }}
+          rowClassName={(row) =>
+            getEntityId(row) === highlightedMaterialId
+              ? "transition-all duration-500 animate-pulse"
+              : ""
+          }
           bodyCellClassName="!py-2 lg:!py-3"
           renderExpansion={(row) => (
             <div className="py-4 pl-6 lg:pl-40 pr-6 bg-blue-50/30 border-b border-gray-100 relative">
@@ -1652,7 +1758,7 @@ export const Material = () => {
                               value={menuSearchQuery}
                               onChange={(e) => setMenuSearchQuery(e.target.value)}
                               onClick={(e) => e.stopPropagation()}
-                              autoFocus
+                              autoFocus={window.innerWidth >= 768}
                             />
                           </div>
                         </div>
@@ -1882,7 +1988,7 @@ export const Material = () => {
                                   value={typeMenuSearchQuery}
                                   onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
                                   onClick={(e) => e.stopPropagation()}
-                                  autoFocus
+                                  autoFocus={window.innerWidth >= 768}
                                 />
                               </div>
                             </div>
@@ -1982,7 +2088,7 @@ export const Material = () => {
                                   value={typeMenuSearchQuery}
                                   onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
                                   onClick={(e) => e.stopPropagation()}
-                                  autoFocus
+                                  autoFocus={window.innerWidth >= 768}
                                 />
                               </div>
                             </div>
@@ -2028,7 +2134,7 @@ export const Material = () => {
         <form onSubmit={handleSaveCategory} className="space-y-4">
           <div className="flex flex-col gap-1">
             <label className={`font-medium ${categoryErrors.name ? 'text-red-600' : 'text-gray-700'} ${isCategoryEditMaximized ? 'text-sm' : 'text-xs'}`}>Tên danh mục</label>
-            <input type="text" value={categoryForm.name || ''} onChange={(e) => { setCategoryErrors(prev => ({ ...prev, name: '' })); setCategoryForm({ ...categoryForm, name: e.target.value }); }} className={`w-full border ${categoryErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isCategoryEditMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`} autoFocus />
+            <input type="text" value={categoryForm.name || ''} onChange={(e) => { setCategoryErrors(prev => ({ ...prev, name: '' })); setCategoryForm({ ...categoryForm, name: e.target.value }); }} className={`w-full border ${categoryErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isCategoryEditMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`} autoFocus={window.innerWidth >= 768} />
             {categoryErrors.name && <p className="text-xs font-medium text-red-600">{categoryErrors.name}</p>}
           </div>
           <CustomSelect
@@ -2225,9 +2331,9 @@ export const Material = () => {
             />
             {locErrors.bin && <p className="text-xs font-medium text-red-600">{locErrors.bin}</p>}
           </div>
-          <CustomSelect label="Kệ (Rack)" options={warehouseRacks.map(r => ({ value: r.id || r.ID, label: r.name || r.Name }))} value={currentEditingLoc.racks || ''} onChange={(e) => { setLocErrors(prev => ({ ...prev, racks: '' })); setCurrentEditingLoc({ ...currentEditingLoc, racks: e.target.value }); }} isModalMaximized={isLocEditMaximized} error={!!locErrors.racks} errorMessage={locErrors.racks} />
+          <CustomSelect label="Kệ" options={warehouseRacks.map(r => ({ value: r.id || r.ID, label: r.name || r.Name }))} value={currentEditingLoc.racks || ''} onChange={(e) => { setLocErrors(prev => ({ ...prev, racks: '' })); setCurrentEditingLoc({ ...currentEditingLoc, racks: e.target.value }); }} isModalMaximized={isLocEditMaximized} error={!!locErrors.racks} errorMessage={locErrors.racks} />
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${locErrors.level ? 'text-red-600' : 'text-gray-700'}`}>Tầng (Level)</label>
+            <label className={`text-xs font-medium ${locErrors.level ? 'text-red-600' : 'text-gray-700'}`}>Tầng</label>
             <input
               type="number"
               value={currentEditingLoc.level ?? ''}

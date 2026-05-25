@@ -8,6 +8,7 @@ import { getWarehouseLocations, createWarehouseLocation, updateWarehouseLocation
 import { getWarehouseRacks, createWarehouseRack, updateWarehouseRack, deleteWarehouseRack } from '../controller/warehouseRacksController';
 import { getWarehouseBins, createWarehouseBin, updateWarehouseBin, deleteWarehouseBin } from '../controller/warehouseBinsController'; // Import all CRUD functions for bins
 import { LuSquarePen } from "react-icons/lu";
+import { MdAdd } from "react-icons/md";
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 
 const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
@@ -36,7 +37,7 @@ export const WarehouseLocations = () => {
   const [notification, setNotification] = useState({ isOpen: false, message: '', type: 'success' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
 
-  // Quản lý Ô (Bins)
+  // Quản lý Ô
   const [isBinMgmtOpen, setIsBinMgmtOpen] = useState(false);
   const [binSearchTerm, setBinSearchTerm] = useState('');
   const [isBinEditModalOpen, setIsBinEditModalOpen] = useState(false);
@@ -44,7 +45,7 @@ export const WarehouseLocations = () => {
   const [currentEditingBin, setCurrentEditingBin] = useState({ name: '' }); // Ensure ID is handled if editing
   const [binConfirmModal, setBinConfirmModal] = useState({ isOpen: false, id: null });
 
-  // Quản lý Kệ (Racks) - Tương tự như Bins
+  // Quản lý Kệ - Tương tự như Ô
   const [isRackMgmtOpen, setIsRackMgmtOpen] = useState(false);
   const [rackSearchTerm, setRackSearchTerm] = useState('');
   const [isRackEditModalOpen, setIsRackEditModalOpen] = useState(false);
@@ -679,9 +680,9 @@ export const WarehouseLocations = () => {
       worksheet.columns = [
         { header: 'STT', key: 'stt', width: 10 },
         { header: 'Mã vị trí', key: 'locationCode', width: 18 },
-        { header: 'Ô (Bin)', key: 'bin', width: 20 },
-        { header: 'Kệ (Rack)', key: 'racks', width: 20 },
-        { header: 'Tầng (Level)', key: 'level', width: 15 },
+        { header: 'Ô', key: 'bin', width: 20 },
+        { header: 'Kệ', key: 'racks', width: 20 },
+        { header: 'Tầng', key: 'level', width: 15 },
       ];
 
       filteredData.forEach((loc, index) => {
@@ -767,13 +768,13 @@ export const WarehouseLocations = () => {
       render: (row) => row.locationCode || row.LocationCode || '--'
     },
     {
-      header: 'Ô (Bin)',
+      header: 'Ô',
       className: 'hidden sm:table-cell text-[11px] sm:text-sm !px-2 sm:!px-6',
       headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
       render: (row) => `${row.bin || row.Bin}`
     },
     {
-      header: 'Kệ (Rack)',
+      header: 'Kệ',
       className: 'hidden sm:table-cell w-36 sm:w-48 !px-2 sm:!px-6',
       headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
       render: (row) => (
@@ -839,7 +840,7 @@ export const WarehouseLocations = () => {
       )
     },
     {
-      header: 'Tầng (Level)',
+      header: 'Tầng',
       className: 'hidden sm:table-cell text-[11px] sm:text-sm !px-2 sm:!px-6',
       headerCellClassName: 'hidden sm:table-cell text-[10px] sm:text-sm',
       render: (row) => `Tầng ${row.level || row.Level}`
@@ -951,7 +952,8 @@ export const WarehouseLocations = () => {
             <Trash2 size={18} />
             Xóa nhiều dòng {selectedLocationIds.length > 0 && `(${selectedLocationIds.length})`}
           </button>
-          <button onClick={handleAddItem} className="order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+          <button onClick={handleAddItem} className="flex gap-2 items-center order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap flex items-center gap-2 transition-colors text-sm">
+            <MdAdd />
             <span className="lg:hidden">Thêm mới</span>
             <span className="hidden lg:inline">Thêm vị trí mới</span>
           </button>
@@ -1011,14 +1013,14 @@ export const WarehouseLocations = () => {
             {modalErrors.bin && <p className="text-xs font-medium text-red-600">{modalErrors.bin}</p>}
           </div>
 
-          {/* Nút hiệu chỉnh cho Kệ (Rack) */}
+          {/* Nút hiệu chỉnh cho Kệ */}
           <div className="relative">
             <div className="absolute right-0 -top-1 z-20">
               <button type="button" onClick={() => setIsRackMgmtOpen(true)} className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline transition-colors p-1">
                 hiệu chỉnh
               </button>
             </div>
-            <CustomSelect label="Kệ (Rack)" options={racks} value={currentEditingItem?.racks || ''} onChange={(e) => { setModalErrors(prev => ({ ...prev, racks: '' })); setCurrentEditingItem({ ...currentEditingItem, racks: e.target.value }); }} isModalMaximized={isModalMaximized} error={!!modalErrors.racks} errorMessage={modalErrors.racks} />
+            <CustomSelect label="Kệ" options={racks} value={currentEditingItem?.racks || ''} onChange={(e) => { setModalErrors(prev => ({ ...prev, racks: '' })); setCurrentEditingItem({ ...currentEditingItem, racks: e.target.value }); }} isModalMaximized={isModalMaximized} error={!!modalErrors.racks} errorMessage={modalErrors.racks} />
           </div>
 
           <div className="flex flex-col gap-1">

@@ -12,6 +12,7 @@ import { getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse } from
 import { getMaterialCategories, createMaterialCategory, updateMaterialCategory, deleteMaterialCategory } from '../controller/materialCategoriesController';
 import { getMaterials, createMaterial, updateMaterial, deleteMaterial } from '../controller/materialsController';
 import { getUnits } from '../controller/unitsController';
+import { MdAdd } from "react-icons/md";
 import { getWarehouseBins } from '../controller/warehouseBinsController';
 import { createWarehouseRack, deleteWarehouseRack, getWarehouseRacks, updateWarehouseRack } from '../controller/warehouseRacksController';
 import { createWarehouseLocation, getWarehouseLocations, updateWarehouseLocation } from '../controller/warehouseLocationsController';
@@ -51,7 +52,6 @@ export const BOM = () => {
   const [openCategoryMenuId, setOpenCategoryMenuId] = useState(null);
   const [openStatusMenuId, setOpenStatusMenuId] = useState(null);
   const [openManufactoryMenuId, setOpenManufactoryMenuId] = useState(null);
-  const [openLocationMenuId, setOpenLocationMenuId] = useState(null);
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [selectedItemIds, setSelectedItemIds] = useState([]);
   const [isCategoryEditModalOpen, setIsCategoryEditModalOpen] = useState(false);
@@ -122,6 +122,11 @@ export const BOM = () => {
   const [itemForm, setItemForm] = useState({ name: '', price: '', description: '', category: '', inventory: 0, tax: 0, weight: 0, status: '', location: '' });
   const [isItemEditMaximized, setIsItemEditMaximized] = useState(false);
 
+  // States cho menu Vị trí kho (Location)
+  const [openLocationMenuId, setOpenLocationMenuId] = useState(null);
+  const [openLocationMenuAnchorKey, setOpenLocationMenuAnchorKey] = useState(null);
+  const [locationMenuRect, setLocationMenuRect] = useState(null);
+
   // States cho Quản lý Nguyên liệu (giống materials.js)
   const [isMaterialMgmtModalOpen, setIsMaterialMgmtModalOpen] = useState(false);
   const [isMaterialMgmtMaximized, setIsMaterialMgmtMaximized] = useState(false);
@@ -155,6 +160,33 @@ export const BOM = () => {
   const [modalMode, setModalMode] = useState('add');
   const [currentEditingItem, setCurrentEditingItem] = useState({ bomCode: '', item: '', materialCategory: '', requiredQuantity: 0 });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
+  const locationMenuAnchorRefs = useRef({})
+
+  // Logic cập nhật tọa độ cho menu Vị trí (Location) khi scroll/resize
+  useEffect(() => {
+    if (!openLocationMenuId || !openLocationMenuAnchorKey) return;
+
+    const updateLocationMenuRect = () => {
+      const anchor = locationMenuAnchorRefs.current[openLocationMenuAnchorKey];
+      if (!anchor) return;
+
+      const rect = anchor.getBoundingClientRect();
+      setLocationMenuRect({
+        left: rect.left,
+        top: rect.bottom + 4,
+        width: Math.max(rect.width, 200),
+      });
+    };
+
+    updateLocationMenuRect();
+    window.addEventListener('resize', updateLocationMenuRect);
+    window.addEventListener('scroll', updateLocationMenuRect, true);
+
+    return () => {
+      window.removeEventListener('resize', updateLocationMenuRect);
+      window.removeEventListener('scroll', updateLocationMenuRect, true);
+    };
+  }, [openLocationMenuId, openLocationMenuAnchorKey]);
 
   // Alias để tương thích với code copy từ items.js
   const categories = itemCategories;
@@ -218,8 +250,8 @@ export const BOM = () => {
       const rect = anchor.getBoundingClientRect();
       setMaterialMenuRect({
         left: rect.left,
-        top: rect.bottom + 8,
-        width: rect.width,
+        top: rect.bottom + 4,
+        width: Math.max(rect.width, 200),
       });
     };
 
@@ -424,6 +456,72 @@ export const BOM = () => {
     } catch (err) {
       showNotification("Lỗi khi lưu nguyên liệu.", "error");
     }
+  };
+
+  const toggleMaterialLocationMenu = (e, rowId, anchorKey) => {
+    e.stopPropagation();
+    const isSameMenuOpen = openLocationMenuId === rowId && openLocationMenuAnchorKey === anchorKey;
+
+    if (isSameMenuOpen) {
+      setOpenLocationMenuId(null);
+      setOpenLocationMenuAnchorKey(null);
+      setLocationMenuRect(null);
+      return;
+    }
+
+    setMenuSearchQuery('');
+    setOpenLocationMenuId(rowId);
+    setOpenLocationMenuAnchorKey(anchorKey);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    setLocationMenuRect({
+      left: rect.left,
+      top: rect.bottom + 4,
+      width: Math.max(rect.width, 200),
+    });
+  };
+
+  const renderMaterialLocationMenu = (row, anchorKey) => {
+    if (openLocationMenuId !== row.id || openLocationMenuAnchorKey !== anchorKey || !locationMenuRect) return null;
+
+    return createPortal(
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fixed bg-white rounded-md shadow-2xl z-[9999] border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal"
+        style={{
+          left: locationMenuRect.left,
+          top: locationMenuRect.top,
+          width: locationMenuRect.width,
+        }}
+      >
+        <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+          <div className="relative">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
+              placeholder="Lọc vị trí"
+              value={menuSearchQuery}
+              onChange={(e) => setMenuSearchQuery(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus={window.innerWidth >= 768}
+            />
+          </div>
+        </div>
+        <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
+          {warehouses.filter(w => w.label.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
+            <button
+              key={w.value}
+              onClick={() => handleLocationChange(row, w.value)}
+              className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location) === String(w.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              <span className="block w-full !whitespace-normal break-words leading-tight">{w.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body
+    );
   };
 
   const filteredItemsForMgmt = useMemo(() => {
@@ -1886,12 +1984,12 @@ export const BOM = () => {
       render: (_, { index }) => index
     },
     {
-      header: 'Ô (Bin)',
+      header: 'Ô',
       className: '!px-2 sm:!px-6',
       render: (row) => `${row.bin || row.Bin}`
     },
     {
-      header: 'Kệ (Rack)',
+      header: 'Kệ',
       className: '!px-2 sm:!px-6',
       render: (row) =>
         // <span className="font-bold text-blue-600">{warehouseRacks.find(r => String(r.id || r.ID) === String(row.racks || row.Racks))?.name || 'N/A'}</span>
@@ -1955,7 +2053,7 @@ export const BOM = () => {
         </div>
     },
     {
-      header: 'Tầng (Level)',
+      header: 'Tầng',
       className: '!px-2 sm:!px-6',
       render: (row) => `Tầng ${row.level || row.Level}`
     },
@@ -2099,8 +2197,8 @@ export const BOM = () => {
     const rect = e.currentTarget.getBoundingClientRect();
     setMaterialMenuRect({
       left: rect.left,
-      top: rect.bottom + 8,
-      width: rect.width,
+      top: rect.bottom + 4,
+      width: Math.max(rect.width, 200),
     });
   };
 
@@ -2118,7 +2216,7 @@ export const BOM = () => {
         }}
       >
         <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
-          <div className="relative group">
+          <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
             <input
               type="text"
@@ -2127,7 +2225,7 @@ export const BOM = () => {
               value={materialMenuSearchQuery}
               onChange={(e) => setMaterialMenuSearchQuery(e.target.value)}
               onClick={(e) => e.stopPropagation()}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
           </div>
         </div>
@@ -2321,20 +2419,15 @@ export const BOM = () => {
                   <ChevronDown size={14} />
                 </div>
               </div>
-              {/* Giao diện trên Mobile: Thẻ xám chữ đen n x Nguyên liệu */}
-              <div className="sm:hidden bg-white border border-gray-300 text-black px-2 py-1.5 rounded-lg flex items-center justify-between shadow-sm">
-                <span className="truncate text-[11px] sm:text-sm">{row.requiredQuantity} x {materialLabel}</span>
-                <ChevronDown size={14} className="text-gray-500 ml-1 shrink-0" />
-              </div>
             </button>
 
             {renderMaterialMenu(row, `bom-material-${row.id}`)}
 
             {false && isOpen && (
-              <div className="absolute left-0 top-full mt-2 w-full bg-white rounded-xl shadow-2xl z-30 border border-gray-100 p-1.5 flex flex-col animate-in fade-in zoom-in duration-300 origin-top whitespace-normal">
+              <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-xl shadow-2xl z-30 border border-gray-100 p-1.5 flex flex-col animate-in fade-in zoom-in duration-300 origin-top whitespace-normal">
                 <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
-                  <div className="relative group">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                  <div className="relative">
+                    <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                     <input
                       type="text"
                       className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50/50 text-gray-900"
@@ -2345,46 +2438,6 @@ export const BOM = () => {
                       autoFocus
                     />
                   </div>
-                </div>
-
-                {/* Giao diện Menu cho Mobile: Giữ nguyên logic nhập số lượng nhanh */}
-                <div className="sm:hidden max-h-60 overflow-y-auto flex flex-col gap-1 px-1">
-                  {materials.filter(m => (m.label || '').toLowerCase().includes(materialMenuSearchQuery.toLowerCase())).map((m) => (
-                    <button
-                      key={m.value}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const isCurrentlyFocused = focusedMaterialId === m.value;
-                        setFocusedMaterialId(isCurrentlyFocused ? null : m.value);
-                        setTempQuantity(row.requiredQuantity);
-                      }}
-                      className={`px-2 py-2.5 text-[11px] rounded-lg transition-colors text-left flex items-center min-w-0 group ${String(row.materialCategory) === String(m.value) || focusedMaterialId === m.value ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
-                    >
-                      <span className="truncate">{m.label}</span>
-                      <div className={`${focusedMaterialId === m.value ? 'flex' : 'hidden'} items-center gap-1.5 ml-1.5 shrink-0 animate-in fade-in duration-200`}>
-                        <span className="text-gray-400 font-normal whitespace-nowrap">SL:</span>
-                        <input
-                          type="number"
-                          className="w-10 border border-gray-300 rounded px-1 py-0 text-black font-normal outline-none focus:ring-1 focus:ring-blue-500 bg-white h-5 text-[10px]"
-                          value={focusedMaterialId === m.value ? tempQuantity : row.requiredQuantity}
-                          onChange={(e) => setTempQuantity(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => e.stopPropagation()}
-                        />
-                        <span className="text-gray-400 font-normal text-[9px]">{m.unit}</span>
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const qty = focusedMaterialId === m.value ? tempQuantity : row.requiredQuantity;
-                            handleBOMQuickUpdate(row, m.value, qty);
-                          }}
-                          className="ml-0.5 text-green-600 px-2 py-0.5 rounded text-[9px] hover:bg-green-700 active:scale-95 transition-all cursor-pointer"
-                        >
-                          Chọn
-                        </div>
-                      </div>
-                    </button>
-                  ))}
                 </div>
 
                 {/* Giao diện Menu cho Desktop: Thiết kế chuyên nghiệp, đồng bộ với nhãn hiển thị */}
@@ -2528,25 +2581,25 @@ export const BOM = () => {
               hiệu chỉnh
             </button>
             <button
-              ref={(el) => { materialMenuAnchorRefs.current[`bom-material-${row.id}`] = el; }}
+              ref={(el) => { if (el) materialMenuAnchorRefs.current[`bom-mobile-material-${row.id}`] = el; }}
               onClick={(e) => {
-                toggleMaterialMenu(e, row.id, `bom-material-${row.id}`);
+                toggleMaterialMenu(e, row.id, `bom-mobile-material-${row.id}`);
               }}
               className="w-full text-left outline-none transition-all p-0"
             >
-              <div className="hidden sm:flex items-center bg-white border border-gray-300 text-black text-sm rounded-lg p-1 pr-8 appearance-none cursor-pointer relative min-h-[28px] font-normal hover:border-blue-400 transition-colors">
+              <div className="sm:hidden items-center bg-white border border-gray-300 text-black text-sm rounded-lg p-1 pr-8 appearance-none cursor-pointer relative min-h-[28px] font-normal hover:border-blue-400 transition-colors">
                 <span className="truncate flex-1">{materialLabel}</span>
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-gray-400">
                   <ChevronDown size={14} />
                 </div>
               </div>
               <div className="sm:hidden bg-white border border-gray-300 text-black px-2 py-1.5 rounded-lg flex items-center justify-between shadow-sm">
-                <span className="truncate text-[11px] sm:text-sm">{row.requiredQuantity} x {materialLabel}</span>
+                <span className="truncate text-[11px] font-bold text-blue-600">{row.requiredQuantity} x {materialLabel}</span>
                 <ChevronDown size={14} className="text-gray-500 ml-1 shrink-0" />
               </div>
             </button>
 
-            {renderMaterialMenu(row, `bom-material-${row.id}`)}
+            {renderMaterialMenu(row, `bom-mobile-material-${row.id}`)}
           </div>
         </div>
 
@@ -2594,7 +2647,8 @@ export const BOM = () => {
             <Trash2 size={18} />
             Xóa nhiều dòng {selectedBomIds.length > 0 && `(${selectedBomIds.length})`}
           </button>
-          <button onClick={handleAddItem} className="order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors text-sm">
+          <button onClick={handleAddItem} className="flex gap-2 items-center order-4 w-full lg:w-auto justify-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-colors text-sm">
+            <MdAdd />
             <span className="lg:hidden">Thêm mới</span>
             <span className="hidden lg:inline">Thêm định mức mới</span>
           </button>
@@ -2851,13 +2905,10 @@ export const BOM = () => {
                               hiệu chỉnh
                             </button>
                             <button
+                              ref={(el) => { if (el) locationMenuAnchorRefs.current[`bom-item-loc-${row.id}`] = el; }}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (openLocationMenuId !== row.id) setMenuSearchQuery('');
-                                setOpenLocationMenuId(openLocationMenuId === row.id ? null : row.id);
-                                setOpenStatusMenuId(null);
-                                setOpenManufactoryMenuId(null);
-                                setOpenCategoryMenuId(null);
+                                toggleMaterialLocationMenu(e, row.id, `bom-item-loc-${row.id}`);
                               }}
                               className="text-xs block w-full p-1 pr-8 rounded-lg border border-gray-300 bg-white appearance-none cursor-pointer outline-none text-left relative min-h-[26px] hover:border-blue-400 transition-colors"
                             >
@@ -2869,35 +2920,7 @@ export const BOM = () => {
                               </div>
                             </button>
 
-                            {openLocationMenuId === row.id && (
-                              <div className="absolute left-0 top-full mt-1 w-full bg-white rounded-md shadow-2xl z-20 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top whitespace-normal z-[1000]">
-                                <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
-                                  <div className="relative">
-                                    <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    <input
-                                      type="text"
-                                      className="w-full pl-6 pr-2 py-0.5 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 text-gray-900"
-                                      placeholder="Lọc vị trí"
-                                      value={menuSearchQuery}
-                                      onChange={(e) => setMenuSearchQuery(e.target.value)}
-                                      onClick={(e) => e.stopPropagation()}
-                                      autoFocus
-                                    />
-                                  </div>
-                                </div>
-                                <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
-                                  {warehouses.filter(w => (w.label || '').toLowerCase().includes(menuSearchQuery.toLowerCase())).map((w) => (
-                                    <button
-                                      key={w.value}
-                                      onClick={() => handleLocationChange(row, w.value)}
-                                      className={`px-2 py-1.5 text-[11px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.location) === String(w.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
-                                    >
-                                      <span className="block w-full !whitespace-normal break-words leading-tight">{w.label}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                            {renderMaterialLocationMenu(row, `bom-item-loc-${row.id}`)}
                           </div>
                         </div>
 

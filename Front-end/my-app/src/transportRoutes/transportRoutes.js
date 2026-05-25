@@ -4,6 +4,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { MapPin, Truck, Package, Plus, Trash2, Edit3, ArrowRight, Search, MapPinned, FileDown, FileUp, ChevronRight } from 'lucide-react';
 import { TbSortDescending } from "react-icons/tb";
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 import { Modal, CustomSelect, AppNotification, CustomConfirm, CustomDatatable } from '../customComponent/customComponent';
 import { getTransportRoutes, createTransportRoute, updateTransportRoute, deleteTransportRoute } from '../controller/transportRoutesController';
 import { getTransportVehicles, getTransportVehicle, createTransportVehicle, updateTransportVehicle, deleteTransportVehicle } from '../controller/transportVehiclesController';
@@ -37,6 +38,8 @@ export const TransportRoutes = () => {
   const [openVehicleMenuId, setOpenVehicleMenuId] = useState(null);
   const [openRouteMenuAnchorKey, setOpenRouteMenuAnchorKey] = useState(null);
   const [routeMenuRect, setRouteMenuRect] = useState(null);
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
+  const [selectedRouteIds, setSelectedRouteIds] = useState([]);
   const routeMenuAnchorRefs = useRef({});
 
   // States cho quản lý Khách hàng (Customers)
@@ -101,6 +104,32 @@ export const TransportRoutes = () => {
       document.removeEventListener('click', handleGlobalClick);
     };
   }, [sortMenu.isOpen]);
+
+  const handleBulkDelete = () => {
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
+      setSelectedRouteIds([]);
+      return;
+    }
+    if (selectedRouteIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedRouteIds([]);
+      return;
+    }
+    setConfirmModal({
+      isOpen: true,
+      id: selectedRouteIds,
+      type: 'bulkDelete',
+      title: 'Xác nhận xóa nhiều lộ trình',
+      message: `Bạn có chắc chắn muốn xóa ${selectedRouteIds.length} lộ trình đã chọn không? Hành động này không thể hoàn tác.`
+    });
+  };
+
+  const handleToggleSelectRoute = (id) => {
+    setSelectedRouteIds(prev =>
+      prev.includes(id) ? prev.filter(routeId => routeId !== id) : [...prev, id]
+    );
+  };
 
   useEffect(() => {
     const openRouteMenuId = openVehicleMenuId || openToMenuId;
@@ -942,23 +971,32 @@ export const TransportRoutes = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="flex gap-2 w-full sm:w-auto">
-              <button className="flex-1 lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 py-2.5 text-white font-bold px-6 rounded flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm">
-                <FileUp size={18} />Nhập Excel
-              </button>
-              <button
-                onClick={handleRequestExportExcel}
-                className="flex-1 justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm"
-              >
-                <FileDown size={18} />Xuất Excel
-              </button>
-            </div>
+          <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full lg:w-auto">
+            <button className="order-1 sm:order-2 flex-1 lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 py-2.5 text-white font-bold px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-xs sm:text-sm">
+              <FileUp size={16} />
+              <span className="truncate">Nhập Excel</span>
+            </button>
+            <button
+              onClick={handleRequestExportExcel}
+              className="order-2 sm:order-3 flex-1 justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-xs sm:text-sm"
+            >
+              <FileDown size={16} />
+              <span className="truncate">Xuất Excel</span>
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              className={`order-3 sm:order-1 w-full lg:w-auto lg:flex-none justify-center text-white font-bold py-2.5 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedRouteIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
+            >
+              <Trash2 size={16} />
+              <span className="truncate">Xóa nhiều dòng {selectedRouteIds.length > 0 && `(${selectedRouteIds.length})`}</span>
+            </button>
             <button
               onClick={handleOpenAdd}
-              className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded flex items-center justify-center gap-2 transition-all shadow-lg shadow-green-100 active:scale-95 text-sm"
+              className="order-4 sm:order-4 w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-3 rounded whitespace-nowrap flex items-center justify-center gap-2 transition-all shadow-lg shadow-green-100 active:scale-95 text-xs sm:text-sm"
             >
-              Tạo chuyến hàng
+              <Plus size={16} />
+              <span className="sm:hidden">Thêm mới</span>
+              <span className="hidden sm:inline">Tạo chuyến hàng</span>
             </button>
           </div>
         </div>
@@ -982,22 +1020,38 @@ export const TransportRoutes = () => {
                     <MapPinned size={12} />
                     RT-{route.id.toString().padStart(4, '0')}
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleOpenEdit(route)} className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg">
-                      <Edit3 size={16} />
-                    </button>
-                    <button
-                      onClick={() => setConfirmModal({
-                        isOpen: true,
-                        id: route.id,
-                        type: 'delete',
-                        title: 'Xóa lộ trình',
-                        message: 'Bạn có chắc chắn muốn hủy lộ trình vận chuyển này?'
-                      })}
-                      className="p-2 hover:bg-red-50 text-red-500 rounded-lg"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                  <div className={`flex gap-1 transition-opacity ${isBulkSelectMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                    {isBulkSelectMode ? (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleToggleSelectRoute(route.id); }}
+                        className="p-1.5 transition-colors hover:bg-red-50 rounded-lg"
+                      >
+                        {selectedRouteIds.includes(route.id) ? (
+                          <FaRegSquareMinus size={22} className="text-red-600" />
+                        ) : (
+                          <FaRegSquare size={22} className="text-gray-400" />
+                        )}
+                      </button>
+                    ) : (
+                      <>
+                        <button onClick={() => handleOpenEdit(route)} className="p-2 hover:bg-gray-100 text-gray-500 rounded-lg">
+                          <Edit3 size={16} />
+                        </button>
+                        <button
+                          onClick={() => setConfirmModal({
+                            isOpen: true,
+                            id: route.id,
+                            type: 'delete',
+                            title: 'Xóa lộ trình',
+                            message: 'Bạn có chắc chắn muốn hủy lộ trình vận chuyển này?'
+                          })}
+                          className="p-2 hover:bg-red-50 text-red-500 rounded-lg"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -1693,7 +1747,18 @@ export const TransportRoutes = () => {
             } catch (err) {
               showNotification("Lỗi khi xóa khách hàng", "error");
             }
-          } else if (confirmModal.type === 'deleteDriver') {
+          } else if (confirmModal.type === 'bulkDelete') {
+            try {
+              await Promise.all(confirmModal.id.map(routeId => deleteTransportRoute(routeId)));
+              setRoutes(prev => prev.filter(r => !confirmModal.id.includes(r.id)));
+              setSelectedRouteIds([]);
+              setIsBulkSelectMode(false);
+              showNotification(`Đã xóa ${confirmModal.id.length} lộ trình thành công!`, "success");
+            } catch (err) {
+              showNotification("Có lỗi xảy ra khi xóa nhiều lộ trình.", "error");
+            }
+          }
+          else if (confirmModal.type === 'deleteDriver') {
             try {
               await deleteDriver(confirmModal.id);
               showNotification("Đã xóa tài xế thành công!");

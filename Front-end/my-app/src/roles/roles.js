@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Search, FileDown, FileUp, Trash2, FileText, Upload, ChevronRight } from 'lucide-react';
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
+import { MdAdd } from "react-icons/md";
 import { CustomDatatable, Modal, AppNotification, CustomConfirm } from '../customComponent/customComponent';
 import { getRoles, createRole, updateRole, deleteRole } from '../controller/rolesController';
 
@@ -417,7 +418,8 @@ export const Roles = () => {
             <Trash2 size={18} />
             Xóa nhiều dòng {selectedRoleIds.length > 0 && `(${selectedRoleIds.length})`}
           </button>
-          <button onClick={handleAdd} className="order-4 lg:order-4 w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+          <button onClick={handleAdd} className="flex gap-2 items-center justify-center order-4 lg:order-4 w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+            <MdAdd />
             Thêm mới
           </button>
         </div>

@@ -10,6 +10,7 @@ import { getStatuses, createStatus, updateStatus, deleteStatus } from '../contro
 import { Tooltip } from 'react-tooltip'; // Import Tooltip
 import { RxDrawingPinFilled } from "react-icons/rx";
 import { RiUnpinFill } from "react-icons/ri";
+import { MdAdd } from "react-icons/md";
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 
 export const Users = () => {
@@ -1072,7 +1073,8 @@ export const Users = () => {
             <Trash2 size={18} />
             Xóa nhiều dòng {selectedUserIds.length > 0 && `(${selectedUserIds.length})`}
           </button>
-          <button onClick={handleAddUser} className="order-4 lg:order-4 w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+          <button onClick={handleAddUser} className="flex gap-2 items-center justify-center order-4 lg:order-4 w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+            <MdAdd />
             Thêm mới
           </button>
         </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, User, Mail } from 'lucide-react';
 import { login as loginApi } from '../controller/authController';
 import { AppNotification } from '../customComponent/customComponent';
+import { setCookie } from '../utils/cookieHelper';
 
 export const Login = () => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
@@ -37,8 +38,8 @@ export const Login = () => {
     setLoading(true);
     try {
       const data = await loginApi(credentials);
-      // Lưu thông tin người dùng vào localStorage, bao gồm userAvatar
-      localStorage.setItem('user', JSON.stringify(data.user));
+      // Lưu thông tin người dùng vào Cookies (hết hạn sau 24 giờ)
+      setCookie('user', JSON.stringify(data.user), 86400);
       navigate('/items'); // Chuyển hướng sau khi đăng nhập thành công
     } catch (err) {
       setNotification({ isOpen: true, message: err.message, type: 'error' });

@@ -1,7 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { Search, FileDown, FileUp, Plus, Maximize, Minimize, ChevronRight } from 'lucide-react';
+import { MdAdd } from "react-icons/md";
+import { Search, FileDown, FileUp, Plus, Maximize, Minimize, ChevronRight, Trash2 } from 'lucide-react';
+import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 import { CustomDatatable, Modal, AppNotification, CustomConfirm } from '../customComponent/customComponent';
 import { getDrivers, createDriver, updateDriver, deleteDriver } from '../controller/driversController';
 
@@ -17,6 +19,8 @@ export const Drivers = () => {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, type: null, title: '', message: '' });
   const [isModalMaximized, setIsModalMaximized] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
+  const [selectedDriverIds, setSelectedDriverIds] = useState([]);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ isOpen: true, message, type });
@@ -58,6 +62,40 @@ export const Drivers = () => {
     );
   }, [drivers, searchTerm]);
 
+  const handleBulkDelete = () => {
+    if (!isBulkSelectMode) {
+      setIsBulkSelectMode(true);
+      setSelectedDriverIds([]);
+      return;
+    }
+    if (selectedDriverIds.length === 0) {
+      setIsBulkSelectMode(false);
+      setSelectedDriverIds([]);
+      return;
+    }
+    setConfirmModal({
+      isOpen: true,
+      id: selectedDriverIds,
+      type: 'bulkDelete',
+      title: 'Xác nhận xóa nhiều tài xế',
+      message: `Bạn có chắc chắn muốn xóa ${selectedDriverIds.length} tài xế đã chọn không? Hành động này không thể hoàn tác.`
+    });
+  };
+
+  const handleSelectAllDrivers = () => {
+    setSelectedDriverIds(filteredData.map(d => d.id));
+  };
+
+  const handleClearSelectedDrivers = () => {
+    setSelectedDriverIds([]);
+  };
+
+  const handleToggleSelectDriver = (id) => {
+    setSelectedDriverIds(prev =>
+      prev.includes(id) ? prev.filter(driverId => driverId !== id) : [...prev, id]
+    );
+  };
+
   useEffect(() => {
     const fetchDrivers = async () => {
       try {
@@ -94,6 +132,16 @@ export const Drivers = () => {
       } catch (err) {
         console.error("Error deleting driver:", err);
         showNotification("Lỗi khi xóa tài xế.", "error");
+      }
+    } else if (type === 'bulkDelete') {
+      try {
+        await Promise.all(id.map(driverId => deleteDriver(driverId)));
+        setDrivers(prev => prev.filter(d => !id.includes(d.id)));
+        setSelectedDriverIds([]);
+        setIsBulkSelectMode(false);
+        showNotification(`Đã xóa ${id.length} tài xế thành công!`, "success");
+      } catch (err) {
+        showNotification("Có lỗi xảy ra khi xóa nhiều tài xế.", "error");
       }
     } else if (type === 'export') {
       await handleExportExcel();
@@ -217,12 +265,34 @@ export const Drivers = () => {
     { header: 'CCCD', accessor: 'nationalIdNumber', className: 'hidden md:table-cell' },
     { header: 'Email', accessor: 'email', className: 'hidden lg:table-cell' },
     {
-      header: 'Hành động',
+      header: isBulkSelectMode ? (
+        <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-sm">
+          <button type="button" onClick={(e) => { e.stopPropagation(); handleSelectAllDrivers(); }} className="font-semibold text-red-600 hover:text-red-700">Tất cả</button>
+          <span className="text-gray-300">/</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); handleClearSelectedDrivers(); }} className="font-semibold text-gray-500 hover:text-gray-700">Bỏ chọn</button>
+        </div>
+      ) : 'Hành động',
       className: 'text-right pr-2 sm:pr-4 w-[100px] sm:w-[150px] !px-2 sm:!px-4',
       render: (row) => (
-        <div className="flex gap-1.5 justify-end whitespace-nowrap">
-          <button onClick={() => handleEditItem(row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95 shadow-sm">Sửa</button>
-          <button onClick={() => handleDelete(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95 shadow-sm">Xóa</button>
+        <div className="flex justify-end items-center gap-2">
+          {isBulkSelectMode ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleToggleSelectDriver(row.id); }}
+              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+            >
+              {selectedDriverIds.includes(row.id) ? (
+                <FaRegSquareMinus size={20} className="text-red-600" />
+              ) : (
+                <FaRegSquare size={20} className="text-gray-400" />
+              )}
+            </button>
+          ) : (
+            <div className="flex gap-1.5 justify-end whitespace-nowrap">
+              <button onClick={() => handleEditItem(row)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95 shadow-sm">Sửa</button>
+              <button onClick={() => handleDelete(row.id)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95 shadow-sm">Xóa</button>
+            </div>
+          )}
         </div>
       ),
     },
@@ -244,15 +314,22 @@ export const Drivers = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          <button className="flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+        <div className="grid grid-cols-2 lg:flex lg:flex-row gap-2 w-full lg:w-auto">
+          <button
+            onClick={handleBulkDelete}
+            className={`order-3 lg:order-1 w-full lg:w-auto lg:flex-none justify-center text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm ${selectedDriverIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
+          >
+            <Trash2 size={18} />
+            Xóa nhiều dòng {selectedDriverIds.length > 0 && `(${selectedDriverIds.length})`}
+          </button>
+          <button className="order-1 lg:order-2 flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileUp size={18} /> Nhập Excel
           </button>
-          <button onClick={handleRequestExportExcel} className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+          <button onClick={handleRequestExportExcel} className="order-2 lg:order-3 flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
             <FileDown size={18} />Xuất Excel
           </button>
-          <button onClick={handleAddItem} className="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
-            + Thêm mới
+          <button onClick={handleAddItem} className="flex gap-2 items-center justify-center order-4 w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm">
+            <MdAdd /> Thêm mới
           </button>
         </div>
       </div>
