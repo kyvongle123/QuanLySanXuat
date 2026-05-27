@@ -21,7 +21,7 @@ import { createNotification } from '../controller/notificationsController';
 import { getUsers } from '../controller/usersController';
 import { getCookie } from '../utils/cookieHelper';
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'https://quanlysanxuat-production.up.railway.app/api';
 
 export const Material = () => {
   const location = useLocation();

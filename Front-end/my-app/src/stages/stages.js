@@ -14,7 +14,7 @@ import {
 import { MdAdd } from "react-icons/md";
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'https://quanlysanxuat-production.up.railway.app/api';
 
 export const Stages = () => {
   const [stages, setStages] = useState([]);

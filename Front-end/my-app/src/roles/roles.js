@@ -142,7 +142,7 @@ export const Roles = () => {
 
   const handleDownloadSample = async () => {
     try {
-      const response = await fetch('https://quanlysanxuat-back-end.onrender.com/api/Templates/import/roles');
+      const response = await fetch('https://quanlysanxuat-production.up.railway.app/api/Templates/import/roles');
       if (!response.ok) throw new Error('Không thể tải file mẫu từ máy chủ.');
       const blob = await response.blob();
       saveAs(blob, 'RoleTemplate.xlsx');

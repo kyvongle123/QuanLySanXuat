@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/Notifications';
+const API_URL = 'https://quanlysanxuat-production.up.railway.app/api/Notifications';
 
 export const getNotifications = async (username) => {
     const response = await axios.get(`${API_URL}/receiver/${username}`);

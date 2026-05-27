@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Sử dụng port 49851 thống nhất với các controller khác trong dự án
-const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/MaterialReceipts';
+const API_URL = 'https://quanlysanxuat-production.up.railway.app/api/MaterialReceipts';
 
 // Hàm chuẩn hóa dữ liệu để xử lý sự khác biệt giữa camelCase và PascalCase từ API
 const normalizeReceiptData = (data) => {

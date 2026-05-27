@@ -8,7 +8,7 @@ import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 import { CustomDatatable, Modal, AppNotification, CustomConfirm } from '../customComponent/customComponent';
 import { getDrivers, createDriver, updateDriver, deleteDriver } from '../controller/driversController';
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'https://quanlysanxuat-production.up.railway.app/api';
 
 export const Drivers = () => {
   const [drivers, setDrivers] = useState([]);

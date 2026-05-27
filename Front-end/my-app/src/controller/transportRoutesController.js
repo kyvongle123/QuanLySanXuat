@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/transportRoutes';
+const API_URL = 'https://quanlysanxuat-production.up.railway.app/api/transportRoutes';
 
 export const getTransportRoutes = async () => {
     const response = await axios.get(API_URL);

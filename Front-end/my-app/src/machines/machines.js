@@ -30,7 +30,7 @@ import {
   deleteMachineStatus
 } from '../controller/machineStatusesController';
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'https://quanlysanxuat-production.up.railway.app/api';
 
 // Component Searchable Select tùy chỉnh dành riêng cho các ô trong bảng
 const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", className, disabled = false, error = false, errorMessage = '' }) => {

@@ -7,7 +7,7 @@ import { getUnits, createUnit, updateUnit, deleteUnit } from '../controller/unit
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 import { MdAdd } from "react-icons/md";
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'https://quanlysanxuat-production.up.railway.app/api';
 
 export const Units = () => {
   const [units, setUnits] = useState([]);

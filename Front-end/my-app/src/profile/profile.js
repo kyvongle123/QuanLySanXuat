@@ -7,7 +7,7 @@ import { getCookie, setCookie } from '../utils/cookieHelper';
 
 export const Profile = () => {
   // Định nghĩa địa chỉ máy chủ Back-end để lấy tệp tĩnh từ wwwroot
-  const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com';
+  const API_BASE_URL = 'https://quanlysanxuat-production.up.railway.app';
 
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);

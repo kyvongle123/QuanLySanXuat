@@ -19,7 +19,7 @@ import { createWarehouseLocation, getWarehouseLocations, updateWarehouseLocation
 import { createWarehouseType, deleteWarehouseType, getWarehouseTypes, updateWarehouseType } from '../controller/warehouseTypesController';
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'https://quanlysanxuat-production.up.railway.app/api';
 
 export const BOM = () => {
   const [boms, setBoms] = useState([]);

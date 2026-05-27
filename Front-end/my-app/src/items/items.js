@@ -24,7 +24,7 @@ import { MdAdd } from "react-icons/md";
 import { getWarehouseBins } from '../controller/warehouseBinsController';
 import { getCookie } from '../utils/cookieHelper';
 
-const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
+const API_BASE_URL = 'https://quanlysanxuat-production.up.railway.app/api';
 
 const AnchoredPortalMenu = ({ isOpen, onClose, trigger, children, className = '', anchorClassName = '' }) => {
   const anchorRef = useRef(null);

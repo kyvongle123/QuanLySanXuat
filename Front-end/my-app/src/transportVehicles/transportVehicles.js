@@ -111,7 +111,7 @@ export const TransportVehicles = () => {
   };
 
   const handleDownloadImportTemplate = () => {
-    window.location.href = "https://quanlysanxuat-back-end.onrender.com/api/Templates/transport-vehicles";
+    window.location.href = "https://quanlysanxuat-production.up.railway.app/api/Templates/transport-vehicles";
   };
 
   const handleProcessImport = async () => {

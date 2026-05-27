@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/productioncapacities';
+const API_URL = 'https://quanlysanxuat-production.up.railway.app/api/productioncapacities';
 
 export const getProductionCapacities = async () => {
     const response = await axios.get(API_URL);

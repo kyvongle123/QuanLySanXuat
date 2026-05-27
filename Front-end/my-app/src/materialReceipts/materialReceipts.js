@@ -1494,7 +1494,7 @@ export const MaterialReceipts = () => {
 
   const handleDownloadSample = async () => {
     try {
-      const response = await fetch('https://quanlysanxuat-back-end.onrender.com/api/Templates/import/material-receipts');
+      const response = await fetch('https://quanlysanxuat-production.up.railway.app/api/Templates/import/material-receipts');
       if (!response.ok) throw new Error('Không thể tải file mẫu từ máy chủ.');
       const blob = await response.blob();
       saveAs(blob, 'MaterialReceiptTemplate.xlsx');

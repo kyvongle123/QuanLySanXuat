@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://quanlysanxuat-back-end.onrender.com/api/ProductionOrders';
+const API_URL = 'https://quanlysanxuat-production.up.railway.app/api/ProductionOrders';
 
 export const getProductionOrders = async () => {
     try {

@@ -343,7 +343,7 @@ export const TransportRoutes = () => {
   };
 
   const handleDownloadImportTemplate = () => {
-    window.location.href = "https://quanlysanxuat-back-end.onrender.com/api/Templates/transport-routes";
+    window.location.href = "https://quanlysanxuat-production.up.railway.app/api/Templates/transport-routes";
   };
 
   const handleImportExcel = async () => {
