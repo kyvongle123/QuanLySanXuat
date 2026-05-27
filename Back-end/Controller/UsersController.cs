@@ -183,10 +183,10 @@ namespace MyProject.Backend.Controller
                     return UploadAvatarToFirebase(userId, userName, stream, contentType);
                 }
             }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 Console.WriteLine($"[ERROR] SaveAvatar: {ex.Message}");
-                return null; 
+                return null;
             }
         }
 
@@ -312,7 +312,7 @@ namespace MyProject.Backend.Controller
 
         private string ResolveFirebaseCredentialPath()
         {
-            var configuredPath = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIAL_PATH");
+            var configuredPath = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIALS_JSON");
             if (!string.IsNullOrWhiteSpace(configuredPath))
             {
                 return configuredPath;
