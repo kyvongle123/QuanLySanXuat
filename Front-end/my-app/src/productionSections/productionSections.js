@@ -12,6 +12,7 @@ import {
   updateProductionSection
 } from '../controller/productionSectionsController';
 import { getUsers } from '../controller/usersController';
+import { MdAdd } from 'react-icons/md';
 
 const API_BASE_URL = 'https://quanlysanxuat-production.up.railway.app/api';
 
@@ -845,7 +846,7 @@ export const ProductionSections = () => {
             onClick={handleAdd}
             className="order-4 w-full lg:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
           >
-            <Plus size={16} />
+            <MdAdd />
             <span>Thêm mới</span>
           </button>
         </div>

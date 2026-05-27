@@ -29,6 +29,7 @@ import {
   updateMachineStatus,
   deleteMachineStatus
 } from '../controller/machineStatusesController';
+import { MdAdd } from 'react-icons/md';
 
 const API_BASE_URL = 'https://quanlysanxuat-production.up.railway.app/api';
 
@@ -973,7 +974,7 @@ export const Machines = () => {
             onClick={() => handleOpenModal('add')}
             className="order-4 w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm flex items-center justify-center gap-2"
           >
-            <Plus size={16} />
+            <MdAdd />
             <span>Thêm mới</span>
           </button>
         </div>
