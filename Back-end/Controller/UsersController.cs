@@ -244,7 +244,7 @@ namespace MyProject.Backend.Controller
             string objectName = $"UserAvatar/{folderName}/{fileName}";
 
             string credentialPath = ResolveFirebaseCredentialPath();
-            var credential = GoogleCredential.FromFile(credentialPath);
+            var credential = GoogleCredential.FromJson(credentialPath);
             var storage = StorageClient.Create(credential);
 
             storage.UploadObject(FirebaseBucketName, objectName, contentType, imageStream);
@@ -260,7 +260,7 @@ namespace MyProject.Backend.Controller
             try
             {
                 string credentialPath = ResolveFirebaseCredentialPath();
-                var credential = GoogleCredential.FromFile(credentialPath);
+                var credential = GoogleCredential.FromJson(credentialPath);
                 var storage = StorageClient.Create(credential);
 
                 await storage.DeleteObjectAsync(FirebaseBucketName, objectName);
@@ -294,7 +294,7 @@ namespace MyProject.Backend.Controller
                 if (string.IsNullOrWhiteSpace(objectName)) return NotFound();
 
                 string credentialPath = ResolveFirebaseCredentialPath();
-                var credential = GoogleCredential.FromFile(credentialPath);
+                var credential = GoogleCredential.FromJson(credentialPath);
                 var storage = StorageClient.Create(credential);
 
                 var stream = new MemoryStream();
