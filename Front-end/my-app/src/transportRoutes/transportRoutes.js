@@ -40,6 +40,9 @@ export const TransportRoutes = () => {
   const [routeMenuRect, setRouteMenuRect] = useState(null);
   const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
   const [selectedRouteIds, setSelectedRouteIds] = useState([]);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
   const routeMenuAnchorRefs = useRef({});
 
   // States cho quản lý Khách hàng (Customers)
@@ -310,6 +313,145 @@ export const TransportRoutes = () => {
     });
   };
 
+  // Hàm lấy text từ cell Excel (xử lý richText, formula...)
+  const getExcelCellText = (cell) => {
+    const value = cell?.value;
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') {
+      if (value.text !== undefined) return String(value.text);
+      if (value.result !== undefined) return String(value.result);
+      if (Array.isArray(value.richText)) return value.richText.map(part => part.text || '').join('');
+      if (value.hyperlink && value.text) return String(value.text);
+    }
+    return String(value);
+  };
+
+  // Hàm chuẩn hóa text để so sánh chính xác
+  const normalizeImportText = (value) => String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
+  const handleOpenImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(false);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    window.location.href = "https://quanlysanxuat-back-end.onrender.com/api/Templates/transport-routes";
+  };
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
+    }
+    setIsImportingExcel(true);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có dữ liệu.", "error");
+        return;
+      }
+
+      let createdCount = 0;
+      let updatedCount = 0;
+
+      // Chuẩn bị dữ liệu Map để dò tìm ID nhanh chóng
+      const customerMap = new Map(customersRawData.map(c => [normalizeImportText(c.name || c.Name), c.id || c.Id || c.ID]));
+      const driverMap = new Map(driversRawData.map(d => [normalizeImportText(d.name || d.Name), d.id || d.Id || d.ID]));
+      const vehicleMap = new Map(vehiclesRawData.map(v => {
+        const label = `${v.vehicleCode || v.VehicleCode} - ${v.licensePlate || v.LicensePlate}`;
+        return [normalizeImportText(label), v.id || v.Id || v.ID];
+      }));
+
+      // Duyệt qua từng dòng dữ liệu (bắt đầu từ dòng 2 để bỏ qua tiêu đề)
+      for (let i = 2; i <= worksheet.rowCount; i++) {
+        const row = worksheet.getRow(i);
+
+        // B (2): Mã lộ trình (Dạng RT-xxxx)
+        const routeCodeStr = getExcelCellText(row.getCell(2)).trim();
+        if (!routeCodeStr) continue;
+
+        // C (3): Điểm đến (Dò trong Customers)
+        const toName = getExcelCellText(row.getCell(3)).trim();
+        const toId = customerMap.get(normalizeImportText(toName));
+
+        // D (4): Tài xế (Dò trong Drivers)
+        const driverName = getExcelCellText(row.getCell(4)).trim();
+        const driverId = driverMap.get(normalizeImportText(driverName));
+
+        // E (5): Xe vận chuyển ("{mã xe} - {biển số}")
+        const vehicleStr = getExcelCellText(row.getCell(5)).trim();
+        const vehicleId = vehicleMap.get(normalizeImportText(vehicleStr));
+
+        // F (6): Kiện hàng ("tên 1, tên 2...")
+        const itemsStr = getExcelCellText(row.getCell(6)).trim();
+
+        // Kiểm tra dữ liệu dò tìm có hợp lệ không
+        if (!toId || !driverId || !vehicleId) continue;
+
+        // Trích xuất ID số từ mã lộ trình (ví dụ: RT-0005 lấy ra 5)
+        const routeIdFromCode = parseInt(routeCodeStr.replace(/[^0-9]/g, ''));
+        const existingRoute = routes.find(r => (r.id || r.Id || r.ID) === routeIdFromCode);
+
+        const payload = {
+          from: 0, // Mặc định là Nhà máy theo thiết kế của bạn
+          to: toId,
+          driver: driverId,
+          transportVehicle: vehicleId
+        };
+
+        let savedRoute;
+        if (existingRoute) {
+          savedRoute = await updateTransportRoute(routeIdFromCode, payload);
+          updatedCount++;
+        } else {
+          savedRoute = await createTransportRoute(payload);
+          createdCount++;
+        }
+
+        const finalRouteId = savedRoute?.id || savedRoute?.Id || savedRoute?.ID;
+
+        // Xử lý gán Lộ trình cho các Kiện hàng (Items)
+        if (itemsStr && finalRouteId) {
+          const itemNamesFromExcel = itemsStr.split(',').map(s => normalizeImportText(s.trim())).filter(Boolean);
+
+          // Tìm các mặt hàng trong DB có tên trùng khớp với danh sách trong Excel
+          const itemsToUpdate = items.filter(item =>
+            itemNamesFromExcel.includes(normalizeImportText(item.name || item.Name))
+          );
+
+          // Cập nhật từng mặt hàng gán ID lộ trình mới
+          for (const item of itemsToUpdate) {
+            await updateItem(item.id || item.Id || item.ID, { ...item, transportRoute: finalRouteId, TransportRoute: finalRouteId });
+          }
+        }
+      }
+
+      showNotification(`Nhập dữ liệu thành công: Thêm mới ${createdCount}, Cập nhật ${updatedCount}`);
+
+      // Tải lại dữ liệu toàn cục để UI đồng bộ
+      const [routesData, itemsData] = await Promise.all([getTransportRoutes(), getItems()]);
+      setRoutes(routesData);
+      setItems(itemsData);
+      handleCloseImportModal();
+    } catch (err) {
+      showNotification("Lỗi khi nhập file Excel.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
+  };
+
   const renderRouteVehicleMenu = (route) => {
     const anchorKey = `vehicle-${route.id}`;
     if (openVehicleMenuId !== route.id || openRouteMenuAnchorKey !== anchorKey || !routeMenuRect) return null;
@@ -330,7 +472,7 @@ export const TransportRoutes = () => {
               value={menuSearchQuery}
               onChange={(e) => setMenuSearchQuery(e.target.value)}
               onClick={(e) => e.stopPropagation()}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
           </div>
         </div>
@@ -371,7 +513,7 @@ export const TransportRoutes = () => {
               value={menuSearchQuery}
               onChange={(e) => setMenuSearchQuery(e.target.value)}
               onClick={(e) => e.stopPropagation()}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
           </div>
         </div>
@@ -972,27 +1114,30 @@ export const TransportRoutes = () => {
             />
           </div>
           <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full lg:w-auto">
-            <button className="order-1 sm:order-2 flex-1 lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 py-2.5 text-white font-bold px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-xs sm:text-sm">
+            <button
+              onClick={handleOpenImportModal}
+              className="order-1 sm:order-2 flex-1 lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 py-2.5 text-white font-bold px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm"
+            >
               <FileUp size={16} />
               <span className="truncate">Nhập Excel</span>
             </button>
             <button
               onClick={handleRequestExportExcel}
-              className="order-2 sm:order-3 flex-1 justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-xs sm:text-sm"
+              className="order-2 sm:order-3 flex-1 justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm"
             >
               <FileDown size={16} />
               <span className="truncate">Xuất Excel</span>
             </button>
             <button
               onClick={handleBulkDelete}
-              className={`order-3 sm:order-1 w-full lg:w-auto lg:flex-none justify-center text-white font-bold py-2.5 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedRouteIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
+              className={`order-3 sm:order-1 w-full lg:w-auto lg:flex-none justify-center text-white font-bold py-2.5 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm ${selectedRouteIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
             >
               <Trash2 size={16} />
               <span className="truncate">Xóa nhiều dòng {selectedRouteIds.length > 0 && `(${selectedRouteIds.length})`}</span>
             </button>
             <button
               onClick={handleOpenAdd}
-              className="order-4 sm:order-4 w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-3 rounded whitespace-nowrap flex items-center justify-center gap-2 transition-all shadow-lg shadow-green-100 active:scale-95 text-xs sm:text-sm"
+              className="order-4 sm:order-4 w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-3 rounded whitespace-nowrap flex items-center justify-center gap-2 transition-all shadow-lg shadow-green-100 active:scale-95 text-sm"
             >
               <Plus size={16} />
               <span className="sm:hidden">Thêm mới</span>
@@ -1105,7 +1250,7 @@ export const TransportRoutes = () => {
                                 placeholder="Lọc xe hàng..."
                                 value={menuSearchQuery}
                                 onChange={(e) => setMenuSearchQuery(e.target.value)}
-                                autoFocus
+                                autoFocus={window.innerWidth >= 768}
                               />
                             </div>
                           </div>
@@ -1156,7 +1301,7 @@ export const TransportRoutes = () => {
                                 placeholder="Lọc chi nhánh..."
                                 value={menuSearchQuery}
                                 onChange={(e) => setMenuSearchQuery(e.target.value)}
-                                autoFocus
+                                autoFocus={window.innerWidth >= 768}
                               />
                             </div>
                           </div>
@@ -1223,7 +1368,7 @@ export const TransportRoutes = () => {
               placeholder={routeSelectionModal.type === 'vehicle' ? 'Tìm mã xe hoặc tên xe...' : routeSelectionModal.type === 'customer' ? 'Tìm tên khách hàng...' : 'Tìm tên tài xế...'}
               value={routeSelectionModal.search}
               onChange={(e) => setRouteSelectionModal(prev => ({ ...prev, search: e.target.value }))}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
           </div>
 
@@ -1404,6 +1549,63 @@ export const TransportRoutes = () => {
         </form>
       </Modal>
 
+      {/* Modal Nhập Excel */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="route-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel để nhập'}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
+              <input
+                id="route-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800 transition-colors"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button
+              type="button"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleImportExcel}
+              disabled={isImportingExcel}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isImportingExcel ? 'Đang nhập...' : 'Nhập Excel'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Modal quản lý Tài xế */}
       <Modal
         isOpen={isDriversModalOpen}
@@ -1470,7 +1672,7 @@ export const TransportRoutes = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
               <label className={`text-xs font-bold ${driverErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên tài xế <span className="text-red-500">*</span></label>
-              <input type="text" name="name" className={`w-full border ${driverErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2.5 outline-none focus:ring-2 transition-all text-sm`} value={editingDriver.name || ''} onChange={handleDriverEditModalInputChange} autoFocus />
+              <input type="text" name="name" className={`w-full border ${driverErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2.5 outline-none focus:ring-2 transition-all text-sm`} value={editingDriver.name || ''} onChange={handleDriverEditModalInputChange} autoFocus={window.innerWidth >= 768} />
               {driverErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{driverErrors.name}</p>}
             </div>
             <div className="flex flex-col gap-1">
@@ -1572,7 +1774,7 @@ export const TransportRoutes = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
               <label className={`text-xs font-bold ${vehicleErrors.vehicleCode ? 'text-red-500' : 'text-gray-700'}`}>Mã xe <span className="text-red-500">*</span></label>
-              <input type="text" name="vehicleCode" className={`w-full border ${vehicleErrors.vehicleCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2.5 outline-none focus:ring-2 transition-all text-sm`} value={editingVehicle.vehicleCode || ''} onChange={handleVehicleEditModalInputChange} autoFocus />
+              <input type="text" name="vehicleCode" className={`w-full border ${vehicleErrors.vehicleCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2.5 outline-none focus:ring-2 transition-all text-sm`} value={editingVehicle.vehicleCode || ''} onChange={handleVehicleEditModalInputChange} autoFocus={window.innerWidth >= 768} />
               {vehicleErrors.vehicleCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{vehicleErrors.vehicleCode}</p>}
             </div>
             <div className="flex flex-col gap-1">
@@ -1672,7 +1874,7 @@ export const TransportRoutes = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
               <label className={`text-xs font-bold ${customerErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên khách hàng <span className="text-red-500">*</span></label>
-              <input type="text" name="name" className={`w-full border ${customerErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2.5 outline-none focus:ring-2 transition-all text-sm`} value={editingCustomer.name} onChange={handleCustomerEditModalInputChange} autoFocus />
+              <input type="text" name="name" className={`w-full border ${customerErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2.5 outline-none focus:ring-2 transition-all text-sm`} value={editingCustomer.name} onChange={handleCustomerEditModalInputChange} autoFocus={window.innerWidth >= 768} />
               {customerErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{customerErrors.name}</p>}
             </div>
             <div className="flex flex-col gap-1">

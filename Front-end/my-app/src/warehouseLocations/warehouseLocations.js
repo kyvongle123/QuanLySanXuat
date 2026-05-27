@@ -317,7 +317,7 @@ export const WarehouseLocations = () => {
               value={menuSearchQuery}
               onChange={(e) => setMenuSearchQuery(e.target.value)}
               onClick={(e) => e.stopPropagation()}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
           </div>
         </div>
@@ -815,7 +815,7 @@ export const WarehouseLocations = () => {
                     value={menuSearchQuery}
                     onChange={(e) => setMenuSearchQuery(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
-                    autoFocus
+                    autoFocus={window.innerWidth >= 768}
                   />
                 </div>
               </div>
@@ -885,7 +885,7 @@ export const WarehouseLocations = () => {
                 e.stopPropagation();
                 handleToggleSelectLocation(row);
               }}
-              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              className="flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-red-50"
               title={selectedLocationIds.includes(getEntityId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
             >
               {selectedLocationIds.includes(getEntityId(row)) ? (
@@ -961,7 +961,7 @@ export const WarehouseLocations = () => {
       </div>
 
       {loading ? (
-        <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p>
+        <p className="p-4 text-gray-500">Đang tải dữ liệu vị trí kho...</p>
       ) : (
         <CustomDatatable
           columns={columns}
@@ -1076,7 +1076,7 @@ export const WarehouseLocations = () => {
               onChange={(e) => setCurrentEditingBin({ ...currentEditingBin, name: e.target.value })}
               className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               required
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
           </div>
           <div className="flex justify-end gap-2">
@@ -1138,7 +1138,7 @@ export const WarehouseLocations = () => {
               value={currentEditingRack?.name || ''}
               onChange={(e) => { setRackErrors(prev => ({ ...prev, name: '' })); setCurrentEditingRack({ ...currentEditingRack, name: e.target.value }); }}
               className={`w-full border ${rackErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-2 text-sm focus:ring-2 outline-none`}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
             {rackErrors.name && <p className="text-xs font-medium text-red-600">{rackErrors.name}</p>}
           </div>

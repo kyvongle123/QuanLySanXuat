@@ -1714,7 +1714,7 @@ export const Items = () => {
                 e.stopPropagation();
                 handleToggleSelectItem(row);
               }}
-              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              className="flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-red-50"
               title={selectedItemIds.includes(getEntityId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
             >
               {selectedItemIds.includes(getEntityId(row)) ? (

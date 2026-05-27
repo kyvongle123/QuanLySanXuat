@@ -120,7 +120,7 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
               <input
                 type="text"
-                autoFocus
+                autoFocus={window.innerWidth >= 768}
                 placeholder={placeholder}
                 className="w-full text-[11px] pl-8 pr-2 py-1.5 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent leading-tight bg-white transition-all shadow-sm"
                 value={search}
@@ -908,7 +908,7 @@ export const Machines = () => {
                 e.stopPropagation();
                 handleToggleSelectMachine(row);
               }}
-              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              className="flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-red-50"
               title={selectedMachineIds.includes(row.id) ? 'Bỏ chọn' : 'Chọn dòng'}
             >
               {selectedMachineIds.includes(row.id) ? (
@@ -950,28 +950,28 @@ export const Machines = () => {
         <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:flex-wrap">
           <button
             onClick={handleRequestExportExcel}
-            className="order-1 lg:order-3 w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
+            className="order-1 lg:order-3 w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 text-sm"
           >
             <FileDown size={16} />
             <span>Xuất Excel</span>
           </button>
           <button
             onClick={handleOpenImportModal}
-            className="order-2 lg:order-2 w-full lg:w-auto bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center justify-center gap-2 shadow-sm text-xs sm:text-sm"
+            className="order-2 lg:order-2 w-full lg:w-auto bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center justify-center gap-2 shadow-sm text-sm"
           >
             <FileUp size={16} />
             <span>Nhập Excel</span>
           </button>
           <button
             onClick={handleBulkDelete}
-            className={`order-3 lg:order-1 w-full lg:w-auto text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-xs sm:text-sm ${selectedMachineIds.length > 0 ? 'bg-red-700 hover:bg-red-700' : 'bg-red-700 hover:bg-red-700'}`}
+            className={`order-3 lg:order-1 w-full lg:w-auto text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm ${selectedMachineIds.length > 0 ? 'bg-red-700 hover:bg-red-700' : 'bg-red-700 hover:bg-red-700'}`}
           >
             <Trash2 size={16} />
             <span className="truncate">Xóa nhiều dòng {selectedMachineIds.length > 0 && `(${selectedMachineIds.length})`}</span>
           </button>
           <button
             onClick={() => handleOpenModal('add')}
-            className="order-4 w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-xs sm:text-sm flex items-center justify-center gap-2"
+            className="order-4 w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm flex items-center justify-center gap-2"
           >
             <Plus size={16} />
             <span>Thêm mới</span>
@@ -981,15 +981,13 @@ export const Machines = () => {
 
       {
         loading ? (
-          <div className="flex flex-col items-center justify-center p-20 text-gray-400">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-            <p className="italic text-sm">Đang tải dữ liệu máy móc...</p>
-          </div>
+          <p className="p-4 text-gray-600">Đang tải dữ liệu máy móc...</p>
         ) : (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <CustomDatatable
               columns={columns}
               data={filteredData}
+              bodyCellClassName="!py-2 lg:!py-3"
               renderExpansion={(row) => (
                 <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-4 sm:gap-x-8 text-sm">
@@ -1256,8 +1254,8 @@ export const Machines = () => {
                 if (typeErrors.name) setTypeErrors({});
               }}
               className={`w-full border ${typeErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all shadow-sm`}
-              placeholder="Nhập tên loại máy (VD: Máy CNC, Máy In...)"
-              autoFocus
+              placeholder="Nhập tên loại máy"
+              autoFocus={window.innerWidth >= 768}
             />
             {typeErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{typeErrors.name}</p>}
           </div>
@@ -1336,7 +1334,7 @@ export const Machines = () => {
               onChange={handleStatusInputChangeSub}
               className={`w-full border ${statusErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all shadow-sm`}
               placeholder="Nhập tên trạng thái (VD: Đang chạy, Đang dừng...)"
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
             {statusErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{statusErrors.name}</p>}
           </div>

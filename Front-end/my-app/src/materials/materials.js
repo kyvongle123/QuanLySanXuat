@@ -1606,7 +1606,7 @@ export const Material = () => {
                 e.stopPropagation();
                 handleToggleSelectMaterial(row);
               }}
-              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              className="flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-red-50"
               title={selectedMaterialIds.includes(getEntityId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
             >
               {selectedMaterialIds.includes(getEntityId(row)) ? (
@@ -1685,7 +1685,7 @@ export const Material = () => {
       </div>
 
       {loading ? (
-        <p className="p-4 text-gray-600 italic">Đang tải dữ liệu...</p>
+        <p className="p-4 text-gray-600">Đang tải dữ liệu nguyên liệu...</p>
       ) : (
         <CustomDatatable
           columns={columns}

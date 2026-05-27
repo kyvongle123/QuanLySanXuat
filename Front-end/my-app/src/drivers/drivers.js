@@ -2,10 +2,13 @@ import { useEffect, useState, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { MdAdd } from "react-icons/md";
-import { Search, FileDown, FileUp, Plus, Maximize, Minimize, ChevronRight, Trash2 } from 'lucide-react';
+import { Search, FileDown, FileUp, ChevronRight, Trash2 } from 'lucide-react';
+import { getCookie, removeCookie } from '../utils/cookieHelper';
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
 import { CustomDatatable, Modal, AppNotification, CustomConfirm } from '../customComponent/customComponent';
 import { getDrivers, createDriver, updateDriver, deleteDriver } from '../controller/driversController';
+
+const API_BASE_URL = 'https://quanlysanxuat-back-end.onrender.com/api';
 
 export const Drivers = () => {
   const [drivers, setDrivers] = useState([]);
@@ -21,9 +24,41 @@ export const Drivers = () => {
   const [errors, setErrors] = useState({});
   const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
   const [selectedDriverIds, setSelectedDriverIds] = useState([]);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState(null);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ isOpen: true, message, type });
+  };
+
+  const getExcelCellText = (cell) => {
+    const value = cell?.value;
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') {
+      if (value.text !== undefined) return String(value.text);
+      if (value.result !== undefined) return String(value.result);
+      if (Array.isArray(value.richText)) return value.richText.map(part => part.text || '').join('');
+      if (value.hyperlink && value.text) return String(value.text);
+    }
+    return String(value);
+  };
+
+  const normalizeImportText = (value) => String(value || '').trim().toLowerCase();
+
+  const fetchDrivers = async () => {
+    try {
+      setLoading(true);
+      const data = await getDrivers();
+      setDrivers(data);
+      setSelectedDriverIds([]);
+      setIsBulkSelectMode(false);
+    } catch (err) {
+      setError("Không thể tải danh sách tài xế.");
+      console.error("Error fetching drivers:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCloseModal = () => {
@@ -43,8 +78,93 @@ export const Drivers = () => {
 
   const handleAddItem = () => {
     setModalMode('add');
-    setCurrentEditing({ name: '', phone: '', nationalIdNumber: '', email: '' });
+    setCurrentEditing({ driverCode: '', name: '', phone: '', nationalIdNumber: '', email: '' });
     setIsModalOpen(true);
+  };
+
+  const handleOpenImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setSelectedImportFile(null);
+    setIsImportModalOpen(false);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    window.location.href = `${API_BASE_URL}/Templates/import/drivers`;
+  };
+
+  const handleImportExcel = async () => {
+    if (!selectedImportFile) {
+      showNotification("Vui lòng chọn file Excel cần nhập.", "error");
+      return;
+    }
+    setIsImportingExcel(true);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const buffer = await selectedImportFile.arrayBuffer();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        showNotification("File Excel không có dữ liệu.", "error");
+        return;
+      }
+
+      let createdCount = 0;
+      let updatedCount = 0;
+
+      // Cấu trúc file Excel: 
+      // B (2): Mã tài xế (Khóa chính để dò tìm)
+      // C (3): Tên tài xế
+      // D (4): Số điện thoại
+      // E (5): CCCD
+      // F (6): Email
+      for (let i = 2; i <= worksheet.rowCount; i++) {
+        const row = worksheet.getRow(i);
+        const driverCode = getExcelCellText(row.getCell(2)).trim();
+        if (!driverCode) continue; // Bỏ qua nếu dòng không có mã tài xế
+
+        const name = getExcelCellText(row.getCell(3)).trim();
+        const phone = getExcelCellText(row.getCell(4)).trim();
+        const nationalIdNumber = getExcelCellText(row.getCell(5)).trim();
+        const email = getExcelCellText(row.getCell(6)).trim();
+
+        // Dò tìm tài xế trong danh sách hiện tại dựa trên Mã tài xế (driverCode)
+        const existingDriver = drivers.find(d => normalizeImportText(d.driverCode || d.DriverCode) === normalizeImportText(driverCode));
+
+        const payload = {
+          driverCode,
+          // Nếu ô Excel trống, giữ lại giá trị cũ của tài xế đã tồn tại
+          name: name || (existingDriver ? (existingDriver.name || existingDriver.Name) : ""),
+          phone: phone || (existingDriver ? (existingDriver.phone || existingDriver.Phone) : ""),
+          nationalIdNumber: nationalIdNumber || (existingDriver ? (existingDriver.nationalIdNumber || existingDriver.NationalIdNumber) : ""),
+          email: email || (existingDriver ? (existingDriver.email || existingDriver.Email) : "")
+        };
+
+        if (existingDriver) {
+          // Cập nhật tài xế nếu đã tồn tại mã
+          await updateDriver(existingDriver.id || existingDriver.Id, payload);
+          updatedCount++;
+        } else {
+          // Thêm mới nếu mã chưa tồn tại (yêu cầu tối thiểu phải có tên tài xế)
+          if (!payload.name) continue;
+          await createDriver(payload);
+          createdCount++;
+        }
+      }
+
+      showNotification(`Nhập Excel thành công: thêm mới ${createdCount}, cập nhật ${updatedCount}`, "success");
+      fetchDrivers();
+      handleCloseImportModal();
+    } catch (err) {
+      console.error(err);
+      showNotification("Lỗi khi nhập file Excel tài xế.", "error");
+    } finally {
+      setIsImportingExcel(false);
+    }
   };
 
   const handleEditItem = (item) => {
@@ -97,18 +217,6 @@ export const Drivers = () => {
   };
 
   useEffect(() => {
-    const fetchDrivers = async () => {
-      try {
-        setLoading(true);
-        const data = await getDrivers();
-        setDrivers(data);
-      } catch (err) {
-        setError("Không thể tải danh sách tài xế.");
-        console.error("Error fetching drivers:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchDrivers();
   }, []);
 
@@ -127,7 +235,7 @@ export const Drivers = () => {
     if (type === 'delete') {
       try {
         await deleteDriver(id);
-        setDrivers(prev => prev.filter(d => d.id !== id));
+        fetchDrivers();
         showNotification("Xóa tài xế thành công!");
       } catch (err) {
         console.error("Error deleting driver:", err);
@@ -136,7 +244,7 @@ export const Drivers = () => {
     } else if (type === 'bulkDelete') {
       try {
         await Promise.all(id.map(driverId => deleteDriver(driverId)));
-        setDrivers(prev => prev.filter(d => !id.includes(d.id)));
+        fetchDrivers();
         setSelectedDriverIds([]);
         setIsBulkSelectMode(false);
         showNotification(`Đã xóa ${id.length} tài xế thành công!`, "success");
@@ -165,6 +273,7 @@ export const Drivers = () => {
 
       worksheet.columns = [
         { header: 'STT', key: 'stt', width: 10 },
+        { header: 'Mã tài xế', key: 'driverCode', width: 15 },
         { header: 'Tên tài xế', key: 'name', width: 30 },
         { header: 'Số điện thoại', key: 'phone', width: 20 },
         { header: 'CCCD', key: 'nationalIdNumber', width: 25 },
@@ -174,6 +283,7 @@ export const Drivers = () => {
       filteredData.forEach((driver, index) => {
         worksheet.addRow({
           stt: index + 1,
+          driverCode: driver.driverCode || driver.DriverCode || '',
           name: driver.name,
           phone: driver.phone,
           nationalIdNumber: driver.nationalIdNumber,
@@ -188,9 +298,9 @@ export const Drivers = () => {
           cell.border = {
             top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
           };
-          // Căn giữa nội dung cho cột STT (cột số 1) ở phần Body
-          if (rowNumber > 1 && colNumber === 1) {
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          // Căn giữa nội dung cho cột STT (1) và Mã tài xế (2)
+          if (colNumber === 1 || colNumber === 2) {
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
           }
         });
 
@@ -246,7 +356,7 @@ export const Drivers = () => {
   const columns = [
     {
       header: '',
-      className: 'w-[40px] text-center !px-1',
+      className: 'w-[40px] text-center !px-1 sm:hidden',
       render: (row, { isExpanded, toggleExpand }) => (
         <button
           onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
@@ -259,11 +369,22 @@ export const Drivers = () => {
         </button>
       ),
     },
-    { header: 'STT', className: 'w-[50px] text-center !px-1 sm:!px-4', render: (row, { index }) => index },
-    { header: 'Tên tài xế', accessor: 'name', className: 'font-bold text-blue-600 min-w-[150px] !px-1 sm:!px-4' },
-    { header: 'Số điện thoại', accessor: 'phone', className: 'min-w-[120px]' },
-    { header: 'CCCD', accessor: 'nationalIdNumber', className: 'hidden md:table-cell' },
-    { header: 'Email', accessor: 'email', className: 'hidden lg:table-cell' },
+    {
+      header: 'STT',
+      className: 'hidden sm:table-cell w-[50px] text-center !px-1 sm:!px-4',
+      headerCellClassName: 'hidden sm:table-cell',
+      render: (row, { index }) => index
+    },
+    {
+      header: 'Mã tài xế',
+      accessor: 'driverCode',
+      className: 'font-bold text-blue-600 min-w-[100px] !px-1 sm:!px-4',
+      headerCellClassName: 'table-cell', // Always show on mobile
+    },
+    { header: 'Tên tài xế', accessor: 'name', className: 'hidden sm:table-cell font-bold text-blue-600 min-w-[150px] !px-1 sm:!px-4' },
+    { header: 'Số điện thoại', accessor: 'phone', className: 'hidden sm:table-cell min-w-[120px]' },
+    { header: 'CCCD', accessor: 'nationalIdNumber', className: 'hidden sm:table-cell md:table-cell' },
+    { header: 'Email', accessor: 'email', className: 'hidden sm:table-cell lg:table-cell' },
     {
       header: isBulkSelectMode ? (
         <div className="flex w-full items-center justify-center gap-2 text-[10px] sm:text-sm">
@@ -272,9 +393,9 @@ export const Drivers = () => {
           <button type="button" onClick={(e) => { e.stopPropagation(); handleClearSelectedDrivers(); }} className="font-semibold text-gray-500 hover:text-gray-700">Bỏ chọn</button>
         </div>
       ) : 'Hành động',
-      className: 'text-right pr-2 sm:pr-4 w-[100px] sm:w-[150px] !px-2 sm:!px-4',
+      className: 'text-center pr-2 sm:pr-4 w-[100px] sm:w-[150px] !px-2 sm:!px-4',
       render: (row) => (
-        <div className="flex justify-end items-center gap-2">
+        <div className="flex justify-center items-center gap-2">
           {isBulkSelectMode ? (
             <button
               type="button"
@@ -322,7 +443,10 @@ export const Drivers = () => {
             <Trash2 size={18} />
             Xóa nhiều dòng {selectedDriverIds.length > 0 && `(${selectedDriverIds.length})`}
           </button>
-          <button className="order-1 lg:order-2 flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
+          <button
+            onClick={handleOpenImportModal}
+            className="order-1 lg:order-2 flex-1 lg:flex-none bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm"
+          >
             <FileUp size={18} /> Nhập Excel
           </button>
           <button onClick={handleRequestExportExcel} className="order-2 lg:order-3 flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm text-sm">
@@ -336,25 +460,33 @@ export const Drivers = () => {
 
       {
         loading ? (
-          <div className="flex flex-col items-center justify-center p-20 text-gray-400">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-            <p className="italic text-sm">Đang tải dữ liệu tài xế...</p>
-          </div>
+          <p className="p-4 text-gray-600">Đang tải dữ liệu tài xế...</p>
         ) : (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <CustomDatatable
               columns={columns}
               data={filteredData}
+              bodyCellClassName="!py-2 sm:!py-3"
               renderExpansion={(row) => (
                 <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-sm">
-                    <div className="flex flex-col gap-1 md:hidden">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">CCCD</span>
-                      <span className="text-gray-900 font-medium">{row.nationalIdNumber || '---'}</span>
-                    </div>
-                    <div className="flex flex-col gap-1 lg:hidden">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
-                      <span className="text-gray-900 font-medium break-all">{row.email || '---'}</span>
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-4 sm:gap-x-8 text-sm">
+                      <div className="flex flex-col gap-1 sm:hidden">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tên tài xế</span>
+                        <span className="text-blue-600 font-bold">{row.name || '---'}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 sm:hidden">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
+                        <span className="text-gray-900 font-medium">{row.phone || '---'}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 md:hidden">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">CCCD</span>
+                        <span className="text-gray-900 font-medium">{row.nationalIdNumber || '---'}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 lg:hidden">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
+                        <span className="text-gray-900 font-medium break-all">{row.email || '---'}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -373,28 +505,34 @@ export const Drivers = () => {
         onMaximizeToggle={() => setIsModalMaximized(!isModalMaximized)}
       >
         <form onSubmit={handleModalSubmit} className={`space-y-5 ${isModalMaximized ? '' : 'max-h-[70vh] overflow-y-auto px-1'}`}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5">
             <div className="flex flex-col gap-1">
-              <label className={`text-xs font-bold ${errors.name ? 'text-red-500' : 'text-gray-500'} uppercase ml-1`}>Tên tài xế</label>
+              <label className={`text-xs ${errors.name ? 'text-red-500' : 'text-gray-500'} ml-1`}>Tên tài xế <span className="text-red-500">*</span></label>
               <input type="text" name="name" value={currentEditing?.name || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:ring-2 outline-none transition-all text-sm bg-white`} />
               {errors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.name}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className={`text-xs font-bold ${errors.phone ? 'text-red-500' : 'text-gray-500'} uppercase ml-1`}>Số điện thoại</label>
+              <label className="text-xs text-gray-500 ml-1">Mã tài xế</label>
+              <input type="text" name="driverCode" value={currentEditing?.driverCode || currentEditing?.DriverCode || ''} disabled className="mt-1 block w-full border border-gray-200 bg-gray-100 text-gray-500 rounded-lg shadow-sm p-2.5 cursor-not-allowed outline-none text-sm" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-5">
+            <div className="flex flex-col gap-1">
+              <label className={`text-xs ${errors.phone ? 'text-red-500' : 'text-gray-500'} ml-1`}>Số điện thoại <span className="text-red-500">*</span></label>
               <input type="text" name="phone" value={currentEditing?.phone || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:ring-2 outline-none transition-all text-sm bg-white`} />
               {errors.phone && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.phone}</p>}
             </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="flex flex-col gap-1">
-              <label className={`text-xs font-bold ${errors.nationalIdNumber ? 'text-red-500' : 'text-gray-500'} uppercase ml-1`}>CCCD</label>
-              <input type="text" name="nationalIdNumber" value={currentEditing?.nationalIdNumber || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.nationalIdNumber ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:ring-2 outline-none transition-all text-sm bg-white`} />
-              {errors.nationalIdNumber && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.nationalIdNumber}</p>}
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className={`text-xs font-bold ${errors.email ? 'text-red-500' : 'text-gray-500'} uppercase ml-1`}>Email</label>
+              <label className={`text-xs ${errors.email ? 'text-red-500' : 'text-gray-500'} ml-1`}>Email <span className="text-red-500">*</span></label>
               <input type="email" name="email" value={currentEditing?.email || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:ring-2 outline-none transition-all text-sm bg-white`} />
               {errors.email && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.email}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-5">
+            <div className="flex flex-col gap-1">
+              <label className={`text-xs font-bold ${errors.nationalIdNumber ? 'text-red-500' : 'text-gray-500'} uppercase ml-1`}>CCCD <span className="text-red-500">*</span></label>
+              <input type="text" name="nationalIdNumber" value={currentEditing?.nationalIdNumber || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.nationalIdNumber ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:ring-2 outline-none transition-all text-sm bg-white`} />
+              {errors.nationalIdNumber && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.nationalIdNumber}</p>}
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
@@ -402,6 +540,63 @@ export const Drivers = () => {
             <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm">Lưu thông tin</button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal Nhập Excel */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="Nhập excel"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="driver-excel-file"
+              className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition-colors hover:border-blue-600 hover:bg-blue-50"
+            >
+              <FileUp size={32} className="mb-3 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                {selectedImportFile ? selectedImportFile.name : 'Chọn file Excel để nhập'}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
+              <input
+                id="driver-excel-file"
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setSelectedImportFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              >
+                Tải file mẫu
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <button
+              type="button"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleImportExcel}
+              disabled={isImportingExcel}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isImportingExcel ? 'Đang nhập...' : 'Nhập Excel'}
+            </button>
+          </div>
+        </div>
       </Modal>
 
       <CustomConfirm

@@ -512,7 +512,7 @@ export const Warehouses = () => {
               value={menuSearchQuery}
               onChange={(e) => setMenuSearchQuery(e.target.value)}
               onClick={(e) => e.stopPropagation()}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
           </div>
         </div>
@@ -582,7 +582,7 @@ export const Warehouses = () => {
               value={typeMenuSearchQuery}
               onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
               onClick={(e) => e.stopPropagation()}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
           </div>
         </div>
@@ -1176,7 +1176,7 @@ export const Warehouses = () => {
                       value={typeMenuSearchQuery}
                       onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      autoFocus
+                      autoFocus={window.innerWidth >= 768}
                     />
                   </div>
                 </div>
@@ -1243,7 +1243,7 @@ export const Warehouses = () => {
                     value={menuSearchQuery}
                     onChange={(e) => setMenuSearchQuery(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
-                    autoFocus
+                    autoFocus={window.innerWidth >= 768}
                   />
                 </div>
               </div>
@@ -1314,7 +1314,7 @@ export const Warehouses = () => {
                 e.stopPropagation();
                 handleToggleSelectWarehouse(row);
               }}
-              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              className="flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-red-50"
               title={selectedWarehouseIds.includes(getEntityId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
             >
               {selectedWarehouseIds.includes(getEntityId(row)) ? (
@@ -1390,7 +1390,7 @@ export const Warehouses = () => {
       </div>
 
       {loading ? (
-        <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p>
+        <p className="p-4 text-gray-500">Đang tải dữ liệu nhà kho...</p>
       ) : (
         <CustomDatatable
           columns={columns}
@@ -1457,7 +1457,7 @@ export const Warehouses = () => {
                               value={typeMenuSearchQuery}
                               onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
                               onClick={(e) => e.stopPropagation()}
-                              autoFocus
+                              autoFocus={window.innerWidth >= 768}
                             />
                           </div>
                         </div>

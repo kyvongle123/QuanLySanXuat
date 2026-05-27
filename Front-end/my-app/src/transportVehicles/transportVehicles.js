@@ -110,6 +110,10 @@ export const TransportVehicles = () => {
     setImportFile(null);
   };
 
+  const handleDownloadImportTemplate = () => {
+    window.location.href = "https://quanlysanxuat-back-end.onrender.com/api/Templates/transport-vehicles";
+  };
+
   const handleProcessImport = async () => {
     if (!importFile) {
       showNotification("Vui lòng chọn file Excel cần nhập.", "error");
@@ -354,13 +358,13 @@ export const TransportVehicles = () => {
     {
       header: 'Mã số xe',
       accessor: 'vehicleCode',
-      className: 'font-bold text-blue-700 min-w-[120px]'
+      className: 'font-bold text-blue-700 min-w-[90px] sm:in-w-[120px] !px-3 sm:!px-6'
     },
-    { header: 'Biển số xe', accessor: 'licensePlate', className: 'min-w-[120px] sm:w-full' },
+    { header: 'Biển số xe', accessor: 'licensePlate', className: 'min-w-[80px] sm:min-w-[120px] sm:w-full !px-3 sm:!px-6' },
     {
       header: isBulkSelectMode ? (
         <div className="flex items-center justify-center gap-1 text-[10px] sm:text-[11px] whitespace-nowrap animate-in fade-in duration-300">
-          <button type="button" onClick={(e) => { e.stopPropagation(); handleSelectAllVehicles(); }} className="font-bold text-red-600 hover:text-red-700">Chọn tất cả</button>
+          <button type="button" onClick={(e) => { e.stopPropagation(); handleSelectAllVehicles(); }} className="font-bold text-red-600 hover:text-red-700">Tất cả</button>
           <span className="text-gray-300">/</span>
           <button type="button" onClick={(e) => { e.stopPropagation(); handleClearSelectedVehicles(); }} className="font-bold text-gray-500 hover:text-gray-700">Bỏ chọn</button>
         </div>
@@ -397,7 +401,7 @@ export const TransportVehicles = () => {
 
   return (
     <div className="p-2 lg:p-6">
-      <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Quản lý xe hàng</h2>
+      <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Danh sách xe hàng</h2>
 
       <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
         <div className="relative w-full lg:max-w-[350px]">
@@ -434,10 +438,7 @@ export const TransportVehicles = () => {
 
       {
         loading && (
-          <div className="flex flex-col items-center justify-center p-20 text-gray-400">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-            <p className="italic text-sm">Đang tải dữ liệu xe hàng...</p>
-          </div>
+          <p className="p-4 text-gray-600">Đang tải dữ liệu xe hàng...</p>
         )
       }
       {error && <p className="text-red-600 p-4">Lỗi: {error}</p>}
@@ -523,7 +524,7 @@ export const TransportVehicles = () => {
             >
               <FileUp size={32} className="mb-3 text-blue-600" />
               <span className="text-sm font-semibold text-gray-700">
-                {importFile ? importFile.name : "Chọn file Excel để nhập"}
+                {importFile ? importFile.name : 'Chọn file Excel để nhập'}
               </span>
               <span className="mt-1 text-xs text-gray-500">Hỗ trợ .xlsx</span>
               <input
@@ -537,8 +538,8 @@ export const TransportVehicles = () => {
             <div className="mt-2 flex justify-end">
               <button
                 type="button"
-                onClick={() => { window.location.href = "https://quanlysanxuat-back-end.onrender.com/api/Templates/import/transport-vehicles"; }}
-                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800"
+                onClick={handleDownloadImportTemplate}
+                className="text-xs font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800 transition-colors"
               >
                 Tải file mẫu
               </button>
@@ -546,11 +547,20 @@ export const TransportVehicles = () => {
           </div>
 
           <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
-            <button type="button" onClick={handleCloseImportModal} className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600">
+            <button
+              type="button"
+              onClick={handleCloseImportModal}
+              className="rounded-md bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+            >
               Hủy
             </button>
-            <button type="button" onClick={handleProcessImport} disabled={isImporting} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
-              {isImporting ? "Đang nhập..." : "Nhập Excel"}
+            <button
+              type="button"
+              onClick={handleProcessImport}
+              disabled={isImporting}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isImporting ? 'Đang nhập...' : 'Nhập Excel'}
             </button>
           </div>
         </div>

@@ -807,10 +807,7 @@ export const ProductionPlans = () => {
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-20 text-gray-400">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-          <p className="italic text-sm">Đang tải dữ liệu kế hoạch...</p>
-        </div>
+        <p className="p-4 text-gray-600">Đang tải kế hoạch sản xuất...</p>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <CustomDatatable

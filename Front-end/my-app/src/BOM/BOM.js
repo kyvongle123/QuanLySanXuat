@@ -2503,7 +2503,7 @@ export const BOM = () => {
       headerCellClassName: 'text-[10px] sm:text-sm',
       className: 'text-right !px-2 sm:!px-6 w-[90px] sm:w-[150px]', // Điều chỉnh chiều rộng và padding
       render: (row) => (
-        <div className="flex gap-1 sm:gap-2 justify-end">
+        <div className="flex gap-1 sm:gap-2 justify-center">
           {isBomBulkSelectMode ? (
             <button
               type="button"
@@ -2511,7 +2511,7 @@ export const BOM = () => {
                 e.stopPropagation();
                 handleToggleSelectBom(row);
               }}
-              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              className="flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-red-50"
               title={selectedBomIds.includes(getBomId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
             >
               {selectedBomIds.includes(getBomId(row)) ? (
@@ -2587,12 +2587,6 @@ export const BOM = () => {
               }}
               className="w-full text-left outline-none transition-all p-0"
             >
-              <div className="sm:hidden items-center bg-white border border-gray-300 text-black text-sm rounded-lg p-1 pr-8 appearance-none cursor-pointer relative min-h-[28px] font-normal hover:border-blue-400 transition-colors">
-                <span className="truncate flex-1">{materialLabel}</span>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-gray-400">
-                  <ChevronDown size={14} />
-                </div>
-              </div>
               <div className="sm:hidden bg-white border border-gray-300 text-black px-2 py-1.5 rounded-lg flex items-center justify-between shadow-sm">
                 <span className="truncate text-[11px] font-bold text-blue-600">{row.requiredQuantity} x {materialLabel}</span>
                 <ChevronDown size={14} className="text-gray-500 ml-1 shrink-0" />
@@ -2656,7 +2650,7 @@ export const BOM = () => {
       </div>
 
       {loading ? (
-        <p className="p-4 text-gray-600 italic">Đang tải dữ liệu định mức...</p>
+        <p className="p-4 text-gray-600">Đang tải dữ liệu định mức...</p>
       ) : (
         <CustomDatatable
           columns={columns}
@@ -2862,7 +2856,7 @@ export const BOM = () => {
                                       value={menuSearchQuery}
                                       onChange={(e) => setMenuSearchQuery(e.target.value)}
                                       onClick={(e) => e.stopPropagation()}
-                                      autoFocus
+                                      autoFocus={window.innerWidth >= 768}
                                     />
                                   </div>
                                 </div>
@@ -3147,7 +3141,7 @@ export const BOM = () => {
                                   value={menuSearchQuery}
                                   onChange={(e) => setMenuSearchQuery(e.target.value)}
                                   onClick={(e) => e.stopPropagation()}
-                                  autoFocus
+                                  autoFocus={window.innerWidth >= 768}
                                 />
                               </div>
                             </div>
@@ -3393,7 +3387,7 @@ export const BOM = () => {
                                   value={typeMenuSearchQuery}
                                   onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
                                   onClick={(e) => e.stopPropagation()}
-                                  autoFocus
+                                  autoFocus={window.innerWidth >= 768}
                                 />
                               </div>
                             </div>
@@ -3554,7 +3548,7 @@ export const BOM = () => {
                                   value={typeMenuSearchQuery}
                                   onChange={(e) => setTypeMenuSearchQuery(e.target.value)}
                                   onClick={(e) => e.stopPropagation()}
-                                  autoFocus
+                                  autoFocus={window.innerWidth >= 768}
                                 />
                               </div>
                             </div>
@@ -3600,7 +3594,7 @@ export const BOM = () => {
         <form onSubmit={handleSaveMaterialCategory} className="space-y-4">
           <div className="flex flex-col gap-1">
             <label className={`font-medium ${materialCategoryErrors.name ? 'text-red-600' : 'text-gray-700'} ${isMaterialCategoryEditMaximized ? 'text-sm' : 'text-xs'}`}>Tên danh mục</label>
-            <input type="text" value={materialCategoryForm.name || ''} onChange={(e) => { setMaterialCategoryErrors(prev => ({ ...prev, name: '' })); setMaterialCategoryForm({ ...materialCategoryForm, name: e.target.value }); }} className={`w-full border ${materialCategoryErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isMaterialCategoryEditMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`} autoFocus />
+            <input type="text" value={materialCategoryForm.name || ''} onChange={(e) => { setMaterialCategoryErrors(prev => ({ ...prev, name: '' })); setMaterialCategoryForm({ ...materialCategoryForm, name: e.target.value }); }} className={`w-full border ${materialCategoryErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isMaterialCategoryEditMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`} autoFocus={window.innerWidth >= 768} />
             {materialCategoryErrors.name && <p className="text-xs font-medium text-red-600">{materialCategoryErrors.name}</p>}
           </div>
           <CustomSelect
@@ -3822,7 +3816,7 @@ export const BOM = () => {
                 if (rackErrors.name) setRackErrors(prev => ({ ...prev, name: null }));
               }}
               className={`w-full border ${rackErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-2 text-sm focus:ring-2 outline-none`}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
             {rackErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{rackErrors.name}</p>}
           </div>

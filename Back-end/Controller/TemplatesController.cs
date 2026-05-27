@@ -336,5 +336,51 @@ namespace MyProject.Backend.Controller
                 "TransportVehicleTemplate.xlsx"
             );
         }
+
+        [HttpGet("import/transport-routes")]
+        public IActionResult DownloadTransportRouteImportTemplate()
+        {
+            var filePath = Path.Combine(
+                _environment.ContentRootPath,
+                "Templates",
+                "ImportTemplate",
+                "TransportRouteTemplate.xlsx"
+            );
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound(new { message = "Không tìm thấy file mẫu nhập xe vận chuyển." });
+            }
+
+            var stream = System.IO.File.OpenRead(filePath);
+            return File(
+                stream,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "TransportRouteTemplate.xlsx"
+            );
+        }
+
+        [HttpGet("import/drivers")]
+        public IActionResult DownloadDriverImportTemplate()
+        {
+            var filePath = Path.Combine(
+                _environment.ContentRootPath,
+                "Templates",
+                "ImportTemplate",
+                "DriverTemplate.xlsx"
+            );
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound(new { message = "Không tìm thấy file mẫu nhập tài xế." });
+            }
+
+            var stream = System.IO.File.OpenRead(filePath);
+            return File(
+                stream,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "DriverTemplate.xlsx"
+            );
+        }
     }
 }

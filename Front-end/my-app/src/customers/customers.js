@@ -464,21 +464,21 @@ export const Customers = () => {
         <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:flex-wrap">
           <button
             onClick={handleOpenImportModal}
-            className="order-1 lg:order-2 w-full lg:w-auto justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-xs sm:text-sm"
+            className="order-1 lg:order-2 w-full lg:w-auto justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm"
           >
             <FileUp size={16} />
             <span>Nhập Excel</span>
           </button>
           <button
             onClick={handleRequestExportExcel}
-            className="order-2 lg:order-3 w-full lg:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-xs sm:text-sm"
+            className="order-2 lg:order-3 w-full lg:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm"
           >
             <FileDown size={16} />
             <span>Xuất Excel</span>
           </button>
           <button
             onClick={handleBulkDelete}
-            className={`order-3 lg:order-1 w-full lg:w-auto justify-center text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedCustomerIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
+            className={`order-3 lg:order-1 w-full lg:w-auto justify-center text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm ${selectedCustomerIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
           >
             <Trash2 size={16} />
             <span className="truncate">Xóa nhiều dòng {selectedCustomerIds.length > 0 && `(${selectedCustomerIds.length})`}</span>
@@ -494,10 +494,7 @@ export const Customers = () => {
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-20 text-gray-400">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-          <p className="italic text-sm">Đang tải dữ liệu khách hàng...</p>
-        </div>
+        <p className="text-gray-600 p-4">Đang tải dữ liệu khách hàng...</p>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <CustomDatatable

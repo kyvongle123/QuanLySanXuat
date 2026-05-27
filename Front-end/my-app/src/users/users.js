@@ -808,7 +808,7 @@ export const Users = () => {
               value={menuSearchQuery}
               onChange={(e) => setMenuSearchQuery(e.target.value)}
               onClick={(e) => e.stopPropagation()}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
           </div>
         </div>
@@ -896,7 +896,7 @@ export const Users = () => {
                       value={menuSearchQuery}
                       onChange={(e) => setMenuSearchQuery(e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      autoFocus
+                      autoFocus={window.innerWidth >= 768}
                     />
                   </div>
                 </div>
@@ -1092,8 +1092,14 @@ export const Users = () => {
                 const roleObj = roles.find(r => String(r.value) === String(row.role));
                 return (
                   <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
-                    <div className="grid grid-cols-12 md:grid-cols-4 gap-y-4 gap-x-4 sm:gap-x-8 text-sm">
-                      <div className="flex flex-col gap-1 col-span-6 md:col-span-1">
+                    <div className="grid grid-cols-12 gap-y-4 gap-x-4 sm:gap-x-8 text-sm">
+                      {/* Dòng 1: Mã nhân viên với Chức vụ */}
+                      <div className="flex flex-col gap-1 col-span-6 md:col-span-3">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mã nhân viên</span>
+                        <span className="text-gray-900 font-medium">{row.userCode || row.UserCode || '---'}</span>
+                      </div>
+
+                      <div className="flex flex-col gap-1 col-span-6 md:col-span-3">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Chức vụ</span>
                         <div className="relative max-w-[150px]">
                           <button
@@ -1130,7 +1136,7 @@ export const Users = () => {
                                     value={menuSearchQuery}
                                     onChange={(e) => setMenuSearchQuery(e.target.value)}
                                     onClick={(e) => e.stopPropagation()}
-                                    autoFocus
+                                    autoFocus={window.innerWidth >= 768}
                                   />
                                 </div>
                               </div>
@@ -1148,9 +1154,24 @@ export const Users = () => {
                             </div>
                           )}
                         </div>
-
                       </div>
-                      <div className="flex flex-col gap-1 col-span-6 md:col-span-1 lg:hidden">
+
+                      {/* Dòng 2: Email với Số điện thoại */}
+                      <div className="flex flex-col gap-1 col-span-6 md:col-span-3 md:hidden">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
+                        <span className="text-gray-900 font-medium break-all">{row.email || '---'}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 col-span-6 md:col-span-3">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
+                        <span className="text-gray-900 font-medium">{row.phone || '---'}</span>
+                      </div>
+
+                      {/* Dòng 3: Địa chỉ với Trạng thái */}
+                      <div className="flex flex-col gap-1 col-span-6 md:col-span-3">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Địa chỉ</span>
+                        <span className="text-gray-900 font-medium leading-tight">{row.address || '---'}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 col-span-6 md:col-span-3 lg:hidden">
                         {(() => {
                           const statusObj = statuses.find(s => String(s.value) === String(row.status));
                           const displayLabel = statusObj ? statusObj.label : '---';
@@ -1194,7 +1215,7 @@ export const Users = () => {
                                           value={menuSearchQuery}
                                           onChange={(e) => setMenuSearchQuery(e.target.value)}
                                           onClick={(e) => e.stopPropagation()}
-                                          autoFocus
+                                          autoFocus={window.innerWidth >= 768}
                                         />
                                       </div>
                                     </div>
@@ -1215,18 +1236,6 @@ export const Users = () => {
                             </>
                           );
                         })()}
-                      </div>
-                      <div className="flex flex-col gap-1 col-span-7 md:col-span-1 md:hidden">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
-                        <span className="text-gray-900 font-medium break-all">{row.email || '---'}</span>
-                      </div>
-                      <div className="flex flex-col gap-1 col-span-5 md:col-span-1">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Số điện thoại</span>
-                        <span className="text-gray-900 font-medium">{row.phone || '---'}</span>
-                      </div>
-                      <div className="flex flex-col gap-1 col-span-12 md:col-span-4">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Địa chỉ</span>
-                        <span className="text-gray-900 font-medium">{row.address || '---'}</span>
                       </div>
                     </div>
                   </div>
@@ -1357,7 +1366,7 @@ export const Users = () => {
                 setEditingRole({ ...editingRole, name: e.target.value });
                 if (roleErrors.name) setRoleErrors({});
               }}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
             {roleErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{roleErrors.name}</p>}
           </div>
@@ -1423,7 +1432,7 @@ export const Users = () => {
                 setEditingStatus({ ...editingStatus, name: e.target.value });
                 if (statusErrors.name) setStatusErrors({});
               }}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
             {statusErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{statusErrors.name}</p>}
           </div>

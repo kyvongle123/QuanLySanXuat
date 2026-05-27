@@ -124,6 +124,7 @@ export const Stages = () => {
 
   const fetchSections = async () => {
     try {
+      setLoading(true);
       const data = await getProductionSections();
       // Chuyển đổi dữ liệu về dạng { value, label } cho Select
       setProductionSections(data.map(s => ({
@@ -132,6 +133,8 @@ export const Stages = () => {
       })));
     } catch (err) {
       showNotification("Lỗi khi tải danh sách tổ sản xuất", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -665,7 +668,7 @@ export const Stages = () => {
                       value={dropdownSearch}
                       onChange={(e) => setDropdownSearch(e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      autoFocus
+                      autoFocus={window.innerWidth >= 768}
                     />
                   </div>
                 </div>
@@ -739,7 +742,7 @@ export const Stages = () => {
                 e.stopPropagation();
                 handleToggleSelectStage(row);
               }}
-              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              className="flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-red-50"
               title={selectedStageIds.includes(getStageId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
             >
               {selectedStageIds.includes(getStageId(row)) ? (
@@ -805,7 +808,7 @@ export const Stages = () => {
               value={dropdownSearch}
               onChange={(e) => setDropdownSearch(e.target.value)}
               onClick={(e) => e.stopPropagation()}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
           </div>
         </div>
@@ -849,18 +852,18 @@ export const Stages = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:flex-wrap">
-          <button onClick={handleOpenImportModal} className="order-1 lg:order-2 w-full lg:w-auto justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm">
+          <button onClick={handleOpenImportModal} className="order-1 lg:order-2 w-full lg:w-auto justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-sm">
             <FileUp size={16} /> Nhập Excel
           </button>
           <button
             onClick={handleRequestExportExcel}
-            className="order-2 lg:order-3 w-full lg:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
+            className="order-2 lg:order-3 w-full lg:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-sm"
           >
             <FileDown size={16} /> Xuất Excel
           </button>
           <button
             onClick={handleBulkDelete}
-            className={`order-3 lg:order-1 w-full lg:w-auto justify-center text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedStageIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
+            className={`order-3 lg:order-1 w-full lg:w-auto justify-center text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm ${selectedStageIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
           >
             <Trash2 size={16} />
             Xóa nhiều dòng {selectedStageIds.length > 0 && `(${selectedStageIds.length})`}
@@ -876,70 +879,76 @@ export const Stages = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <CustomDatatable
-          columns={columns}
-          data={filteredData}
-          loading={loading}
-          bodyCellClassName="!py-2 sm:!py-3"
-          renderExpansion={(row) => {
-            const rowId = row.id || row.ID;
-            const isOpen = openDropdownId === rowId;
-            const currentSection = productionSections.find(s => String(s.value) === String(row.productionSection || row.ProductionSection));
-            return (
-              <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100">
-                <div className="grid grid-cols-12 lg:grid-cols-3 gap-6 text-sm">
-                  <div className="flex flex-col col-span-4 gap-1 sm:hidden">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mã công đoạn</span>
-                    <span className="text-gray-700 font-medium">{row.stageCode || row.StageCode}</span>
-                  </div>
-                  <div className="flex flex-col col-span-8 gap-1 md:hidden">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tổ sản xuất</span>
-                    <div className="relative w-full max-w-[200px]">
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setIsSectionMgmtModalOpen(true); }}
-                        className="absolute right-1 top-[-10px] text-blue-600 text-[9px] font-bold underline z-20 leading-none bg-white/80 px-1 rounded"
-                      >hiệu chỉnh</button>
-                      <button
-                        ref={(el) => { dropdownAnchorRefs.current[`section-mobile-${rowId}`] = el; }}
-                        onClick={(e) => { toggleSectionMenu(e, rowId, `section-mobile-${rowId}`); }}
-                        className="bg-white border border-gray-300 text-gray-900 text-[11px] rounded-lg p-1.5 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[34px] w-full font-bold shadow-sm"
-                      >
-                        <span className="truncate block">{currentSection?.label || '-- Chọn tổ --'}</span>
-                        <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
-                          <ChevronDown size={14} />
-                        </div>
-                      </button>
-                      {renderSectionMenu(row, rowId, `section-mobile-${rowId}`, 'py-1')}
+      {loading ?
+        (
+          <p className="p-4 text-gray-600">Đang tải dữ liệu định mức...</p>
+        )
+        :
+        (
+          <CustomDatatable
+            columns={columns}
+            data={filteredData}
+            loading={loading}
+            bodyCellClassName="!py-2 sm:!py-3"
+            renderExpansion={(row) => {
+              const rowId = row.id || row.ID;
+              const isOpen = openDropdownId === rowId;
+              const currentSection = productionSections.find(s => String(s.value) === String(row.productionSection || row.ProductionSection));
+              return (
+                <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100">
+                  <div className="grid grid-cols-12 lg:grid-cols-3 gap-6 text-sm">
+                    <div className="flex flex-col col-span-4 gap-1 sm:hidden">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mã công đoạn</span>
+                      <span className="text-gray-700 font-medium">{row.stageCode || row.StageCode}</span>
+                    </div>
+                    <div className="flex flex-col col-span-8 gap-1 md:hidden">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tổ sản xuất</span>
+                      <div className="relative w-full max-w-[200px]">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setIsSectionMgmtModalOpen(true); }}
+                          className="absolute right-1 top-[-10px] text-blue-600 text-[9px] font-bold underline z-20 leading-none bg-white/80 px-1 rounded"
+                        >hiệu chỉnh</button>
+                        <button
+                          ref={(el) => { dropdownAnchorRefs.current[`section-mobile-${rowId}`] = el; }}
+                          onClick={(e) => { toggleSectionMenu(e, rowId, `section-mobile-${rowId}`); }}
+                          className="bg-white border border-gray-300 text-gray-900 text-[11px] rounded-lg p-1.5 pr-8 appearance-none cursor-pointer outline-none text-left relative min-h-[34px] w-full font-bold shadow-sm"
+                        >
+                          <span className="truncate block">{currentSection?.label || '-- Chọn tổ --'}</span>
+                          <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                            <ChevronDown size={14} />
+                          </div>
+                        </button>
+                        {renderSectionMenu(row, rowId, `section-mobile-${rowId}`, 'py-1')}
 
-                      {false && isOpen && (
-                        <div className="absolute left-0 top-full mt-1 w-full min-w-[200px] bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top">
-                          <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
-                            <div className="relative">
-                              <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-                              <input type="text" className="w-full pl-6 pr-2 py-1 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50" placeholder="Lọc tổ..." value={dropdownSearch} onChange={(e) => setDropdownSearch(e.target.value)} onClick={(e) => e.stopPropagation()} autoFocus />
+                        {false && isOpen && (
+                          <div className="absolute left-0 top-full mt-1 w-full min-w-[200px] bg-white rounded-md shadow-2xl z-30 border border-gray-100 p-1 flex flex-col animate-in fade-in zoom-in duration-200 origin-top">
+                            <div className="p-0.5 border-b border-gray-50 mb-1 sticky top-0 bg-white z-10">
+                              <div className="relative">
+                                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input type="text" className="w-full pl-6 pr-2 py-1 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50" placeholder="Lọc tổ..." value={dropdownSearch} onChange={(e) => setDropdownSearch(e.target.value)} onClick={(e) => e.stopPropagation()} autoFocus={window.innerWidth >= 768} />
+                              </div>
+                            </div>
+                            <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
+                              {productionSections.filter(s => (s.label || "").toLowerCase().includes(dropdownSearch.toLowerCase())).map((s) => (
+                                <button key={s.value} onClick={() => handleSectionChange(row, s.value)} className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.productionSection || row.ProductionSection) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}><span className="block w-full truncate">{s.label}</span></button>
+                              ))}
                             </div>
                           </div>
-                          <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
-                            {productionSections.filter(s => (s.label || "").toLowerCase().includes(dropdownSearch.toLowerCase())).map((s) => (
-                              <button key={s.value} onClick={() => handleSectionChange(row, s.value)} className={`px-2 py-1.5 text-[10px] rounded transition-colors text-left flex items-center min-w-0 ${String(row.productionSection || row.ProductionSection) === String(s.value) ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}><span className="block w-full truncate">{s.label}</span></button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col col-span-6 gap-1 lg:hidden">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Thứ tự thực hiện</span>
+                      <span className="text-gray-700 font-medium">Bước số {row.sequence || row.Sequence}</span>
                     </div>
                   </div>
-                  <div className="flex flex-col col-span-6 gap-1 lg:hidden">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Thứ tự thực hiện</span>
-                    <span className="text-gray-700 font-medium">Bước số {row.sequence || row.Sequence}</span>
-                  </div>
                 </div>
-              </div>
-            );
-          }}
-        />
-      </div>
+              );
+            }}
+          />
+        )
+      }
 
       <Modal
         isOpen={isImportModalOpen}

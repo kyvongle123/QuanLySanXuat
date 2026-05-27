@@ -358,7 +358,7 @@ export const Roles = () => {
       ) : 'Hành động',
       className: 'text-right pr-2 sm:pr-5 w-[120px] sm:w-[160px]',
       render: (row) => (
-        <div className="flex justify-end items-center gap-2">
+        <div className="flex justify-center items-center gap-2">
           {isBulkSelectMode ? (
             <button
               type="button"
@@ -386,8 +386,8 @@ export const Roles = () => {
   ];
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
-      <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Chức vụ người dùng</h2>
+    <div className="p-4 sm:p-6">
+      <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Danh sách chức vụ người dùng</h2>
 
       <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
         {/* Thanh tìm kiếm */}
@@ -427,10 +427,7 @@ export const Roles = () => {
 
       {
         loading ? (
-          <div className="flex flex-col items-center justify-center p-20 text-gray-400">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-            <p className="italic text-sm">Đang tải dữ liệu chức vụ...</p>
-          </div>
+          <p className="text-gray-600 p-4">Đang tải dữ liệu chức vụ...</p>
         ) : null
       }
       {error && <p className="text-red-600 p-4">{error}</p>}

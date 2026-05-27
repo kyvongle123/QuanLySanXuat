@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, Plus, ChevronDown, FileText, Eye, Edit2, Trash2, FileDown, X, Upload, Maximize, Minimize, ChevronRight, FileUp, Calendar } from 'lucide-react';
 import { FaRegSquareMinus, FaRegSquare } from 'react-icons/fa6';
+import { getCookie, removeCookie } from '../utils/cookieHelper';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import {
@@ -372,9 +373,10 @@ export const MaterialReceipts = () => {
   const [isModalMaximized, setIsModalMaximized] = useState(false);
   const [selectedImportFile, setSelectedImportFile] = useState(null);
   const [isImportingExcel, setIsImportingExcel] = useState(false);
+
   const currentUser = useMemo(() => {
     try {
-      return JSON.parse(localStorage.getItem('user') || 'null');
+      return JSON.parse(getCookie('user') || 'null');
     } catch {
       return null;
     }
@@ -1720,7 +1722,7 @@ export const MaterialReceipts = () => {
             ) : (
               <button
                 onClick={() => setIsBulkSelectMode(true)}
-                className="w-full sm:w-auto justify-center bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-3 sm:order-1"
+                className="w-full sm:w-auto justify-center bg-red-700 hover:bg-red-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 flex items-center gap-2 shadow-sm text-sm order-3 sm:order-1"
               >
                 <Trash2 size={16} /> Xóa nhiều dòng
               </button>
@@ -1738,7 +1740,7 @@ export const MaterialReceipts = () => {
       </div>
 
       {loading ? (
-        <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p>
+        <p className="p-4 text-gray-500">Đang tải dữ liệu phiếu nhập...</p>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
           <CustomDatatable

@@ -418,7 +418,7 @@ export const Units = () => {
                 e.stopPropagation();
                 handleToggleSelectUnit(row);
               }}
-              className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-red-50"
+              className="flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-red-50"
               title={selectedUnitIds.includes(getEntityId(row)) ? 'Bỏ chọn' : 'Chọn dòng'}
             >
               {selectedUnitIds.includes(getEntityId(row)) ? (
@@ -457,29 +457,29 @@ export const Units = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
+        <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:flex-wrap">
           <button
             onClick={handleOpenImportModal}
-            className="order-1 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-colors flex items-center gap-2 text-xs sm:text-sm"
+            className="order-1 lg:order-2 w-full lg:w-auto lg:flex-none justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-sm shadow-sm active:scale-95"
           >
             <FileUp size={16} /> Nhập Excel
           </button>
           <button
             onClick={handleRequestExportExcel}
-            className="order-2 lg:order-3 w-full lg:w-auto lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded whitespace-nowrap flex items-center gap-2 shadow-sm transition-all active:scale-95 text-xs sm:text-sm"
+            className="order-2 lg:order-3 w-full lg:w-auto lg:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 shadow-sm active:scale-95 text-sm"
           >
             <FileDown size={16} /> Xuất Excel
           </button>
           <button
             onClick={handleBulkDelete}
-            className={`order-3 lg:order-1 w-full lg:w-auto lg:flex-none justify-center text-white font-bold py-2 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 text-xs sm:text-sm ${selectedUnitIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
+            className={`order-3 lg:order-1 w-full lg:w-auto lg:flex-none justify-center text-white font-bold py-2.5 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 shadow-sm text-sm ${selectedUnitIds.length > 0 ? 'bg-red-700 hover:bg-red-700 shadow-md active:scale-95' : 'bg-red-700 hover:bg-red-700'}`}
           >
             <Trash2 size={16} />
-            Xóa nhiều dòng {selectedUnitIds.length > 0 && `(${selectedUnitIds.length})`}
+            <span className="truncate">Xóa nhiều dòng {selectedUnitIds.length > 0 && `(${selectedUnitIds.length})`}</span>
           </button>
           <button
             onClick={() => handleOpenModal('add')}
-            className="flex gap-2 items-center order-4 w-full lg:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 shadow-md transition-all active:scale-95 text-sm"
+            className="order-4 w-full lg:w-auto lg:flex-none justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-3 rounded whitespace-nowrap transition-all flex items-center gap-2 shadow-md active:scale-95 text-sm"
           >
             <MdAdd />
             <span className="lg:hidden">Thêm mới</span>
@@ -489,7 +489,7 @@ export const Units = () => {
       </div>
 
       {loading ? (
-        <p className="p-4 italic text-gray-500">Đang tải dữ liệu...</p>
+        <p className="p-4 text-gray-500">Đang tải dữ liệu đơn vị...</p>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <CustomDatatable
@@ -527,7 +527,7 @@ export const Units = () => {
               value={currentEditingUnit?.name || ''}
               onChange={handleModalInputChange}
               className={`w-full border ${unitErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 focus:ring-2 outline-none text-sm`}
-              autoFocus
+              autoFocus={window.innerWidth >= 768}
             />
             {unitErrors.name && <p className="text-xs font-medium text-red-600">{unitErrors.name}</p>}
           </div>

@@ -56,6 +56,9 @@ Người dùng có thể tạo nhân viên và chức vụ, nhưng bắt buộc 
 ---
 
 ### Bước 2: Khai báo thành phẩm
+```text
+Hàng hóa → Thành phẩm
+```
 
 Tạo các thành phẩm cần sản xuất, ví dụ:
 
@@ -66,6 +69,9 @@ Tạo các thành phẩm cần sản xuất, ví dụ:
 ---
 
 ### Bước 3: Khai báo nguyên vật liệu
+```text
+Hàng hóa → Nguyên liệu
+```
 
 Khai báo các nguyên liệu cần thiết để sản xuất thành phẩm:
 
@@ -80,6 +86,9 @@ Ví dụ:
 ---
 
 ### Bước 4: Tạo BOM / Định mức sản xuất
+```text
+Sản xuất → Định mức nguyên liệu
+```
 
 Khai báo định mức nguyên vật liệu cho từng thành phẩm.
 
@@ -96,9 +105,14 @@ Ví dụ:
 #### Nhân viên mua hàng
 
 - Đăng nhập bằng tài khoản nhân viên mua hàng
-- Tạo phiếu mua nguyên vật liệu cần thiết
 
 > Tài khoản admin hiện tại đang là chức vụ nhân viên mua hàng
+
+```text
+Đơn hàng → Đơn nhập nguyên liệu
+```
+
+- Tạo phiếu mua nguyên vật liệu cần thiết
 
 ---
 
@@ -209,8 +223,8 @@ Sau khi kiểm tra nguyên liệu:
 
 **Lê Kỳ Vọng**
 
-Project được xây dựng nhằm phát triển hệ thống quản lý sản xuất cho nhà máy
-Đây là web cá nhân, do chưa dành nhiều thời gian xây dựng nên giao diện và nghiệp vụ của web còn rất nhiều thiếu sót, mong người dùng thông cảm
+- Project được xây dựng nhằm phát triển hệ thống quản lý sản xuất cho nhà máy.
+- Đây là web cá nhân, do tôi chưa dành nhiều thời gian xây dựng, nên giao diện và nghiệp vụ của web còn rất nhiều thiếu sót, mong người truy cập web thông cảm
 
 
 
