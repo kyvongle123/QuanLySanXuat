@@ -488,10 +488,10 @@ export const TransportVehicles = () => {
                 disabled
                 className={`mt-1 block w-full border bg-gray-100 border-gray-300 focus:ring-blue-500 rounded-lg shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-3 text-base' : 'p-2.5 text-sm'} bg-gray-100 cursor-not-allowed`}
               />
-              {errors.vehicleCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.vehicleCode}</p>}
+              {errors.vehicleCode && <p className="text-red-500 text-xs mt-1 font-medium">{errors.vehicleCode}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className={`text-xs ${errors.licensePlate ? 'text-red-500' : 'text-gray-500'} ml-1`}>Biển số xe</label>
+              <label className="text-xs text-gray-500 ml-1">Biển số xe</label>
               <input
                 name="licensePlate"
                 type="text"
@@ -499,7 +499,7 @@ export const TransportVehicles = () => {
                 onChange={handleInputChange}
                 className={`mt-1 block w-full border ${errors.licensePlate ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-3 text-base' : 'p-2.5 text-sm'} bg-white`}
               />
-              {errors.licensePlate && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.licensePlate}</p>}
+              {errors.licensePlate && <p className="text-red-500 text-xs mt-1 font-medium">{errors.licensePlate}</p>}
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">

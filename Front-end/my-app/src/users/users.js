@@ -674,39 +674,39 @@ export const Users = () => {
       <div className="grid-cols-2 gap-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={`block font-medium ${errors.name ? 'text-red-500' : 'text-gray-700'} ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Tên người dùng</label>
+            <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Tên người dùng</label>
             <input type="text" name="name" value={currentEditingUser?.name || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-            {errors.name && <p className="text-[10px] font-medium text-red-500 mt-1">{errors.name}</p>}
+            {errors.name && <p className="text-xs font-medium text-red-500 mt-1">{errors.name}</p>}
           </div>
           <div>
-            <label className={`block font-medium ${errors.userCode ? 'text-red-500' : 'text-gray-700'} ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Mã nhân viên</label>
+            <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Mã nhân viên</label>
             <input type="text" name="userCode" value={currentEditingUser?.userCode || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.userCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-            {errors.userCode && <p className="text-[10px] font-medium text-red-500 mt-1">{errors.userCode}</p>}
+            {errors.userCode && <p className="text-xs font-medium text-red-500 mt-1">{errors.userCode}</p>}
           </div>
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className={`block font-medium ${errors.username ? 'text-red-500' : 'text-gray-700'} ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Username</label>
+          <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Username</label>
           <input type="text" name="username" value={currentEditingUser?.username || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.username ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-          {errors.username && <p className="text-[10px] font-medium text-red-500 mt-1">{errors.username}</p>}
+          {errors.username && <p className="text-xs font-medium text-red-500 mt-1">{errors.username}</p>}
         </div>
         <div>
-          <label className={`block font-medium ${errors.password ? 'text-red-500' : 'text-gray-700'} ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Password</label>
+          <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Password</label>
           <input type="password" name="password" value={currentEditingUser?.password || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.password ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-          {errors.password && <p className="text-[10px] font-medium text-red-500 mt-1">{errors.password}</p>}
+          {errors.password && <p className="text-xs font-medium text-red-500 mt-1">{errors.password}</p>}
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className={`block font-medium ${errors.phone ? 'text-red-500' : 'text-gray-700'} ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Số điện thoại</label>
+          <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Số điện thoại</label>
           <input type="text" name="phone" value={currentEditingUser?.phone || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-          {errors.phone && <p className="text-[10px] font-medium text-red-500 mt-1">{errors.phone}</p>}
+          {errors.phone && <p className="text-xs font-medium text-red-500 mt-1">{errors.phone}</p>}
         </div>
         <div>
-          <label className={`block font-medium ${errors.email ? 'text-red-500' : 'text-gray-700'} ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Email</label>
+          <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Email</label>
           <input type="email" name="email" value={currentEditingUser?.email || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-          {errors.email && <p className="text-[10px] font-medium text-red-500 mt-1">{errors.email}</p>}
+          {errors.email && <p className="text-xs font-medium text-red-500 mt-1">{errors.email}</p>}
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -857,8 +857,9 @@ export const Users = () => {
       accessor: 'role',
       className: 'hidden lg:table-cell w-48 hidden sm:table-cell',
       render: (row) => {
-        const roleObj = roles.find(r => String(r.value) === String(row.role));
-        const label = roleObj ? roleObj.label : '-- Chọn --';
+        const roleId = row.role || row.Role || row.roleId || row.RoleId;
+        const roleObj = roles.find(r => String(r.value) === String(roleId));
+        const label = roleObj ? roleObj.label : (row.roleName || row.RoleName || row.Role?.Name || '-- Chọn --');
         return (
           <div className="relative w-full">
             <button
@@ -979,7 +980,7 @@ export const Users = () => {
   const roleTableColumns = useMemo(() => [
     { header: 'STT', render: (_, { index }) => index, className: '!px-1 sm:px-4 !flex !justify-center' },
     {
-      header: 'Tên chức vụ', className: '!px-1 sm:!px-4 sm:hidden',
+      header: 'Tên chức vụ', className: '!px-1 sm:!px-4',
       render: (row) => <span className="font-bold text-gray-700">{row.label}</span>
     },
     {
@@ -1089,7 +1090,9 @@ export const Users = () => {
               columns={userColumns}
               data={filteredUsers}
               renderExpansion={(row) => {
-                const roleObj = roles.find(r => String(r.value) === String(row.role));
+                const roleId = row.role || row.Role || row.roleId || row.RoleId;
+                const roleObj = roles.find(r => String(r.value) === String(roleId));
+                const displayLabel = roleObj ? roleObj.label : (row.roleName || row.RoleName || row.Role?.Name || '---');
                 return (
                   <div className="py-4 px-4 sm:pl-24 sm:pr-6 bg-blue-50/30 border-b border-gray-100 relative animate-in slide-in-from-top-2 duration-300">
                     <div className="grid grid-cols-12 gap-y-4 gap-x-4 sm:gap-x-8 text-sm">
@@ -1099,7 +1102,7 @@ export const Users = () => {
                         <span className="text-gray-900 font-medium">{row.userCode || row.UserCode || '---'}</span>
                       </div>
 
-                      <div className="flex flex-col gap-1 col-span-6 md:col-span-3">
+                      <div className="flex flex-col gap-1 col-span-6 md:col-span-3 sm:hidden">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Chức vụ</span>
                         <div className="relative max-w-[150px]">
                           <button
@@ -1116,7 +1119,7 @@ export const Users = () => {
                             ref={(el) => { roleMenuAnchorRefs.current[`expansion-${row.id}`] = el; }}
                             className="bg-white border border-gray-300 text-gray-900 text-xs rounded-lg p-1 pr-8 appearance-none cursor-pointer outline-none font-medium text-left relative min-h-[30px] w-full block hover:border-blue-400 transition-colors shadow-sm"
                           >
-                            <span className="truncate block">{roleObj?.label || '---'}</span>
+                            <span className="truncate block">{displayLabel}</span>
                             <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
                               <ChevronDown size={14} />
                             </div>
@@ -1356,7 +1359,7 @@ export const Users = () => {
       >
         <form onSubmit={handleRoleSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-bold ${roleErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên chức vụ <span className="text-red-500">*</span></label>
+            <label className="text-xs font-bold text-gray-700">Tên chức vụ <span className="text-red-500">*</span></label>
             <input
               type="text"
               className={`w-full border ${roleErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2.5 outline-none focus:ring-2 transition-all text-sm`}
@@ -1368,7 +1371,7 @@ export const Users = () => {
               }}
               autoFocus={window.innerWidth >= 768}
             />
-            {roleErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{roleErrors.name}</p>}
+            {roleErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{roleErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button type="button" onClick={handleCloseRoleEditModal} className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm">Hủy</button>
@@ -1422,7 +1425,7 @@ export const Users = () => {
       >
         <form onSubmit={handleStatusSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-bold ${statusErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên trạng thái <span className="text-red-500">*</span></label>
+            <label className="text-xs font-bold text-gray-700">Tên trạng thái <span className="text-red-500">*</span></label>
             <input
               type="text"
               className={`w-full border ${statusErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2.5 outline-none focus:ring-2 transition-all text-sm`}
@@ -1434,7 +1437,7 @@ export const Users = () => {
               }}
               autoFocus={window.innerWidth >= 768}
             />
-            {statusErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{statusErrors.name}</p>}
+            {statusErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{statusErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button type="button" onClick={handleCloseStatusEditModal} className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors text-sm">Hủy</button>

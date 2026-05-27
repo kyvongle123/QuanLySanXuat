@@ -507,9 +507,9 @@ export const Drivers = () => {
         <form onSubmit={handleModalSubmit} className={`space-y-5 ${isModalMaximized ? '' : 'max-h-[70vh] overflow-y-auto px-1'}`}>
           <div className="grid grid-cols-2 gap-3 sm:gap-5">
             <div className="flex flex-col gap-1">
-              <label className={`text-xs ${errors.name ? 'text-red-500' : 'text-gray-500'} ml-1`}>Tên tài xế <span className="text-red-500">*</span></label>
+              <label className="text-xs text-gray-500 ml-1">Tên tài xế <span className="text-red-500">*</span></label>
               <input type="text" name="name" value={currentEditing?.name || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:ring-2 outline-none transition-all text-sm bg-white`} />
-              {errors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.name}</p>}
+              {errors.name && <p className="text-red-500 text-xs mt-1 font-medium">{errors.name}</p>}
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-500 ml-1">Mã tài xế</label>
@@ -518,21 +518,21 @@ export const Drivers = () => {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-5">
             <div className="flex flex-col gap-1">
-              <label className={`text-xs ${errors.phone ? 'text-red-500' : 'text-gray-500'} ml-1`}>Số điện thoại <span className="text-red-500">*</span></label>
+              <label className="text-xs text-gray-500 ml-1">Số điện thoại <span className="text-red-500">*</span></label>
               <input type="text" name="phone" value={currentEditing?.phone || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:ring-2 outline-none transition-all text-sm bg-white`} />
-              {errors.phone && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.phone}</p>}
+              {errors.phone && <p className="text-red-500 text-xs mt-1 font-medium">{errors.phone}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className={`text-xs ${errors.email ? 'text-red-500' : 'text-gray-500'} ml-1`}>Email <span className="text-red-500">*</span></label>
+              <label className="text-xs text-gray-500 ml-1">Email <span className="text-red-500">*</span></label>
               <input type="email" name="email" value={currentEditing?.email || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:ring-2 outline-none transition-all text-sm bg-white`} />
-              {errors.email && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.email}</p>}
+              {errors.email && <p className="text-red-500 text-xs mt-1 font-medium">{errors.email}</p>}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-5">
             <div className="flex flex-col gap-1">
-              <label className={`text-xs font-bold ${errors.nationalIdNumber ? 'text-red-500' : 'text-gray-500'} uppercase ml-1`}>CCCD <span className="text-red-500">*</span></label>
+              <label className="text-xs font-bold text-gray-500 uppercase ml-1">CCCD <span className="text-red-500">*</span></label>
               <input type="text" name="nationalIdNumber" value={currentEditing?.nationalIdNumber || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.nationalIdNumber ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:ring-2 outline-none transition-all text-sm bg-white`} />
-              {errors.nationalIdNumber && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.nationalIdNumber}</p>}
+              {errors.nationalIdNumber && <p className="text-red-500 text-xs mt-1 font-medium">{errors.nationalIdNumber}</p>}
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">

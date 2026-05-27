@@ -586,7 +586,7 @@ export const ProductionSections = () => {
   const columns = [
     {
       header: '',
-      className: 'w-[20px] sm:w-[40px] !px-2 sm:!px-6 text-center',
+      className: 'w-[20px] sm:w-[40px] !px-2 sm:!px-6 text-center sm:hidden',
       render: (row, { isExpanded, toggleExpand }) => (
         <button
           onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
@@ -750,7 +750,7 @@ export const ProductionSections = () => {
         />
       </div>
       <div className="flex flex-col gap-1"> {/* Tên tổ sản xuất */}
-        <label htmlFor="name" className={`text-xs ml-1 ${errors.name ? 'text-red-500' : 'text-gray-500'}`}>Tên tổ sản xuất <span className="text-red-500">*</span></label>
+        <label htmlFor="name" className="text-xs ml-1 text-gray-500">Tên tổ sản xuất <span className="text-red-500">*</span></label>
         <input
           type="text"
           id="name"
@@ -762,7 +762,7 @@ export const ProductionSections = () => {
           }}
           className={`mt-1 block w-full border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:border-blue-500 outline-none transition-all text-sm`}
         />
-        {errors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.name}</p>}
+        {errors.name && <p className="text-red-500 text-xs mt-1 font-medium">{errors.name}</p>}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"> {/* Tổ trưởng & Chi phí cơ bản */}
         <CustomSelect
@@ -782,7 +782,7 @@ export const ProductionSections = () => {
           errorMessage={errors.leader}
         />
         <div className="flex flex-col gap-1"> {/* Chi phí cơ bản */}
-          <label htmlFor="baseUnitCost" className={`text-xs ml-1 ${errors.baseUnitCost ? 'text-red-500' : 'text-gray-500'}`}>Chi phí cơ bản (VNĐ)</label>
+          <label htmlFor="baseUnitCost" className="text-xs ml-1 text-gray-500">Chi phí cơ bản (VNĐ)</label>
           <input
             type="number"
             id="baseUnitCost"
@@ -792,9 +792,9 @@ export const ProductionSections = () => {
               handleInputChange(e);
               if (errors.baseUnitCost) setErrors(prev => ({ ...prev, baseUnitCost: '' }));
             }}
-            className={`mt-1 block w-full border ${errors.baseUnitCost ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm p-2.5 focus:border-blue-500 outline-none transition-all text-sm`}
+            className="mt-1 block w-full border border-gray-300 focus:ring-blue-500 rounded-lg shadow-sm p-2.5 focus:border-blue-500 outline-none transition-all text-sm"
           />
-          {errors.baseUnitCost && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.baseUnitCost}</p>}
+          {errors.baseUnitCost && <p className="text-red-500 text-xs mt-1 font-medium">{errors.baseUnitCost}</p>}
         </div>
       </div>
       <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">

@@ -520,7 +520,7 @@ export const Units = () => {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${unitErrors.name ? 'text-red-600' : 'text-gray-700'}`}>Tên đơn vị</label>
+            <label className="text-xs font-medium text-gray-700">Tên đơn vị</label>
             <input
               type="text"
               name="name"

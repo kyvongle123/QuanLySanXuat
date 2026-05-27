@@ -139,7 +139,7 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
         </div>,
         document.body
       )}
-      {errorMessage && <p className="text-red-500 text-[10px] mt-1 font-medium">{errorMessage}</p>}
+      {errorMessage && <p className="text-red-500 text-xs mt-1 font-medium">{errorMessage}</p>}
     </div>
   );
 };
@@ -1117,7 +1117,7 @@ export const Machines = () => {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className={`text-xs ${errors.machineType ? 'text-red-500' : 'text-gray-500'} ml-1`}>Loại máy</label>
+                <label className="text-xs text-gray-500 ml-1">Loại máy</label>
                 <div className="relative">
                   <button
                     type="button"
@@ -1143,15 +1143,15 @@ export const Machines = () => {
               <DateInput label="Ngày đưa vào sử dụng" name="commissioningDate" value={currentMachine?.commissioningDate || ''} onChange={handleInputChange} disabled={modalMode === 'view'} error={!!errors.commissioningDate} errorMessage={errors.commissioningDate} />
 
               <div className="flex flex-col gap-1">
-                <label className={`text-xs ${errors.totalRunningHours ? 'text-red-500' : 'text-gray-500'} ml-1`}>Tổng số giờ đã chạy</label>
+                <label className="text-xs text-gray-500 ml-1">Tổng số giờ đã chạy</label>
                 <input type="number" name="totalRunningHours" value={currentMachine?.totalRunningHours || 0} onChange={handleInputChange} disabled={modalMode === 'view'} className={`w-full border ${errors.totalRunningHours ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white shadow-sm`} />
-                {errors.totalRunningHours && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.totalRunningHours}</p>}
+                {errors.totalRunningHours && <p className="text-red-500 text-xs mt-1 font-medium">{errors.totalRunningHours}</p>}
               </div>
 
               <DateInput label="Ngày bảo trì gần nhất" name="lastMaintainance" value={currentMachine?.lastMaintainance || ''} onChange={handleInputChange} disabled={modalMode === 'view'} error={!!errors.lastMaintainance} errorMessage={errors.lastMaintainance} />
 
               <div className="flex flex-col gap-1">
-                <label className={`text-xs ${errors.status ? 'text-red-500' : 'text-gray-500'} ml-1`}>Trạng thái</label>
+                <label className="text-xs text-gray-500 ml-1">Trạng thái</label>
                 <div className="relative">
                   <button
                     type="button"
@@ -1174,9 +1174,9 @@ export const Machines = () => {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className={`text-xs ${errors.oeeTarget ? 'text-red-500' : 'text-gray-500'} ml-1`}>Mục tiêu hiệu suất (%)</label>
+                <label className="text-xs text-gray-500 ml-1">Mục tiêu hiệu suất (%)</label>
                 <input type="number" step="0.1" name="oeeTarget" value={currentMachine?.oeeTarget || 0} onChange={handleInputChange} disabled={modalMode === 'view'} className={`w-full border ${errors.oeeTarget ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm shadow-sm`} />
-                {errors.oeeTarget && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.oeeTarget}</p>}
+                {errors.oeeTarget && <p className="text-red-500 text-xs mt-1 font-medium">{errors.oeeTarget}</p>}
               </div>
             </div>
           </div>
@@ -1245,7 +1245,7 @@ export const Machines = () => {
       >
         <form onSubmit={handleSaveType} className={`space-y-6 ${isTypeFormModalMaximized ? 'flex-1 overflow-y-auto pr-2 custom-scrollbar' : ''}`}>
           <div className="flex flex-col gap-2">
-            <label className={`text-sm font-semibold ${typeErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên loại máy mới</label>
+            <label className="text-sm font-semibold text-gray-700">Tên loại máy mới</label>
             <input
               type="text"
               value={currentType.name}
@@ -1257,7 +1257,7 @@ export const Machines = () => {
               placeholder="Nhập tên loại máy"
               autoFocus={window.innerWidth >= 768}
             />
-            {typeErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{typeErrors.name}</p>}
+            {typeErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{typeErrors.name}</p>}
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
@@ -1327,7 +1327,7 @@ export const Machines = () => {
       >
         <form onSubmit={handleSaveStatus} className={`space-y-6 ${isStatusFormModalMaximized ? 'flex-1 overflow-y-auto pr-2 custom-scrollbar' : ''}`}>
           <div className="flex flex-col gap-2">
-            <label className={`text-sm font-semibold ${statusErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên trạng thái mới</label>
+            <label className="text-sm font-semibold text-gray-700">Tên trạng thái mới</label>
             <input
               type="text"
               value={currentStatus.name}
@@ -1336,7 +1336,7 @@ export const Machines = () => {
               placeholder="Nhập tên trạng thái (VD: Đang chạy, Đang dừng...)"
               autoFocus={window.innerWidth >= 768}
             />
-            {statusErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{statusErrors.name}</p>}
+            {statusErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{statusErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button

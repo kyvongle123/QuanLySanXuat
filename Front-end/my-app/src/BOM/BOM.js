@@ -559,10 +559,6 @@ export const BOM = () => {
     const errors = {};
     if (!editingWarehouse.type) errors.type = "Bắt buộc nhập Loại kho";
     if (!editingWarehouse.location) errors.location = "Bắt buộc nhập Vị trí chi tiết";
-    if (editingWarehouse.available === '' || editingWarehouse.available === null || editingWarehouse.available === undefined) {
-      errors.available = "Bắt buộc nhập Số lượng tối đa";
-    }
-
     if (Object.keys(errors).length > 0) {
       setWarehouseErrors(errors);
       return;
@@ -1386,10 +1382,10 @@ export const BOM = () => {
       errors.bin = "Bắt buộc nhập Ô";
     }
     if (!currentEditingLoc.racks) {
-      errors.racks = "Bắt buộc nhập Kệ (Rack)";
+      errors.racks = "Bắt buộc nhập Kệ";
     }
     if (currentEditingLoc.level === '' || currentEditingLoc.level === null || currentEditingLoc.level === undefined) {
-      errors.level = "Bắt buộc nhập Tầng (Level)";
+      errors.level = "Bắt buộc nhập Tầng";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -2700,7 +2696,7 @@ export const BOM = () => {
             errorMessage={bomErrors.materialCategory}
           />
           <div>
-            <label className={`block text-sm font-medium ${bomErrors.requiredQuantity ? 'text-red-600' : 'text-gray-700'}`}>Số lượng (Định mức)</label>
+            <label className="block text-sm font-medium text-gray-700">Số lượng (Định mức)</label>
             <input
               type="number"
               step="0.01"
@@ -3205,7 +3201,7 @@ export const BOM = () => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className={`text-xs font-bold ${materialFormErrors.quantity ? 'text-red-600' : 'text-gray-700'}`}>Số lượng</label>
+              <label className="text-xs font-bold text-gray-700">Số lượng</label>
               <input
                 type="number"
                 value={materialForm.quantity}
@@ -3463,7 +3459,7 @@ export const BOM = () => {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${warehouseErrors.available ? 'text-red-600' : 'text-gray-700'}`}>Số lượng tối đa</label>
+            <label className="text-xs font-medium text-gray-700">Số lượng tối đa</label>
             <input
               type="number"
               min="0"
@@ -3472,9 +3468,8 @@ export const BOM = () => {
                 setEditingWarehouse({ ...editingWarehouse, available: e.target.value });
                 if (warehouseErrors.available) setWarehouseErrors(prev => ({ ...prev, available: null }));
               }}
-              className={`w-full border ${warehouseErrors.available ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isWarehouseEditMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+              className={`w-full border border-gray-300 focus:ring-blue-500 rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isWarehouseEditMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
             />
-            {warehouseErrors.available && <p className="text-xs font-medium text-red-600 italic">{warehouseErrors.available}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => { setIsWarehouseEditModalOpen(false); setIsWarehouseEditMaximized(false); setWarehouseErrors({}); }} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Hủy</button>
@@ -3593,7 +3588,7 @@ export const BOM = () => {
       >
         <form onSubmit={handleSaveMaterialCategory} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className={`font-medium ${materialCategoryErrors.name ? 'text-red-600' : 'text-gray-700'} ${isMaterialCategoryEditMaximized ? 'text-sm' : 'text-xs'}`}>Tên danh mục</label>
+            <label className={`font-medium text-gray-700 ${isMaterialCategoryEditMaximized ? 'text-sm' : 'text-xs'}`}>Tên danh mục</label>
             <input type="text" value={materialCategoryForm.name || ''} onChange={(e) => { setMaterialCategoryErrors(prev => ({ ...prev, name: '' })); setMaterialCategoryForm({ ...materialCategoryForm, name: e.target.value }); }} className={`w-full border ${materialCategoryErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isMaterialCategoryEditMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`} autoFocus={window.innerWidth >= 768} />
             {materialCategoryErrors.name && <p className="text-xs font-medium text-red-600">{materialCategoryErrors.name}</p>}
           </div>
@@ -3717,7 +3712,7 @@ export const BOM = () => {
       >
         <form onSubmit={handleLocSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${locErrors.bin ? 'text-red-600' : 'text-gray-700'}`}>Ô</label>
+            <label className="text-xs font-medium text-gray-700">Ô</label>
             <input
               type="number"
               value={currentEditingLoc?.bin || ''}
@@ -3727,7 +3722,7 @@ export const BOM = () => {
               }}
               className={`w-full border ${locErrors.bin ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none transition-all ${isModalMaximized ? 'text-base' : 'text-sm'}`}
             />
-            {locErrors.bin && <p className="text-red-500 text-[10px] mt-1 font-medium italic">{locErrors.bin}</p>}
+            {locErrors.bin && <p className="text-red-500 text-xs mt-1 font-medium">{locErrors.bin}</p>}
           </div>
 
           <div className="relative">
@@ -3737,7 +3732,7 @@ export const BOM = () => {
               </button>
             </div>
             <CustomSelect
-              label="Kệ (Rack)"
+              label="Kệ"
               options={warehouseRacks.map(r => ({ value: r.id || r.ID, label: r.name || r.Name }))}
               value={currentEditingLoc.racks || ''}
               onChange={(e) => {
@@ -3748,7 +3743,6 @@ export const BOM = () => {
               error={!!locErrors.racks}
               errorMessage={locErrors.racks}
             />
-            {locErrors.racks && <p className="text-red-500 text-[10px] mt-1 font-medium italic">{locErrors.racks}</p>}
           </div>
 
           <div className="flex flex-col gap-1">
@@ -3807,7 +3801,7 @@ export const BOM = () => {
       <Modal isOpen={isRackEditModalOpen} onClose={() => { setIsRackEditModalOpen(false); setRackErrors({}); }} title={rackModalMode === 'add' ? 'Thêm kệ mới' : 'Sửa tên kệ'} maxWidth="max-w-sm">
         <form onSubmit={handleRackSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${rackErrors.name ? 'text-red-600' : 'text-gray-700'}`}>Tên Kệ</label>
+            <label className="text-xs font-medium text-gray-700">Tên Kệ</label>
             <input
               type="text"
               value={currentEditingRack?.name || ''}

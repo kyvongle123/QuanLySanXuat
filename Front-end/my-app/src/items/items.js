@@ -1467,7 +1467,7 @@ export const Items = () => {
         <div>
           <label htmlFor="name" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Tên sản phẩm</label>
           <input type="text" id="name" name="name" value={currentEditingItem?.name || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-          {itemErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{itemErrors.name}</p>}
+          {itemErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{itemErrors.name}</p>}
         </div>
         <div>
           <label htmlFor="itemCode" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Mã thành phẩm</label>
@@ -1499,7 +1499,7 @@ export const Items = () => {
             isModalMaximized={isModalMaximized}
             className={itemErrors.category ? "!border-red-500 focus:!ring-red-500" : ""}
           />
-          {itemErrors.category && <p className="text-red-500 text-[10px] mt-1  font-medium">{itemErrors.category}</p>}
+          {itemErrors.category && <p className="text-red-500 text-xs mt-1  font-medium">{itemErrors.category}</p>}
         </div>
         <div>
           <label htmlFor="inventory" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Số lượng tồn</label>
@@ -1514,19 +1514,19 @@ export const Items = () => {
         <div>
           <label htmlFor="tax" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Thuế</label>
           <input type="text" id="tax" name="tax" value={currentEditingItem?.tax || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.tax ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-          {itemErrors.tax && <p className="text-red-500 text-[10px] mt-1 font-medium">{itemErrors.tax}</p>}
+          {itemErrors.tax && <p className="text-red-500 text-xs mt-1 font-medium">{itemErrors.tax}</p>}
         </div>
         <div>
           <label htmlFor="weight" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Cân nặng</label>
           <input type="number" id="weight" name="weight" value={currentEditingItem?.weight || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.weight ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-          {itemErrors.weight && <p className="text-red-500 text-[10px] mt-1 font-medium">{itemErrors.weight}</p>}
+          {itemErrors.weight && <p className="text-red-500 text-xs mt-1 font-medium">{itemErrors.weight}</p>}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <div>
           <label htmlFor="price" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Giá (VNĐ)</label>
           <input type="number" id="price" name="price" value={currentEditingItem?.price || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.price ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-          {itemErrors.price && <p className="text-red-500 text-[10px] mt-1 font-medium">{itemErrors.price}</p>}
+          {itemErrors.price && <p className="text-red-500 text-xs mt-1 font-medium">{itemErrors.price}</p>}
         </div>
       </div>
       <div>
@@ -1534,7 +1534,7 @@ export const Items = () => {
           <button
             type="button"
             onClick={() => setIsWarehousesModalOpen(true)}
-            className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 text-[11px] font-bold underline z-10"
+            className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 text-xs font-bold underline z-10"
           >
             hiệu chỉnh
           </button>
@@ -1548,7 +1548,7 @@ export const Items = () => {
             placement="top"
             className={itemErrors.location ? "!border-red-500 focus:!ring-red-500" : ""}
           />
-          {itemErrors.location && <p className="text-red-500 text-[10px] mt-1 font-medium">{itemErrors.location}</p>}
+          {itemErrors.location && <p className="text-red-500 text-xs mt-1 font-medium">{itemErrors.location}</p>}
         </div>
       </div>
       <div className="flex justify-end gap-2 pt-1">
@@ -2352,7 +2352,7 @@ export const Items = () => {
               }}
               className={`w-full border ${categoryErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isCategoryEditMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`}
             />
-            {categoryErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{categoryErrors.name}</p>}
+            {categoryErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{categoryErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => { setIsCategoryEditModalOpen(false); setCategoryErrors({}); }} className={`bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors ${isCategoryEditMaximized ? 'px-6 py-2 text-base' : 'px-4 py-1.5 text-sm'}`}>Hủy</button>
@@ -2511,7 +2511,7 @@ export const Items = () => {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${warehouseErrors.available ? 'text-red-600' : 'text-gray-700'}`}>Số lượng tối đa</label>
+            <label className="text-xs font-medium text-gray-700">Số lượng tối đa</label>
             <input
               type="number"
               min="0"
@@ -2642,7 +2642,7 @@ export const Items = () => {
               }}
               className={`w-full border ${locErrors.bin ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none transition-all ${isModalMaximized ? 'text-base' : 'text-sm'}`}
             />
-            {locErrors.bin && <p className="text-red-500 text-[10px] mt-1 font-medium">{locErrors.bin}</p>}
+            {locErrors.bin && <p className="text-red-500 text-xs mt-1 font-medium">{locErrors.bin}</p>}
           </div>
           <div className="relative">
             <button type="button" onClick={() => setIsRackMgmtOpen(true)} className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 text-[11px] font-bold underline z-10">hiệu chỉnh</button>
@@ -2657,7 +2657,7 @@ export const Items = () => {
               isModalMaximized={isLocEditMaximized}
               className={locErrors.racks ? "!border-red-500 focus:!ring-red-500" : ""}
             />
-            {locErrors.racks && <p className="text-red-500 text-[10px] mt-1 font-medium">{locErrors.racks}</p>}
+            {locErrors.racks && <p className="text-red-500 text-xs mt-1 font-medium">{locErrors.racks}</p>}
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Tầng (Level)</label>
@@ -2670,7 +2670,7 @@ export const Items = () => {
               }}
               className={`w-full border ${locErrors.level ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none text-sm transition-all ${isLocEditMaximized ? 'p-2' : 'p-1.5'}`}
             />
-            {locErrors.level && <p className="text-red-500 text-[10px] mt-1 font-medium">{locErrors.level}</p>}
+            {locErrors.level && <p className="text-red-500 text-xs mt-1 font-medium">{locErrors.level}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => { setIsLocEditModalOpen(false); setIsLocEditMaximized(false); setLocErrors({}); }} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>

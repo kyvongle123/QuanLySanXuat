@@ -1029,7 +1029,7 @@ export const Stages = () => {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className={`text-xs font-medium ${errors.sequence ? 'text-red-500' : 'text-gray-700'}`}>Thứ tự</label>
+              <label className="text-xs font-medium text-gray-700">Thứ tự</label>
               <input
                 type="number"
                 value={currentEditingItem?.sequence || 0}
@@ -1039,12 +1039,12 @@ export const Stages = () => {
                 }}
                 className={`w-full border ${errors.sequence ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
               />
-              {errors.sequence && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.sequence}</p>}
+              {errors.sequence && <p className="text-red-500 text-xs mt-1 font-medium">{errors.sequence}</p>}
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${errors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên công đoạn</label>
+            <label className="text-xs font-medium text-gray-700">Tên công đoạn</label>
             <input
               type="text"
               value={currentEditingItem?.name || ''}
@@ -1054,7 +1054,7 @@ export const Stages = () => {
               }}
               className={`w-full border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
             />
-            {errors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.name}</p>}
+            {errors.name && <p className="text-red-500 text-xs mt-1 font-medium">{errors.name}</p>}
           </div>
 
           <div className="relative">
@@ -1132,7 +1132,7 @@ export const Stages = () => {
       <Modal isOpen={isSectionEditModalOpen} onClose={handleCloseSectionEditModal} title={sectionForm.id ? 'Sửa tổ sản xuất' : 'Thêm tổ sản xuất mới'} maxWidth="max-w-md">
         <div className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${sectionErrors.name ? 'text-red-500' : 'text-gray-700'}`}>Tên Tổ sản xuất</label>
+            <label className="text-xs font-medium text-gray-700">Tên Tổ sản xuất</label>
             <input
               type="text"
               value={sectionForm.name}
@@ -1143,7 +1143,7 @@ export const Stages = () => {
               className={`w-full border ${sectionErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 outline-none text-sm transition-all`}
               placeholder="Nhập tên tổ sản xuất..."
             />
-            {sectionErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{sectionErrors.name}</p>}
+            {sectionErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{sectionErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={handleCloseSectionEditModal} className="bg-gray-500 text-white px-4 py-1.5 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>

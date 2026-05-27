@@ -657,15 +657,15 @@ export const Suppliers = () => {
           {/* Dòng 1: Tên nhà cung cấp và Mã nhà cung cấp */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={`text-xs font-medium ${supplierErrors.name ? 'text-red-500' : 'text-gray-500'}`}>Tên nhà cung cấp <span className="text-red-500">*</span></label>
+              <label className="text-xs font-medium text-gray-500">Tên nhà cung cấp <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="name"
                 value={currentEditingSupplier?.name || ''}
                 onChange={handleModalInputChange}
-                className={`mt-1 block w-full border ${supplierErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+                className={`mt-1 block w-full border border-gray-300 focus:ring-blue-500 rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
-              {supplierErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.name}</p>}
+              {supplierErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{supplierErrors.name}</p>}
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500">Mã nhà cung cấp</label>
@@ -682,32 +682,32 @@ export const Suppliers = () => {
           {/* Dòng 2: Người liên hệ và Điện thoại */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={`text-xs font-medium ${supplierErrors.contactPerson ? 'text-red-500' : 'text-gray-700'}`}>Người liên hệ</label>
+              <label className="text-xs font-medium text-gray-700">Người liên hệ</label>
               <input
                 type="text"
                 name="contactPerson"
                 value={currentEditingSupplier?.contactPerson || ''}
                 onChange={handleModalInputChange}
-                className={`mt-1 block w-full border ${supplierErrors.contactPerson ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+                className={`mt-1 block w-full border 'border-gray-300 focus:ring-blue-500 rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
-              {supplierErrors.contactPerson && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.contactPerson}</p>}
+              {supplierErrors.contactPerson && <p className="text-red-500 text-xs mt-1 font-medium">{supplierErrors.contactPerson}</p>}
             </div>
             <div>
-              <label className={`text-xs font-medium ${supplierErrors.phone ? 'text-red-500' : 'text-gray-700'}`}>Điện thoại</label>
+              <label className="text-xs font-medium text-gray-700">Điện thoại</label>
               <input
                 type="text"
                 name="phone"
                 value={currentEditingSupplier?.phone || ''}
                 onChange={handleModalInputChange}
-                className={`mt-1 block w-full border ${supplierErrors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+                className={`mt-1 block w-full border border-gray-300 focus:ring-blue-500 rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
-              {supplierErrors.phone && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.phone}</p>}
+              {supplierErrors.phone && <p className="text-red-500 text-xs mt-1 font-medium">{supplierErrors.phone}</p>}
             </div>
           </div>
 
           {/* Dòng 3: Địa chỉ */}
           <div>
-            <label className={`text-xs font-medium ${supplierErrors.address ? 'text-red-500' : 'text-gray-700'}`}>Địa chỉ</label>
+            <label className="text-xs font-medium text-gray-700">Địa chỉ</label>
             <input
               type="text"
               name="address"
@@ -715,13 +715,13 @@ export const Suppliers = () => {
               onChange={handleModalInputChange}
               className={`mt-1 block w-full border ${supplierErrors.address ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
             />
-            {supplierErrors.address && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.address}</p>}
+            {supplierErrors.address && <p className="text-red-500 text-xs mt-1 font-medium">{supplierErrors.address}</p>}
           </div>
 
           {/* Dòng 4: Email và Mã số thuế */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={`text-xs font-medium ${supplierErrors.email ? 'text-red-500' : 'text-gray-700'}`}>Email</label>
+              <label className="text-xs font-medium text-gray-700">Email</label>
               <input
                 type="email"
                 name="email"
@@ -729,10 +729,10 @@ export const Suppliers = () => {
                 onChange={handleModalInputChange}
                 className={`mt-1 block w-full border ${supplierErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
-              {supplierErrors.email && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.email}</p>}
+              {supplierErrors.email && <p className="text-red-500 text-xs mt-1 font-medium">{supplierErrors.email}</p>}
             </div>
             <div>
-              <label className={`text-xs font-medium ${supplierErrors.taxCode ? 'text-red-500' : 'text-gray-700'}`}>Mã số thuế</label>
+              <label className="text-xs font-medium text-gray-700">Mã số thuế</label>
               <input
                 type="text"
                 name="taxCode"
@@ -740,13 +740,13 @@ export const Suppliers = () => {
                 onChange={handleModalInputChange}
                 className={`mt-1 block w-full border ${supplierErrors.taxCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
               />
-              {supplierErrors.taxCode && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.taxCode}</p>}
+              {supplierErrors.taxCode && <p className="text-red-500 text-xs mt-1 font-medium">{supplierErrors.taxCode}</p>}
             </div>
           </div>
 
           {/* Dòng 5: Website */}
           <div>
-            <label className={`text-xs font-medium ${supplierErrors.website ? 'text-red-500' : 'text-gray-700'}`}>Website</label>
+            <label className="text-xs font-medium text-gray-700">Website</label>
             <input
               type="text"
               name="website"
@@ -754,7 +754,7 @@ export const Suppliers = () => {
               onChange={handleModalInputChange}
               className={`mt-1 block w-full border ${supplierErrors.website ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
             />
-            {supplierErrors.website && <p className="text-red-500 text-[10px] mt-1 font-medium">{supplierErrors.website}</p>}
+            {supplierErrors.website && <p className="text-red-500 text-xs mt-1 font-medium">{supplierErrors.website}</p>}
           </div>
 
           {/* Dòng 6: Ghi chú */}
@@ -791,6 +791,6 @@ export const Suppliers = () => {
         type={notification.type}
         onClose={closeNotification}
       />
-    </div>
+    </div >
   );
 };

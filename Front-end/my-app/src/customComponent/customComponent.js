@@ -287,7 +287,7 @@ export const CustomSelect = ({ label, options, value, onChange, name, isModalMax
 
   return (
     <div className="flex flex-col gap-1 w-full relative">
-      {label && <label className={`text-xs font-medium ${error ? 'text-red-600' : 'text-gray-700'}`}>{label}</label>}
+      {label && <label className="text-xs font-medium text-gray-700">{label}</label>}
       <div className={`relative ${isModalMaximized ? 'text-base' : 'text-sm'}`}>
         <button
           type="button"
@@ -568,7 +568,7 @@ export const DateInput = ({ label, value, onChange, name, isModalMaximized = fal
 
   return (
     <div className="flex flex-col gap-1 w-full relative" ref={containerRef}>
-      {label && <label className={`text-xs font-medium ${error ? 'text-red-500' : 'text-gray-700'}`}>{label}</label>}
+      {label && <label className="text-xs font-medium text-gray-700">{label}</label>}
       <div className="relative">
         <button
           type="button"
@@ -592,7 +592,7 @@ export const DateInput = ({ label, value, onChange, name, isModalMaximized = fal
           document.body
         )}
       </div>
-      {errorMessage && <p className="text-red-500 text-[10px] mt-1 font-medium">{errorMessage}</p>}
+      {errorMessage && <p className="text-red-500 text-xs mt-1 font-medium">{errorMessage}</p>}
     </div>
   );
 };

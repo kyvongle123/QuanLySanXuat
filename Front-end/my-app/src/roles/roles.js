@@ -356,7 +356,7 @@ export const Roles = () => {
           <button type="button" onClick={(e) => { e.stopPropagation(); handleClearSelectedRoles(); }} className="font-semibold text-gray-500 hover:text-gray-700">Bỏ chọn</button>
         </div>
       ) : 'Hành động',
-      className: 'text-right pr-2 sm:pr-5 w-[120px] sm:w-[160px]',
+      className: 'text-center pr-2 sm:pr-5 w-[120px] sm:w-[180px]',
       render: (row) => (
         <div className="flex justify-center items-center gap-2">
           {isBulkSelectMode ? (
@@ -471,7 +471,7 @@ export const Roles = () => {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={`text-xs ${errors.name ? 'text-red-500' : 'text-gray-500'} ml-1`}>Tên chức vụ <span className="text-red-500">*</span></label>
+            <label className="text-xs text-gray-500 ml-1">Tên chức vụ <span className="text-red-500">*</span></label>
             <input
               type="text"
               value={currentEditingRole?.name || ''}
@@ -481,7 +481,7 @@ export const Roles = () => {
               }}
               className={`mt-1 block w-full border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg shadow-sm outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`}
             />
-            {errors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.name}</p>}
+            {errors.name && <p className="text-red-500 text-xs mt-1 font-medium">{errors.name}</p>}
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button type="button" onClick={handleCloseModal} className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-medium transition-colors text-sm">Hủy bỏ</button>

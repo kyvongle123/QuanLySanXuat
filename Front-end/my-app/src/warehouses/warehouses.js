@@ -625,11 +625,11 @@ export const Warehouses = () => {
     }
 
     if (!currentEditingLoc.racks) {
-      errors.racks = "Bắt buộc nhập Kệ (Rack)";
+      errors.racks = "Bắt buộc nhập Kệ";
     }
 
     if (currentEditingLoc.level === '' || currentEditingLoc.level === null || currentEditingLoc.level === undefined) {
-      errors.level = "Bắt buộc nhập Tầng (Level)";
+      errors.level = "Bắt buộc nhập Tầng";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -1725,7 +1725,7 @@ export const Warehouses = () => {
       >
         <form onSubmit={handleSaveType} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${typeErrors.name ? 'text-red-600' : 'text-gray-700'}`}>Tên loại kho</label>
+            <label className="text-xs font-medium text-gray-700">Tên loại kho</label>
             <input
               type="text"
               value={typeForm.name || ''}
@@ -1752,7 +1752,7 @@ export const Warehouses = () => {
       >
         <form onSubmit={handleLocSubmit} className="space-y-4">
           <div className="relative">
-            <label className={`text-xs font-medium ${locErrors.bin ? 'text-red-600' : 'text-gray-700'}`}>Ô</label>
+            <label className="text-xs font-medium text-gray-700">Ô</label>
             <input
               type="number"
               value={currentEditingLoc?.bin ?? ''}
@@ -1771,7 +1771,7 @@ export const Warehouses = () => {
             errorMessage={locErrors.racks}
           />
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${locErrors.level ? 'text-red-600' : 'text-gray-700'}`}>Tầng (Level)</label>
+            <label className="text-xs font-medium text-gray-700">Tầng (Level)</label>
             <input
               type="number"
               value={currentEditingLoc.level ?? ''}

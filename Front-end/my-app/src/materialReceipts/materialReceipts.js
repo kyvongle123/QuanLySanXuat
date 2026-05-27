@@ -246,7 +246,7 @@ const SearchableSelect = ({ value, options, onChange, placeholder = "Tìm...", c
         </div>
       )}
       {isOpen && usePortal && dropdownRect && createPortal(dropdownMenu, document.body)}
-      {errorMessage && <p className="text-red-500 text-[10px] mt-1 font-medium">{errorMessage}</p>}
+      {errorMessage && <p className="text-red-500 text-xs mt-1 font-medium">{errorMessage}</p>}
     </div>
   );
 };
@@ -349,7 +349,7 @@ const MultiSearchableSelect = ({ selectedValues = [], options, onChange, placeho
           </div>
         </div>
       )}
-      {errorMessage && <p className="text-red-500 text-[10px] mt-1 font-medium">{errorMessage}</p>}
+      {errorMessage && <p className="text-red-500 text-xs mt-1 font-medium">{errorMessage}</p>}
     </div>
   );
 };
@@ -1874,7 +1874,7 @@ export const MaterialReceipts = () => {
 
                 {/* Nhà cung cấp */}
                 <div className="flex flex-col gap-1">
-                  <label className={`text-sm font-semibold ${receiptErrors.supplier ? 'text-red-500' : 'text-gray-700'}`}>Nhà cung cấp</label>
+                  <label className="text-sm font-semibold text-gray-700">Nhà cung cấp</label>
                   <div className="relative">
                     <button
                       type="button"
@@ -1889,7 +1889,7 @@ export const MaterialReceipts = () => {
 
                 {/* Số vận đơn */}
                 <div className="flex flex-col gap-1">
-                  <label className={`text-sm font-semibold ${receiptErrors.deliveryNoteNumber ? 'text-red-500' : 'text-gray-700'}`}>Số vận đơn</label>
+                  <label className="text-sm font-semibold text-gray-700">Số vận đơn</label>
                   <input type="text" name="deliveryNoteNumber" value={currentReceipt?.deliveryNoteNumber || ''} onChange={handleInputChange} disabled={isReceiveMode} className={`w-full border ${receiptErrors.deliveryNoteNumber ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-1.5 h-[38px] text-sm focus:ring-2 outline-none ${isReceiveMode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} placeholder="Nhập số vận đơn" />
                   {receiptErrors.deliveryNoteNumber && <p className="text-red-500 text-[10px] mt-1 font-medium">{receiptErrors.deliveryNoteNumber}</p>}
                 </div>
@@ -1915,7 +1915,7 @@ export const MaterialReceipts = () => {
             {activeTab === 2 && ( /* This is the div for Tab 2 content */
               <div className="flex flex-col gap-5 animate-in fade-in duration-300">
                 <div className="flex flex-col gap-1">
-                  <label className={`text-sm font-semibold ${receiptErrors.items ? 'text-red-500' : 'text-gray-700'}`}>Nguyên liệu nhập</label>
+                  <label className="text-sm font-semibold text-gray-700">Nguyên liệu nhập</label>
                   <MultiSearchableSelect
                     selectedValues={currentReceipt?.items?.map(i => i.materialId) || []}
                     options={allMaterials}
@@ -1946,7 +1946,7 @@ export const MaterialReceipts = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in duration-300">
                 {/* Hàng 1: Người nhận hàng chiếm 1/2 màn hình, nằm riêng một hàng */}
                 <div className="flex flex-col gap-1">
-                  <label className={`text-sm font-semibold ${receiptErrors.receiver ? 'text-red-500' : 'text-gray-700'}`}>Người nhận hàng</label>
+                  <label className="text-sm font-semibold text-gray-700">Người nhận hàng</label>
                   <SearchableSelect value={currentReceipt?.receiver || ''} options={users} onChange={(val) => handleInputChange(val, 'receiver')} placeholder="Chọn nhân viên..." error={!!receiptErrors.receiver} errorMessage={receiptErrors.receiver} disabled={isReceiveMode} />
                 </div>
                 <div className="hidden md:block"></div>
@@ -1954,7 +1954,7 @@ export const MaterialReceipts = () => {
                 {/* Thành phần mới: Ban kiểm nghiệm sản phẩm */}
                 <div className="md:col-span-2 flex flex-col gap-1">
                   <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
-                    <label className={`text-sm font-semibold ${receiptErrors.inspectorPanel ? 'text-red-500' : 'text-gray-700'}`}>
+                    <label className="text-sm font-semibold text-gray-700">
                       Ban kiểm nghiệm sản phẩm
                     </label>
                     <p className="text-[10px] text-gray-500 italic mt-0.5">* Quy định: 1 Trưởng ban và tối đa 2 Ủy ban kiểm nghiệm</p>

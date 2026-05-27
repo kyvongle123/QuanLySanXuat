@@ -480,11 +480,11 @@ export const WarehouseLocations = () => {
     }
 
     if (!currentEditingItem?.racks) {
-      errors.racks = "Bắt buộc nhập Kệ (Rack)";
+      errors.racks = "Bắt buộc nhập Kệ";
     }
 
     if (currentEditingItem?.level === '' || currentEditingItem?.level === null || currentEditingItem?.level === undefined) {
-      errors.level = "Bắt buộc nhập Tầng (Level)";
+      errors.level = "Bắt buộc nhập Tầng";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -1003,7 +1003,7 @@ export const WarehouseLocations = () => {
           </div>
 
           <div className="relative">
-            <label className={`text-xs font-medium ${modalErrors.bin ? 'text-red-600' : 'text-gray-700'}`}>Ô</label>
+            <label className="text-xs font-medium text-gray-700">Ô</label>
             <input
               type="number"
               value={currentEditingItem?.bin ?? ''}
@@ -1024,7 +1024,7 @@ export const WarehouseLocations = () => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${modalErrors.level ? 'text-red-600' : 'text-gray-700'}`}>Tầng (Level)</label>
+            <label className="text-xs font-medium text-gray-700">Tầng</label>
             <input
               type="number"
               value={currentEditingItem?.level ?? ''}
@@ -1132,7 +1132,7 @@ export const WarehouseLocations = () => {
       <Modal isOpen={isRackEditModalOpen} onClose={() => { setIsRackEditModalOpen(false); setRackErrors({}); }} title={rackModalMode === 'add' ? 'Thêm kệ mới' : 'Sửa tên kệ'} maxWidth="max-w-sm">
         <form onSubmit={handleRackSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${rackErrors.name ? 'text-red-600' : 'text-gray-700'}`}>Tên Kệ</label>
+            <label className="text-xs font-medium text-gray-700">Tên Kệ</label>
             <input
               type="text"
               value={currentEditingRack?.name || ''}

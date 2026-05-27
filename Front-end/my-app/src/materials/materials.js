@@ -520,11 +520,11 @@ export const Material = () => {
     }
 
     if (!currentEditingLoc.racks) {
-      errors.racks = "Bắt buộc nhập Kệ (Rack)";
+      errors.racks = "Bắt buộc nhập Kệ";
     }
 
     if (currentEditingLoc.level === '' || currentEditingLoc.level === null || currentEditingLoc.level === undefined) {
-      errors.level = "Bắt buộc nhập Tầng (Level)";
+      errors.level = "Bắt buộc nhập Tầng";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -2133,7 +2133,7 @@ export const Material = () => {
       >
         <form onSubmit={handleSaveCategory} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className={`font-medium ${categoryErrors.name ? 'text-red-600' : 'text-gray-700'} ${isCategoryEditMaximized ? 'text-sm' : 'text-xs'}`}>Tên danh mục</label>
+            <label className={`font-medium text-gray-700 ${isCategoryEditMaximized ? 'text-sm' : 'text-xs'}`}>Tên danh mục</label>
             <input type="text" value={categoryForm.name || ''} onChange={(e) => { setCategoryErrors(prev => ({ ...prev, name: '' })); setCategoryForm({ ...categoryForm, name: e.target.value }); }} className={`w-full border ${categoryErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isCategoryEditMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`} autoFocus={window.innerWidth >= 768} />
             {categoryErrors.name && <p className="text-xs font-medium text-red-600">{categoryErrors.name}</p>}
           </div>
@@ -2203,7 +2203,7 @@ export const Material = () => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${warehouseErrors.available ? 'text-red-600' : 'text-gray-700'}`}>Số lượng tối đa</label>
+            <label className="text-xs font-medium text-gray-700">Số lượng tối đa</label>
             <input
               type="number"
               min="0"
@@ -2295,7 +2295,7 @@ export const Material = () => {
       >
         <form onSubmit={handleSaveType} className="space-y-4">
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${typeErrors.name ? 'text-red-600' : 'text-gray-700'}`}>Tên loại kho</label>
+            <label className="text-xs font-medium text-gray-700">Tên loại kho</label>
             <input
               type="text"
               value={typeForm.name || ''}
@@ -2322,7 +2322,7 @@ export const Material = () => {
       >
         <form onSubmit={handleLocSubmit} className="space-y-4">
           <div className="relative">
-            <label className={`text-xs font-medium ${locErrors.bin ? 'text-red-600' : 'text-gray-700'}`}>Ô</label>
+            <label className="text-xs font-medium text-gray-700">Ô</label>
             <input
               type="number"
               value={currentEditingLoc?.bin ?? ''}
@@ -2333,7 +2333,7 @@ export const Material = () => {
           </div>
           <CustomSelect label="Kệ" options={warehouseRacks.map(r => ({ value: r.id || r.ID, label: r.name || r.Name }))} value={currentEditingLoc.racks || ''} onChange={(e) => { setLocErrors(prev => ({ ...prev, racks: '' })); setCurrentEditingLoc({ ...currentEditingLoc, racks: e.target.value }); }} isModalMaximized={isLocEditMaximized} error={!!locErrors.racks} errorMessage={locErrors.racks} />
           <div className="flex flex-col gap-1">
-            <label className={`text-xs font-medium ${locErrors.level ? 'text-red-600' : 'text-gray-700'}`}>Tầng</label>
+            <label className="text-xs font-medium text-gray-700">Tầng</label>
             <input
               type="number"
               value={currentEditingLoc.level ?? ''}

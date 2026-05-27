@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { MdAdd } from "react-icons/md";
 import { MapPin, Truck, Package, Plus, Trash2, Edit3, ArrowRight, Search, MapPinned, FileDown, FileUp, ChevronRight } from 'lucide-react';
 import { TbSortDescending } from "react-icons/tb";
 import { FaRegSquare, FaRegSquareMinus } from "react-icons/fa6";
@@ -1139,7 +1140,7 @@ export const TransportRoutes = () => {
               onClick={handleOpenAdd}
               className="order-4 sm:order-4 w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-3 rounded whitespace-nowrap flex items-center justify-center gap-2 transition-all shadow-lg shadow-green-100 active:scale-95 text-sm"
             >
-              <Plus size={16} />
+              <MdAdd />
               <span className="sm:hidden">Thêm mới</span>
               <span className="hidden sm:inline">Tạo chuyến hàng</span>
             </button>

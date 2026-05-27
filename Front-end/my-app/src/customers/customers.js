@@ -5,7 +5,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CustomDatatable, Modal, AppNotification, CustomConfirm } from '../customComponent/customComponent';
 import { createCustomer, deleteCustomer, getCustomers, updateCustomer } from '../controller/customersController';
-import { FaPencil } from "react-icons/fa6";
+import { MdAdd } from "react-icons/md";
 
 const API_BASE_URL = 'https://quanlysanxuat-production.up.railway.app/api';
 
@@ -355,7 +355,7 @@ export const Customers = () => {
   const columns = [
     {
       header: '',
-      className: 'w-[40px] text-center !px-1',
+      className: 'w-[40px] text-center !px-1 sm:hidden',
       render: (row, { isExpanded, toggleExpand }) => (
         <button
           onClick={(e) => { e.stopPropagation(); toggleExpand(); }}
@@ -487,7 +487,7 @@ export const Customers = () => {
             onClick={() => handleOpenModal('add')}
             className="order-4 w-full lg:w-auto justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap transition-all active:scale-95 shadow-md text-sm flex items-center justify-center gap-2"
           >
-            <Plus size={16} />
+            <MdAdd />
             <span>Thêm mới</span>
           </button>
         </div>
@@ -584,7 +584,7 @@ export const Customers = () => {
                 onChange={handleInputChange}
                 className={`w-full border p-2.5 rounded-lg outline-none focus:ring-2 shadow-sm transition-all ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}`}
               />
-              {errors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.name}</p>}
+              {errors.name && <p className="text-red-500 text-xs mt-1 font-medium">{errors.name}</p>}
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-500 ml-1">Email</label>
@@ -595,7 +595,7 @@ export const Customers = () => {
                 onChange={handleInputChange}
                 className={`w-full border p-2.5 rounded-lg outline-none focus:ring-2 shadow-sm transition-all ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}`}
               />
-              {errors.email && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.email}</p>}
+              {errors.email && <p className="text-red-500 text-xs mt-1 font-medium">{errors.email}</p>}
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-500 ml-1">Số điện thoại</label>
@@ -605,7 +605,7 @@ export const Customers = () => {
                 onChange={handleInputChange}
                 className={`w-full border p-2.5 rounded-lg outline-none focus:ring-2 shadow-sm transition-all ${errors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}`}
               />
-              {errors.phone && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.phone}</p>}
+              {errors.phone && <p className="text-red-500 text-xs mt-1 font-medium">{errors.phone}</p>}
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-500 ml-1">Địa chỉ</label>
@@ -615,7 +615,7 @@ export const Customers = () => {
                 onChange={handleInputChange}
                 className={`w-full border p-2.5 rounded-lg outline-none focus:ring-2 shadow-sm transition-all ${errors.address ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}`}
               />
-              {errors.address && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.address}</p>}
+              {errors.address && <p className="text-red-500 text-xs mt-1 font-medium">{errors.address}</p>}
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
