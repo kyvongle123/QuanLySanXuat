@@ -1370,7 +1370,7 @@ export const MaterialReceipts = () => {
       className: 'w-16 text-center !px-2',
       headerCellClassName: 'text-center',
       render: (item) => (
-        <button type="button" onClick={() => setCurrentReceipt(prev => ({ ...prev, items: prev.items.filter(i => i.materialId !== item.materialId) }))} className="text-red-500 hover:text-red-700 active:scale-95"><Trash2 size={16} /></button>
+        <button type="button" onClick={() => setCurrentReceipt(prev => ({ ...prev, items: prev.items.filter(i => i.materialId !== item.materialId) }))} className="text-gray-500 hover:text-gray-700 active:scale-95"><Trash2 size={16} /></button>
       )
     }
   ], [allMaterials, currentReceipt, handleItemFieldChange, isReadOnlyReceiptItemField, showDeliveredQuantityColumn, canEditDeliveredQuantity, openInventoryMenuId]);
