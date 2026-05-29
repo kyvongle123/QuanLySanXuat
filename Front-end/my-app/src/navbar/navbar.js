@@ -204,7 +204,7 @@ export const Navbar = ({ onToggleSidebar }) => {
                       {/* Nút xóa */}
                       <button
                         onClick={(e) => handleDeleteNotif(e, notif.id)}
-                        className="absolute right-2 top-2 p-1.5 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all rounded-md hover:bg-red-50"
+                        className="absolute right-2 top-2 p-1.5 text-gray-600 hover:text-gray-800 opacity-0 group-hover:opacity-100 transition-all rounded-md hover:bg-gray-50"
                       >
                         <Trash2 size={14} />
                       </button>
