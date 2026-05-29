@@ -753,7 +753,7 @@ export const Stages = () => {
             </button>
           ) : (
             <div className="flex gap-1.5 justify-end animate-in slide-in-from-left-2 duration-200">
-              <button onClick={(e) => { e.stopPropagation(); handleEditItem(row); }} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
+              <button onClick={(e) => { e.stopPropagation(); handleEditItem(row); }} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
               <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, id: getStageId(row), type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa công đoạn này?' }); }} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Xóa</button>
             </div>
           )}

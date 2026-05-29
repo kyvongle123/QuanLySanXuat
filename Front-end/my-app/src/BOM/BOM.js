@@ -2518,10 +2518,10 @@ export const BOM = () => {
             </button>
           ) : (
             <>
-              <button onClick={() => handleEditItem(row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-[10px] sm:text-sm transition-colors active:scale-95">Sửa</button>
+              <button onClick={() => handleEditItem(row)} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-all active:scale-95">Sửa</button>
               <button
                 onClick={() => setConfirmModal({ isOpen: true, id: getBomId(row), type: 'delete', title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa định mức này?' })}
-                className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-[10px] sm:text-sm transition-colors active:scale-95"
+                className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded text-[11px] sm:text-xs transition-colors active:scale-95"
               >
                 Xóa
               </button>
@@ -2652,7 +2652,7 @@ export const BOM = () => {
           columns={columns}
           data={filteredData}
           renderExpansion={renderBomMobileExpansion}
-          bodyCellClassName="!py-2 lg:!py-3"
+          bodyCellClassName="!py-2 sm:!py-3"
         />
       )}
 

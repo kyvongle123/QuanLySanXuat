@@ -1618,7 +1618,7 @@ export const MaterialReceipts = () => {
                 <button
                   type="button"
                   disabled
-                  className="bg-red-100 text-red-500 border border-red-200 font-bold py-1 px-2 rounded text-[11px] sm:text-xs cursor-not-allowed whitespace-nowrap"
+                  className="bg-pink-200 text-red-500 border border-red-200 font-bold py-1 px-2 rounded text-[11px] sm:text-xs cursor-not-allowed whitespace-nowrap"
                 >
                   Sai thông tin
                 </button>
