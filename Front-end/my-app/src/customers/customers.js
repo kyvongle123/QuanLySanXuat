@@ -445,7 +445,7 @@ export const Customers = () => {
   ];
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
+    <div className="p-4 sm:p-6">
       <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Danh sách khách hàng</h2>
 
       <div className="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
