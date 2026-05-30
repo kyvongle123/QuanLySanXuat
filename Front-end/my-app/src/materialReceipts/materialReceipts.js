@@ -2145,7 +2145,7 @@ export const MaterialReceipts = () => {
                   <button
                     type="button"
                     onClick={handleReceiveConfirm}
-                    className="flex items-center justify-center sm:hidden bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm flex-1"
+                    className="flex items-center justify-center sm:hidden bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 text-sm flex-1"
                   >
                     Nhận
                   </button>
