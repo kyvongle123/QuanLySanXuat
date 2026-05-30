@@ -439,10 +439,6 @@ export const Material = () => {
       errors.location = "Bắt buộc nhập Vị trí chi tiết";
     }
 
-    if (editingWarehouse.available === '' || editingWarehouse.available === null || editingWarehouse.available === undefined) {
-      errors.available = "Bắt buộc nhập Số lượng tối đa";
-    }
-
     if (Object.keys(errors).length > 0) {
       setWarehouseErrors(errors);
       return;
@@ -1889,7 +1885,7 @@ export const Material = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700">Số lượng</label>
-              <input type="number" value={currentEditingItem?.quantity ?? ''} onChange={(e) => { setModalErrors(prev => ({ ...prev, quantity: '' })); setCurrentEditingItem({ ...currentEditingItem, quantity: e.target.value }); }} className={`mt-1 block w-full border ${modalErrors.quantity ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+              <input type="number" value={currentEditingItem?.quantity ?? ''} onChange={(e) => { setModalErrors(prev => ({ ...prev, quantity: '' })); setCurrentEditingItem({ ...currentEditingItem, quantity: e.target.value }); }} className={`mt-1 block w-full border border-gray-300 focus:ring-blue-500 rounded-md shadow-sm outline-none focus:ring-2 ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700">Đơn vị tính</label>
@@ -2209,9 +2205,8 @@ export const Material = () => {
               min="0"
               value={editingWarehouse.available ?? ''}
               onChange={(e) => { setWarehouseErrors(prev => ({ ...prev, available: '' })); setEditingWarehouse({ ...editingWarehouse, available: e.target.value }); }}
-              className={`w-full border ${warehouseErrors.available ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isWarehouseEditMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+              className={`w-full border border-gray-300 focus:ring-blue-500 rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isWarehouseEditMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
             />
-            {warehouseErrors.available && <p className="text-xs font-medium text-red-600">{warehouseErrors.available}</p>}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -2300,7 +2295,7 @@ export const Material = () => {
               type="text"
               value={typeForm.name || ''}
               onChange={(e) => { setTypeErrors(prev => ({ ...prev, name: '' })); setTypeForm({ ...typeForm, name: e.target.value }); }}
-              className={`w-full border ${typeErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 focus:ring-2 outline-none text-sm`}
+              className={`w-full border ${typeErrors.name ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 focus:ring-2 outline-none text-sm`}
             />
             {typeErrors.name && <p className="text-xs font-medium text-red-600">{typeErrors.name}</p>}
           </div>
@@ -2327,7 +2322,7 @@ export const Material = () => {
               type="number"
               value={currentEditingLoc?.bin ?? ''}
               onChange={(e) => { setLocErrors(prev => ({ ...prev, bin: '' })); setCurrentEditingLoc({ ...currentEditingLoc, bin: e.target.value }); }}
-              className={`w-full border ${locErrors.bin ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none ${isLocEditMaximized ? 'text-base' : 'text-sm'}`}
+              className={`w-full border ${locErrors.bin ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none ${isLocEditMaximized ? 'text-base' : 'text-sm'}`}
             />
             {locErrors.bin && <p className="text-xs font-medium text-red-600">{locErrors.bin}</p>}
           </div>
@@ -2338,7 +2333,7 @@ export const Material = () => {
               type="number"
               value={currentEditingLoc.level ?? ''}
               onChange={(e) => { setLocErrors(prev => ({ ...prev, level: '' })); setCurrentEditingLoc({ ...currentEditingLoc, level: e.target.value }); }}
-              className={`w-full border ${locErrors.level ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none text-sm ${isLocEditMaximized ? 'p-2' : 'p-1.5'}`}
+              className={`w-full border ${locErrors.level ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none text-sm ${isLocEditMaximized ? 'p-2' : 'p-1.5'}`}
             />
             {locErrors.level && <p className="text-xs font-medium text-red-600">{locErrors.level}</p>}
           </div>

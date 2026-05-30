@@ -573,7 +573,7 @@ export const DateInput = ({ label, value, onChange, name, isModalMaximized = fal
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={className || `w-full pr-10 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md focus:outline-none focus:ring-2 transition-all bg-white text-left cursor-pointer flex items-center ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
+          className={className || `w-full pr-10 border ${error ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md focus:outline-none focus:ring-2 transition-all bg-white text-left cursor-pointer flex items-center ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
         >
           <span className="truncate">{formattedValue}</span>
           <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-gray-500">

@@ -1132,7 +1132,7 @@ export const Machines = () => {
                     options={machineTypes}
                     onChange={(val) => handleInputChange({ target: { name: 'machineType', value: val } })}
                     disabled={modalMode === 'view'}
-                    className={`w-full border ${errors.machineType ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white flex items-center justify-between cursor-pointer shadow-sm`}
+                    className={`w-full border ${errors.machineType ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white flex items-center justify-between cursor-pointer shadow-sm`}
                     placeholder="Tìm loại máy..."
                     error={!!errors.machineType}
                     errorMessage={errors.machineType}
@@ -1145,7 +1145,7 @@ export const Machines = () => {
 
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-gray-500 ml-1">Tổng số giờ đã chạy</label>
-                <input type="number" name="totalRunningHours" value={currentMachine?.totalRunningHours || 0} onChange={handleInputChange} disabled={modalMode === 'view'} className={`w-full border ${errors.totalRunningHours ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white shadow-sm`} />
+                <input type="number" name="totalRunningHours" value={currentMachine?.totalRunningHours || 0} onChange={handleInputChange} disabled={modalMode === 'view'} className={`w-full border ${errors.totalRunningHours ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white shadow-sm`} />
                 {errors.totalRunningHours && <p className="text-red-500 text-xs mt-1 font-medium">{errors.totalRunningHours}</p>}
               </div>
 
@@ -1166,7 +1166,7 @@ export const Machines = () => {
                     options={machineStatuses}
                     onChange={(val) => handleInputChange({ target: { name: 'status', value: val } })}
                     disabled={modalMode === 'view'}
-                    className={`w-full border ${errors.status ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white flex items-center justify-between cursor-pointer shadow-sm`}
+                    className={`w-full border ${errors.status ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm bg-white flex items-center justify-between cursor-pointer shadow-sm`}
                     placeholder="Tìm trạng thái..."
                     error={!!errors.status}
                     errorMessage={errors.status}
@@ -1176,7 +1176,7 @@ export const Machines = () => {
 
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-gray-500 ml-1">Mục tiêu hiệu suất (%)</label>
-                <input type="number" step="0.1" name="oeeTarget" value={currentMachine?.oeeTarget || 0} onChange={handleInputChange} disabled={modalMode === 'view'} className={`w-full border ${errors.oeeTarget ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm shadow-sm`} />
+                <input type="number" step="0.1" name="oeeTarget" value={currentMachine?.oeeTarget || 0} onChange={handleInputChange} disabled={modalMode === 'view'} className={`w-full border ${errors.oeeTarget ? 'border-red-500 focus:ring-0 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-lg px-3 py-2.5 focus:ring-2 outline-none transition-all disabled:bg-gray-50 text-sm shadow-sm`} />
                 {errors.oeeTarget && <p className="text-red-500 text-xs mt-1 font-medium">{errors.oeeTarget}</p>}
               </div>
             </div>

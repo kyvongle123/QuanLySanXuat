@@ -2705,7 +2705,7 @@ export const BOM = () => {
                 setCurrentEditingItem({ ...currentEditingItem, requiredQuantity: e.target.value });
                 if (bomErrors.requiredQuantity) setBomErrors(prev => ({ ...prev, requiredQuantity: null }));
               }}
-              className={`mt-1 block w-full border ${bomErrors.requiredQuantity ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 outline-none focus:ring-2`}
+              className={`mt-1 block w-full border ${bomErrors.requiredQuantity ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 outline-none focus:ring-2`}
             />
             {bomErrors.requiredQuantity && <p className="mt-1 text-xs font-medium text-red-600">{bomErrors.requiredQuantity}</p>}
           </div>
@@ -2947,7 +2947,7 @@ export const BOM = () => {
         <form onSubmit={handleSaveItem} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className={`text-xs ${itemErrors.name ? 'text-red-600' : 'text-gray-700'}`}>Tên sản phẩm</label>
+              <label className="text-xs text-gray-700">Tên sản phẩm</label>
               <input
                 type="text"
                 value={itemForm.name}
@@ -2955,12 +2955,12 @@ export const BOM = () => {
                   setItemForm({ ...itemForm, name: e.target.value });
                   if (itemErrors.name) setItemErrors(prev => ({ ...prev, name: null }));
                 }}
-                className={`w-full border ${itemErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
+                className={`w-full border ${itemErrors.name ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
               />
               {itemErrors.name && <p className="text-xs font-medium text-red-600 mt-0.5">{itemErrors.name}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className={`text-xs ${itemErrors.price ? 'text-red-600' : 'text-gray-700'}`}>Giá bán (VNĐ)</label>
+              <label className="text-xs text-gray-700">Giá bán (VNĐ)</label>
               <input
                 type="number"
                 value={itemForm.price}
@@ -2968,7 +2968,7 @@ export const BOM = () => {
                   setItemForm({ ...itemForm, price: e.target.value });
                   if (itemErrors.price) setItemErrors(prev => ({ ...prev, price: null }));
                 }}
-                className={`w-full border ${itemErrors.price ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
+                className={`w-full border ${itemErrors.price ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
               />
               {itemErrors.price && <p className="text-xs font-medium text-red-600 mt-0.5">{itemErrors.price}</p>}
             </div>
@@ -2996,7 +2996,7 @@ export const BOM = () => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className={`text-xs font-bold ${itemErrors.tax ? 'text-red-600' : 'text-gray-700'}`}>Thuế (%)</label>
+              <label className="text-xs font-bold text-gray-700">Thuế (%)</label>
               <input
                 type="number"
                 value={itemForm.tax}
@@ -3004,12 +3004,12 @@ export const BOM = () => {
                   setItemForm({ ...itemForm, tax: e.target.value });
                   if (itemErrors.tax) setItemErrors(prev => ({ ...prev, tax: null }));
                 }}
-                className={`w-full border ${itemErrors.tax ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
+                className={`w-full border ${itemErrors.tax ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
               />
               {itemErrors.tax && <p className="text-xs font-medium text-red-600 mt-0.5">{itemErrors.tax}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className={`text-xs font-bold ${itemErrors.weight ? 'text-red-600' : 'text-gray-700'}`}>Cân nặng (kg)</label>
+              <label className="text-xs font-bold text-gray-700">Cân nặng (kg)</label>
               <input
                 type="number"
                 step="0.01"
@@ -3018,7 +3018,7 @@ export const BOM = () => {
                   setItemForm({ ...itemForm, weight: e.target.value });
                   if (itemErrors.weight) setItemErrors(prev => ({ ...prev, weight: null }));
                 }}
-                className={`w-full border ${itemErrors.weight ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
+                className={`w-full border ${itemErrors.weight ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-lg p-2 outline-none focus:ring-2 text-sm`}
               />
               {itemErrors.weight && <p className="text-xs font-medium text-red-600 mt-0.5">{itemErrors.weight}</p>}
             </div>
@@ -3720,7 +3720,7 @@ export const BOM = () => {
                 setCurrentEditingLoc({ ...currentEditingLoc, bin: e.target.value });
                 if (locErrors.bin) setLocErrors(prev => ({ ...prev, bin: null })); // Clear error on change
               }}
-              className={`w-full border ${locErrors.bin ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none transition-all ${isModalMaximized ? 'text-base' : 'text-sm'}`}
+              className={`w-full border ${locErrors.bin ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none transition-all ${isModalMaximized ? 'text-base' : 'text-sm'}`}
             />
             {locErrors.bin && <p className="text-red-500 text-xs mt-1 font-medium">{locErrors.bin}</p>}
           </div>
@@ -3809,7 +3809,7 @@ export const BOM = () => {
                 setCurrentEditingRack({ ...currentEditingRack, name: e.target.value });
                 if (rackErrors.name) setRackErrors(prev => ({ ...prev, name: null }));
               }}
-              className={`w-full border ${rackErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-2 text-sm focus:ring-2 outline-none`}
+              className={`w-full border ${rackErrors.name ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-2 text-sm focus:ring-2 outline-none`}
               autoFocus={window.innerWidth >= 768}
             />
             {rackErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{rackErrors.name}</p>}

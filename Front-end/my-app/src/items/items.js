@@ -1261,8 +1261,6 @@ export const Items = () => {
     if (!editingWarehouse.type) errors.type = "Bắt buộc nhập Loại kho";
     if (!editingWarehouse.location) errors.location = "Bắt buộc nhập Vị trí chi tiết";
 
-    if (hasEmptyWarehouseAvailable) errors.available = "Bắt buộc nhập Số lượng tối đa";
-
     if (Object.keys(errors).length > 0) {
       setWarehouseErrors(errors);
       return;
@@ -1466,7 +1464,7 @@ export const Items = () => {
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <div>
           <label htmlFor="name" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Tên sản phẩm</label>
-          <input type="text" id="name" name="name" value={currentEditingItem?.name || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+          <input type="text" id="name" name="name" value={currentEditingItem?.name || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.name ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
           {itemErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{itemErrors.name}</p>}
         </div>
         <div>
@@ -1513,19 +1511,19 @@ export const Items = () => {
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <div>
           <label htmlFor="tax" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Thuế</label>
-          <input type="text" id="tax" name="tax" value={currentEditingItem?.tax || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.tax ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+          <input type="text" id="tax" name="tax" value={currentEditingItem?.tax || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.tax ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
           {itemErrors.tax && <p className="text-red-500 text-xs mt-1 font-medium">{itemErrors.tax}</p>}
         </div>
         <div>
           <label htmlFor="weight" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Cân nặng</label>
-          <input type="number" id="weight" name="weight" value={currentEditingItem?.weight || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.weight ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+          <input type="number" id="weight" name="weight" value={currentEditingItem?.weight || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.weight ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
           {itemErrors.weight && <p className="text-red-500 text-xs mt-1 font-medium">{itemErrors.weight}</p>}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <div>
           <label htmlFor="price" className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Giá (VNĐ)</label>
-          <input type="number" id="price" name="price" value={currentEditingItem?.price || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.price ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+          <input type="number" id="price" name="price" value={currentEditingItem?.price || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${itemErrors.price ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
           {itemErrors.price && <p className="text-red-500 text-xs mt-1 font-medium">{itemErrors.price}</p>}
         </div>
       </div>
@@ -2350,7 +2348,7 @@ export const Items = () => {
                 setCategoryForm({ ...categoryForm, name: e.target.value });
                 if (categoryErrors.name) setCategoryErrors(prev => ({ ...prev, name: null }));
               }}
-              className={`w-full border ${categoryErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isCategoryEditMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`}
+              className={`w-full border ${categoryErrors.name ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isCategoryEditMaximized ? 'p-3 text-base' : 'p-2 text-sm'}`}
             />
             {categoryErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{categoryErrors.name}</p>}
           </div>
@@ -2517,9 +2515,8 @@ export const Items = () => {
               min="0"
               value={editingWarehouse.available ?? ''}
               onChange={(e) => { setEditingWarehouse({ ...editingWarehouse, available: e.target.value }); if (warehouseErrors.available) setWarehouseErrors(prev => ({ ...prev, available: null })); }}
-              className={`w-full border ${warehouseErrors.available ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isWarehouseEditMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
+              className={`w-full border border-gray-300 focus:ring-blue-500 rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isWarehouseEditMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`}
             />
-            {warehouseErrors.available && <p className="text-xs font-medium text-red-600">{warehouseErrors.available}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => { setIsWarehouseEditModalOpen(false); setIsWarehouseEditMaximized(false); setWarehouseErrors({}); }} className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Hủy</button>
@@ -2610,9 +2607,9 @@ export const Items = () => {
                 setTypeForm({ ...typeForm, name: e.target.value });
                 if (typeErrors.name) setTypeErrors(prev => ({ ...prev, name: null }));
               }}
-              className={`w-full border ${typeErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 focus:ring-2 outline-none text-sm`}
+              className={`w-full border ${typeErrors.name ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 focus:ring-2 outline-none text-sm`}
             />
-            {typeErrors.name && <p className="text-red-500 text-[10px] mt-1 font-medium">{typeErrors.name}</p>}
+            {typeErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{typeErrors.name}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => { setIsTypeEditModalOpen(false); setIsTypeEditMaximized(false); setTypeErrors({}); }} className="bg-gray-500 text-white px-4 py-1.5 rounded-md hover:bg-gray-600 transition-colors text-sm">Hủy</button>
@@ -2640,7 +2637,7 @@ export const Items = () => {
                 setCurrentEditingLoc({ ...currentEditingLoc, bin: e.target.value });
                 if (locErrors.bin) setLocErrors(prev => ({ ...prev, bin: null }));
               }}
-              className={`w-full border ${locErrors.bin ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none transition-all ${isModalMaximized ? 'text-base' : 'text-sm'}`}
+              className={`w-full border ${locErrors.bin ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none transition-all ${isModalMaximized ? 'text-base' : 'text-sm'}`}
             />
             {locErrors.bin && <p className="text-red-500 text-xs mt-1 font-medium">{locErrors.bin}</p>}
           </div>

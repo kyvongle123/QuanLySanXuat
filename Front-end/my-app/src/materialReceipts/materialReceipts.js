@@ -1866,7 +1866,6 @@ export const MaterialReceipts = () => {
                     value={currentReceipt?.materialReceiptCode || ''}
                     disabled
                     className="w-full border border-gray-300 rounded-md p-1.5 h-[38px] text-sm outline-none bg-gray-100 text-gray-500 cursor-not-allowed"
-                    placeholder="Hệ thống tự tạo"
                   />
                 </div>
                 <div className="hidden md:block"></div> {/* Dòng 1 chiếm nửa dòng */}
@@ -1889,8 +1888,8 @@ export const MaterialReceipts = () => {
                 {/* Số vận đơn */}
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-semibold text-gray-700">Số vận đơn</label>
-                  <input type="text" name="deliveryNoteNumber" value={currentReceipt?.deliveryNoteNumber || ''} onChange={handleInputChange} disabled={isReceiveMode} className={`w-full border ${receiptErrors.deliveryNoteNumber ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-1.5 h-[38px] text-sm focus:ring-2 outline-none ${isReceiveMode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} placeholder="Nhập số vận đơn" />
-                  {receiptErrors.deliveryNoteNumber && <p className="text-red-500 text-[10px] mt-1 font-medium">{receiptErrors.deliveryNoteNumber}</p>}
+                  <input type="text" name="deliveryNoteNumber" value={currentReceipt?.deliveryNoteNumber || ''} onChange={handleInputChange} disabled={isReceiveMode} className={`w-full border ${receiptErrors.deliveryNoteNumber ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-1.5 h-[38px] text-sm focus:ring-2 outline-none ${isReceiveMode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`} placeholder="Nhập số vận đơn" />
+                  {receiptErrors.deliveryNoteNumber && <p className="text-red-500 text-xs mt-1 font-medium">{receiptErrors.deliveryNoteNumber}</p>}
                 </div>
 
                 {/* Ngày nhận hàng */}
@@ -1903,7 +1902,7 @@ export const MaterialReceipts = () => {
                   error={!!receiptErrors.receivingDate}
                   errorMessage={receiptErrors.receivingDate}
                   compactCalendar
-                  className={`w-full pr-10 border ${receiptErrors.receivingDate ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md focus:outline-none focus:ring-2 transition-all text-left flex items-center p-1.5 min-h-[38px] text-sm ${isReceiveMode ? 'bg-gray-100 text-gray-500 pointer-events-none cursor-not-allowed' : 'bg-white cursor-pointer'}`}
+                  className={`w-full pr-10 border ${receiptErrors.receivingDate ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md focus:outline-none focus:ring-2 transition-all text-left flex items-center p-1.5 min-h-[38px] text-sm ${isReceiveMode ? 'bg-gray-100 text-gray-500 pointer-events-none cursor-not-allowed' : 'bg-white cursor-pointer'}`}
                 />
 
                 <div className="hidden md:block"></div> {/* Dòng 3 chiếm nửa dòng */}

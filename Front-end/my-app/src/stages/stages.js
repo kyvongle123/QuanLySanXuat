@@ -1037,7 +1037,7 @@ export const Stages = () => {
                   setCurrentEditingItem({ ...currentEditingItem, sequence: e.target.value });
                   if (errors.sequence) setErrors(prev => ({ ...prev, sequence: null }));
                 }}
-                className={`w-full border ${errors.sequence ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
+                className={`w-full border ${errors.sequence ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
               />
               {errors.sequence && <p className="text-red-500 text-xs mt-1 font-medium">{errors.sequence}</p>}
             </div>
@@ -1052,7 +1052,7 @@ export const Stages = () => {
                 setCurrentEditingItem({ ...currentEditingItem, name: e.target.value });
                 if (errors.name) setErrors(prev => ({ ...prev, name: null }));
               }}
-              className={`w-full border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
+              className={`w-full border ${errors.name ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:ring-2 outline-none transition-all ${isModalMaximized ? 'p-2 min-h-[44px] text-base' : 'p-1.5 min-h-[38px] text-sm'}`}
             />
             {errors.name && <p className="text-red-500 text-xs mt-1 font-medium">{errors.name}</p>}
           </div>
@@ -1140,7 +1140,7 @@ export const Stages = () => {
                 setSectionForm({ ...sectionForm, name: e.target.value });
                 if (sectionErrors.name) setSectionErrors(prev => ({ ...prev, name: null }));
               }}
-              className={`w-full border ${sectionErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 outline-none text-sm transition-all`}
+              className={`w-full border ${sectionErrors.name ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 outline-none text-sm transition-all`}
               placeholder="Nhập tên tổ sản xuất..."
             />
             {sectionErrors.name && <p className="text-red-500 text-xs mt-1 font-medium">{sectionErrors.name}</p>}

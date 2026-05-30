@@ -1008,7 +1008,7 @@ export const WarehouseLocations = () => {
               type="number"
               value={currentEditingItem?.bin ?? ''}
               onChange={(e) => { setModalErrors(prev => ({ ...prev, bin: '' })); setCurrentEditingItem({ ...currentEditingItem, bin: e.target.value }); }}
-              className={`w-full border ${modalErrors.bin ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`}
+              className={`w-full border ${modalErrors.bin ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`}
             />
             {modalErrors.bin && <p className="text-xs font-medium text-red-600">{modalErrors.bin}</p>}
           </div>
@@ -1029,7 +1029,7 @@ export const WarehouseLocations = () => {
               type="number"
               value={currentEditingItem?.level ?? ''}
               onChange={(e) => { setModalErrors(prev => ({ ...prev, level: '' })); setCurrentEditingItem({ ...currentEditingItem, level: e.target.value }); }}
-              className={`w-full border ${modalErrors.level ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`}
+              className={`w-full border ${modalErrors.level ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-1.5 focus:ring-2 outline-none ${isModalMaximized ? 'text-base' : 'text-sm'}`}
             />
             {modalErrors.level && <p className="text-xs font-medium text-red-600">{modalErrors.level}</p>}
           </div>
@@ -1137,7 +1137,7 @@ export const WarehouseLocations = () => {
               type="text"
               value={currentEditingRack?.name || ''}
               onChange={(e) => { setRackErrors(prev => ({ ...prev, name: '' })); setCurrentEditingRack({ ...currentEditingRack, name: e.target.value }); }}
-              className={`w-full border ${rackErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-2 text-sm focus:ring-2 outline-none`}
+              className={`w-full border ${rackErrors.name ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md p-2 text-sm focus:ring-2 outline-none`}
               autoFocus={window.innerWidth >= 768}
             />
             {rackErrors.name && <p className="text-xs font-medium text-red-600">{rackErrors.name}</p>}

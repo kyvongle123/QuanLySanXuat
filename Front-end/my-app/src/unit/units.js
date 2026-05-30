@@ -526,7 +526,7 @@ export const Units = () => {
               name="name"
               value={currentEditingUnit?.name || ''}
               onChange={handleModalInputChange}
-              className={`w-full border ${unitErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 focus:ring-2 outline-none text-sm`}
+              className={`w-full border ${unitErrors.name ? 'border-red-500 focus:ring-0 focus:outline-none' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm p-2 focus:ring-2 outline-none text-sm`}
               autoFocus={window.innerWidth >= 768}
             />
             {unitErrors.name && <p className="text-xs font-medium text-red-600">{unitErrors.name}</p>}
