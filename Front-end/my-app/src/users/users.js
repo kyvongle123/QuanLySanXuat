@@ -629,7 +629,6 @@ export const Users = () => {
     // Validation logic
     const newErrors = {};
     if (!currentEditingUser?.name?.trim()) newErrors.name = 'Bắt buộc nhập Tên người dùng';
-    if (!currentEditingUser?.userCode?.trim()) newErrors.userCode = 'Bắt buộc nhập Mã nhân viên';
     if (!currentEditingUser?.username?.trim()) newErrors.username = 'Bắt buộc nhập Username';
     if (!currentEditingUser?.password?.trim()) newErrors.password = 'Bắt buộc nhập Password';
     if (!currentEditingUser?.phone?.trim()) newErrors.phone = 'Bắt buộc nhập Số điện thoại';
@@ -680,8 +679,7 @@ export const Users = () => {
           </div>
           <div>
             <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Mã nhân viên</label>
-            <input type="text" name="userCode" value={currentEditingUser?.userCode || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.userCode ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-            {errors.userCode && <p className="text-xs font-medium text-red-500 mt-1">{errors.userCode}</p>}
+            <input type="text" name="userCode" value={currentEditingUser?.userCode || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border border-gray-300 focus:ring-blue-500 rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
           </div>
         </div>
       </div>

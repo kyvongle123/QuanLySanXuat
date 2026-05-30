@@ -60,7 +60,8 @@ namespace MyProject.Service
                 .GroupBy(u => u.MaterialReceipt!.Value)
                 .ToDictionary(g => g.Key, g => g.Select(u => u.Id).ToList());
 
-            return receipts.Select(r => {
+            return receipts.Select(r =>
+            {
                 var dto = MapToInfoDto(r);
                 // Gán danh sách ID người dùng vào InspectorPanel nếu tồn tại trong Map
                 return dto;
@@ -74,7 +75,7 @@ namespace MyProject.Service
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (receipt == null) return null;
-            
+
             var dto = MapToInfoDto(receipt);
             // Lấy danh sách ID người kiểm nghiệm cho phiếu nhập cụ thể
             return dto;
@@ -90,7 +91,7 @@ namespace MyProject.Service
                 for (var attempt = 0; attempt < MaxCreateCodeAttempts; attempt++)
                 {
                     var materialReceiptCode = hasProvidedCode
-                        ? dto.MaterialReceiptCode.Trim()
+                        ? dto.MaterialReceiptCode!.Trim()
                         : await GenerateNextMaterialReceiptCodeAsync();
 
                     await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -361,14 +362,14 @@ namespace MyProject.Service
             var materialIds = receipt.MaterialReceiptBatches.Select(b => b.MaterialId).ToList();
             var materials = await _context.Materials.Where(m => materialIds.Contains(m.Id)).ToDictionaryAsync(m => m.Id);
             var categories = await _context.MaterialCategories.ToDictionaryAsync(c => c.Id);
-            
+
             var inspectors = await _context.Users.Where(u => u.MaterialReceipt == id).ToListAsync();
             var roles = await _context.Roles.ToDictionaryAsync(r => r.Id);
             var sections = await _context.ProductionSections.ToDictionaryAsync(s => s.ID);
 
             // 2. Phân loại thành viên ban kiểm nghiệm
-            var manager = inspectors.FirstOrDefault(u => 
-                roles.TryGetValue(u.Role ?? 0, out var role) && 
+            var manager = inspectors.FirstOrDefault(u =>
+                roles.TryGetValue(u.Role ?? 0, out var role) &&
                 role.Name.Trim().Equals("Trưởng ban kiểm nghiệm", StringComparison.OrdinalIgnoreCase));
 
             var commitee = inspectors.Where(u => u.Id != (manager?.Id ?? 0)).ToList();
@@ -384,7 +385,7 @@ namespace MyProject.Service
                 ["data.year"] = receipt.ReceivingDate?.Year.ToString() ?? "....",
                 ["data.day2"] = receipt.ReceivingDate?.Day.ToString("00") ?? "..",
                 ["data.month2"] = receipt.ReceivingDate?.Month.ToString("00") ?? "..",
-                
+
                 ["data.year2"] = receipt.ReceivingDate?.Year.ToString() ?? "....",
 
                 ["QCManager.name"] = manager?.Name ?? "---",
@@ -403,7 +404,8 @@ namespace MyProject.Service
                 {
                     var m = materials.GetValueOrDefault(b.MaterialId);
                     var cat = m != null ? categories.GetValueOrDefault(m.Name) : null;
-                    return new {
+                    return new
+                    {
                         index = idx + 1,
                         name = cat?.Name ?? "---",
                         code = b.BatchCode ?? "---",
@@ -420,7 +422,7 @@ namespace MyProject.Service
             // 4. Xử lý tệp
             string rootPath = _environment.ContentRootPath; // Lấy đường dẫn gốc của dự án
             string templatePath = Path.Combine(rootPath, "Templates", "InspectationMaterialTemplate.docx"); // Đường dẫn mới
-            
+
             if (!System.IO.File.Exists(templatePath)) return null;
 
             try
@@ -440,7 +442,9 @@ namespace MyProject.Service
                         return pdfStream.ToArray();
                     }
                 }
-            } catch (Exception ex) {
+            }
+            catch (Exception ex)
+            {
                 Console.WriteLine($"Export Error: {ex.Message}");
                 return null;
             }
@@ -523,7 +527,7 @@ namespace MyProject.Service
             {
                 // Đường dẫn đến file JSON bạn vừa tải về
                 string credentialPath = ResolveFirebaseCredentialPath();
-                
+
                 // Khởi tạo thông tin xác thực từ file
                 var credential = GoogleCredential.FromFile(credentialPath);
 

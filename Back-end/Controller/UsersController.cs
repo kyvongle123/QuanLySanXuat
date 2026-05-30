@@ -18,7 +18,7 @@ namespace MyProject.Backend.Controller
     [ApiController]
     public class UsersController : ControllerBase
     {
-        private const string UserCodePrefix = "ND00";
+        private const string UserCodePrefix = "NV00";
         private const int MaxCreateUserCodeAttempts = 10;
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _environment;
