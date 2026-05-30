@@ -1659,7 +1659,7 @@ export const MaterialReceipts = () => {
             <div className="flex gap-1.5 justify-end">
               <button
                 onClick={() => handleOpenModal('receive', row)}
-                className="bg-[#F8A11F] hover:bg-[#e89418] text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95 whitespace-nowrap"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-[11px] sm:text-xs transition-all active:scale-95 whitespace-nowrap"
               >
                 Nhận nguyên liệu
               </button>
@@ -2210,7 +2210,7 @@ export const MaterialReceipts = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-700">Tên nhà cung cấp <span className="text-red-500">*</span></label>
-              <input type="text" className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" value={editingSupplier.name} onChange={(e) => setEditingSupplier({ ...editingSupplier, name: e.target.value })} required autoFocus />
+              <input type="text" className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" value={editingSupplier.name} onChange={(e) => setEditingSupplier({ ...editingSupplier, name: e.target.value })} required autoFocus={window.innerWidth >= 768} />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-700">Người liên hệ</label>
@@ -2280,7 +2280,7 @@ export const MaterialReceipts = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-700">Mã kho <span className="text-red-500">*</span></label>
-              <input type="text" className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" value={editingWarehouse.code} onChange={(e) => setEditingWarehouse({ ...editingWarehouse, code: e.target.value })} required autoFocus />
+              <input type="text" className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" value={editingWarehouse.code} onChange={(e) => setEditingWarehouse({ ...editingWarehouse, code: e.target.value })} required autoFocus={window.innerWidth >= 768} />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-700">Tên kho <span className="text-red-500">*</span></label>

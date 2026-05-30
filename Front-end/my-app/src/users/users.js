@@ -669,90 +669,76 @@ export const Users = () => {
 
   // Form cho Modal
   const userForm = (
-    <form onSubmit={handleModalSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <div className="grid-cols-2 gap-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Tên người dùng</label>
-            <input type="text" name="name" value={currentEditingUser?.name || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-            {errors.name && <p className="text-xs font-medium text-red-500 mt-1">{errors.name}</p>}
-          </div>
-          <div>
-            <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Mã nhân viên</label>
-            <input type="text" name="userCode" value={currentEditingUser?.userCode || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border border-gray-300 focus:ring-blue-500 rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
-          </div>
+    <form onSubmit={handleModalSubmit} className="space-y-4 max-h-[70vh] px-1">
+      <div className="grid grid-cols-2 gap-4">
+        {/* Tên người dùng */}
+        <div>
+          <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Tên người dùng</label>
+          <input type="text" name="name" value={currentEditingUser?.name || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+          {errors.name && <p className="text-xs font-medium text-red-500 mt-1">{errors.name}</p>}
         </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Mã nhân viên */}
+        <div>
+          <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Mã nhân viên</label>
+          <input
+            type="text"
+            name="userCode"
+            value={currentEditingUser?.userCode || ''}
+            onChange={handleModalInputChange}
+            disabled
+            className={`mt-1 block bg-gray-100 cursor-not-allowed w-full border border-gray-300 focus:ring-blue-500 rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
+        </div>
+
+        {/* Username */}
         <div>
           <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Username</label>
           <input type="text" name="username" value={currentEditingUser?.username || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.username ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
           {errors.username && <p className="text-xs font-medium text-red-500 mt-1">{errors.username}</p>}
         </div>
+        {/* Password */}
         <div>
           <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Password</label>
           <input type="password" name="password" value={currentEditingUser?.password || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.password ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
           {errors.password && <p className="text-xs font-medium text-red-500 mt-1">{errors.password}</p>}
         </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+        {/* Số điện thoại */}
         <div>
           <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Số điện thoại</label>
           <input type="text" name="phone" value={currentEditingUser?.phone || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
           {errors.phone && <p className="text-xs font-medium text-red-500 mt-1">{errors.phone}</p>}
         </div>
+        {/* Email */}
         <div>
           <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Email</label>
           <input type="email" name="email" value={currentEditingUser?.email || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-md shadow-sm focus:outline-none focus:ring-2 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
           {errors.email && <p className="text-xs font-medium text-red-500 mt-1">{errors.email}</p>}
         </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+        {/* Chức vụ */}
         <div className="flex flex-col gap-1">
           <div className="flex justify-between items-center px-1">
             <label htmlFor="role-select" className={`font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Chức vụ</label>
-            <button
-              type="button"
-              onClick={handleOpenRolesModal}
-              className="text-blue-600 hover:text-blue-800 text-[10px] font-bold underline transition-colors"
-            >
-              hiệu chỉnh
-            </button>
+            <button type="button" onClick={handleOpenRolesModal} className="text-blue-600 hover:text-blue-800 text-[10px] font-bold underline transition-colors">hiệu chỉnh</button>
           </div>
-          <CustomSelect
-            id="role-select"
-            name="role"
-            value={currentEditingUser?.role || ''}
-            onChange={handleModalInputChange}
-            options={roles}
-            isModalMaximized={isModalMaximized}
-            error={!!errors.role}
-            errorMessage={errors.role}
-          />
+          <CustomSelect id="role-select" name="role" value={currentEditingUser?.role || ''} onChange={handleModalInputChange} options={roles} isModalMaximized={isModalMaximized} error={!!errors.role} errorMessage={errors.role} />
         </div>
+        {/* Trạng thái */}
         <div className="flex flex-col gap-1">
           <div className="flex justify-between items-center px-1">
             <label htmlFor="status-select" className={`font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Trạng thái</label>
             <button type="button" onClick={handleOpenStatusesModal} className="text-blue-600 hover:text-blue-800 text-[10px] font-bold underline transition-colors">hiệu chỉnh</button>
           </div>
-          <CustomSelect
-            id="status-select"
-            name="status"
-            value={currentEditingUser?.status || ''}
-            onChange={handleModalInputChange}
-            options={statuses}
-            isModalMaximized={isModalMaximized}
-            error={!!errors.status}
-            errorMessage={errors.status}
-          />
+          <CustomSelect id="status-select" name="status" value={currentEditingUser?.status || ''} onChange={handleModalInputChange} options={statuses} isModalMaximized={isModalMaximized} error={!!errors.status} errorMessage={errors.status} />
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
+
+        {/* Địa chỉ */}
+        <div className="col-span-2">
           <label className={`block font-medium text-gray-700 ${isModalMaximized ? 'text-sm' : 'text-xs'}`}>Địa chỉ</label>
           <input type="text" name="address" value={currentEditingUser?.address || ''} onChange={handleModalInputChange} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${isModalMaximized ? 'p-2 text-base' : 'p-1.5 text-sm'}`} />
         </div>
       </div>
+
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={handleCloseModal} className={`bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors ${isModalMaximized ? 'py-2 px-6 text-base' : 'py-1.5 px-4 text-sm'}`}>Hủy</button>
         <button type="submit" className={`bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ${isModalMaximized ? 'py-2 px-6 text-base' : 'py-1.5 px-4 text-sm'}`}>Lưu</button>
@@ -1038,7 +1024,7 @@ export const Users = () => {
   ], [handleDeleteStatus]);
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-50/50 min-h-screen">
+    <div className="p-4 sm:p-6">
       <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 tracking-tight">Danh sách người dùng</h2>
 
 
@@ -1086,6 +1072,7 @@ export const Users = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <CustomDatatable
               columns={userColumns}
+              bodyCellClassName="!py-2 sm:!py-3"
               data={filteredUsers}
               renderExpansion={(row) => {
                 const roleId = row.role || row.Role || row.roleId || row.RoleId;
