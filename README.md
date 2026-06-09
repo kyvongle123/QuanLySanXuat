@@ -7,7 +7,6 @@
 Link demo:
 
 ```text
-https://quanlysanxuat.netlify.app
 ```
 
 ## 🔐 Tài khoản đăng nhập demo
